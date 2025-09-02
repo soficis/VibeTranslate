@@ -1,18 +1,15 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Input;
 using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.IO;
-using System.Security.Cryptography;
 
 namespace TranslationFiesta.WinUI
 {
-    public partial class MainWindow : Window
+    public sealed partial class MainWindow : Window
     {
         private static readonly HttpClient http = new HttpClient();
 
@@ -20,11 +17,11 @@ namespace TranslationFiesta.WinUI
         {
             this.InitializeComponent();
 
-            // populate languages
             var langs = new (string Code, string Name)[]
             {
                 ("auto","Auto-detect"),("en","English"),("ja","Japanese"),("es","Spanish"),("fr","French"),("de","German"),("zh-CN","Chinese (Simplified)")
             };
+
             foreach (var l in langs)
             {
                 CmbSource.Items.Add(new ComboBoxItem { Tag = l.Code, Content = l.Name });
@@ -33,7 +30,6 @@ namespace TranslationFiesta.WinUI
             CmbSource.SelectedIndex = 0;
             CmbTarget.SelectedIndex = 1;
 
-            // Load persisted settings and API key
             try
             {
                 var s = SettingsService.Load();
@@ -62,7 +58,6 @@ namespace TranslationFiesta.WinUI
             BtnCopy.Click += (_, __) => CopyResult();
             BtnSave.Click += async (_, __) => await SaveResultAsync();
 
-            // shortcuts
             var copy = new Microsoft.UI.Xaml.Input.KeyboardAccelerator { Key = Windows.System.VirtualKey.C, Modifiers = Windows.System.VirtualKeyModifiers.Control };
             copy.Invoked += (s, e) => CopyResult();
             this.KeyboardAccelerators.Add(copy);
@@ -77,7 +72,6 @@ namespace TranslationFiesta.WinUI
                 ThemeService.ApplyTheme(TglTheme.IsOn);
             };
 
-            // Save API key when the user leaves the textbox
             TxtApiKey.LostFocus += (_, __) =>
             {
                 try
@@ -88,7 +82,6 @@ namespace TranslationFiesta.WinUI
                 catch { }
             };
 
-            // Persist settings on close
             this.Closed += (_, __) =>
             {
                 try
@@ -141,7 +134,6 @@ namespace TranslationFiesta.WinUI
             }
         }
 
-        // Simple translate using unofficial endpoint or official depending on toggle
         private async Task<string> TranslateAsync(string text, string source, string target)
         {
             if (TglEndpoint.IsOn)

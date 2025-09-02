@@ -1,6 +1,6 @@
-# Contributing to TranslateVibe
+# Contributing to VibeTranslate
 
-Welcome! This guide provides comprehensive information for contributors to the TranslateVibe project, which contains multiple implementations of the same translation application in different languages and frameworks.
+Welcome! This guide provides comprehensive information for contributors to the VibeTranslate project, which contains multiple implementations of the same translation application in different languages and frameworks.
 
 ## Table of Contents
 - [Getting Started](#getting-started)
@@ -27,11 +27,11 @@ Before contributing, ensure you have:
 ### Initial Setup
 ```bash
 # Fork and clone the repository
-git clone https://github.com/yourusername/TranslateVibe.git
-cd TranslateVibe
+git clone https://github.com/yourusername/VibeTranslate.git
+cd VibeTranslate
 
 # Set up upstream remote
-git remote add upstream https://github.com/original/TranslateVibe.git
+git remote add upstream https://github.com/original/VibeTranslate.git
 
 # Create a feature branch
 git checkout -b feature/your-feature-name
@@ -55,7 +55,7 @@ pip install -r requirements.txt
 ## Project Structure
 
 ```
-TranslateVibe/
+VibeTranslate/
 ├── 📁 CsharpTranslationFiesta/     # C# WinForms implementation
 ├── 📁 FreeTranslateWin/           # C# WPF implementation
 ├── 📁 FSharpTranslate/            # F# implementation
@@ -499,6 +499,6 @@ Any other relevant information
 
 ## Thank You!
 
-Thank you for contributing to TranslateVibe! Your contributions help make this project better for everyone. Whether you're fixing bugs, adding features, improving documentation, or helping other contributors, your efforts are greatly appreciated.
+Thank you for contributing to VibeTranslate! Your contributions help make this project better for everyone. Whether you're fixing bugs, adding features, improving documentation, or helping other contributors, your efforts are greatly appreciated.
 
 Remember: **Every contribution counts**, from fixing a typo to implementing a major feature. Let's build something amazing together! 🚀

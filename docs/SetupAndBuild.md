@@ -1,4 +1,4 @@
-# Setup and Build Guide - TranslateVibe
+# Setup and Build Guide - VibeTranslate
 
 This guide provides comprehensive instructions for setting up, building, and running all TranslationFiesta applications in the repository.
 
@@ -58,14 +58,14 @@ winget install Microsoft.WindowsAppSDK
 
 ### Clone Repository
 ```powershell
-git clone https://github.com/yourusername/TranslateVibe.git
-cd TranslateVibe
+git clone https://github.com/yourusername/VibeTranslate.git
+cd VibeTranslate
 ```
 
 ### Build All Projects
 ```powershell
 # Build all .NET projects
-foreach ($project in @("CsharpTranslationFiesta", "FreeTranslateWin", "FSharpTranslate", "TranslationFiesta.WinUI")) {
+foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslate", "TranslationFiesta.WinUI")) {
     Write-Host "Building $project..."
     cd $project
     dotnet build -c Release
@@ -169,33 +169,6 @@ CsharpTranslationFiesta/
 - **System.Net.Http**: HTTP client
 - **System.Text.Json**: JSON processing
 
-## 🎨 FreeTranslateWin (.NET WPF)
-
-### Build Configuration
-```powershell
-cd FreeTranslateWin
-
-# Build project
-dotnet build "FreeTranslateWin.csproj"
-
-# Run project
-dotnet run --project "FreeTranslateWin.csproj"
-```
-
-### Project Structure
-```
-FreeTranslateWin/
-├── App.xaml                # Application definition
-├── MainWindow.xaml         # Main window XAML
-├── MainWindow.xaml.cs      # Code-behind
-└── FreeTranslateWin.csproj
-```
-
-### Dependencies
-- **PresentationFramework**: WPF framework
-- **System.Net.Http**: HTTP client
-- **WindowsBase**: WPF base libraries
-
 ## ⚡ FSharpTranslate (F#)
 
 ### Build Configuration
@@ -225,7 +198,9 @@ FSharpTranslate/
 - **System.Windows.Forms**: UI framework
 - **System.Net.Http**: HTTP client
 
-## 🎭 TranslationFiesta.WinUI (WinUI 3)
+## 🎭 TranslationFiesta.WinUI (WinUI 3) *(Untested Implementation)*
+
+> **⚠️ Important Note**: This WinUI implementation is currently untested and may require additional setup. The Windows App SDK workload must be properly installed through Visual Studio Installer for the project to build successfully.
 
 ### Prerequisites Check
 ```powershell
@@ -361,7 +336,7 @@ pytest
 ### Integration Testing
 ```powershell
 # Test all builds
-foreach ($project in @("CsharpTranslationFiesta", "FreeTranslateWin", "FSharpTranslate", "TranslationFiesta.WinUI")) {
+foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslate", "TranslationFiesta.WinUI")) {
     cd $project
     dotnet build -c Release
     Write-Host "$project build: SUCCESS"
@@ -400,7 +375,7 @@ jobs:
         dotnet-version: '9.0.x'
     - name: Build .NET Projects
       run: |
-        foreach ($project in @("CsharpTranslationFiesta", "FreeTranslateWin", "FSharpTranslate", "TranslationFiesta.WinUI")) {
+        foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslate", "TranslationFiesta.WinUI")) {
           cd $project
           dotnet build -c Release
           cd ..

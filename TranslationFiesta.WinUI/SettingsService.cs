@@ -36,7 +36,11 @@ namespace TranslationFiesta.WinUI
         {
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(PathFile)!);
+                var directory = Path.GetDirectoryName(PathFile);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
                 var txt = JsonSerializer.Serialize(s, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(PathFile, txt);
                 _cached = s;

@@ -1,10 +1,10 @@
-# TranslateVibe 🎉
+# VibeTranslate 🎉t
 
 A collection of translation applications built in different languages and frameworks, all implementing the same core functionality: **English ↔ Japanese back-translation** for content quality evaluation and linguistic analysis.
 
 ## 🌟 Overview
 
-TranslateVibe is a polyglot project showcasing how the same application can be implemented across multiple programming languages and UI frameworks. Each implementation maintains the same core features while leveraging language-specific strengths and platform capabilities.
+VibeTranslate is a polyglot project showcasing how the same application can be implemented across multiple programming languages and UI frameworks. Each implementation maintains the same core features while leveraging language-specific strengths and platform capabilities.
 
 ### 🎯 Core Functionality
 - **Back-translation**: English → Japanese → English using Google Translate APIs
@@ -31,13 +31,6 @@ TranslateVibe is a polyglot project showcasing how the same application can be i
 - **Build**: `dotnet build -c Release`
 - **Best For**: Windows-native performance, enterprise deployment
 
-### 🎨 FreeTranslateWin (C# WPF)
-**WPF Edition** - Modern Windows Presentation Foundation app
-- **Framework**: WPF (.NET 7+)
-- **Language**: C# 11
-- **Key Features**: Rich UI controls, data binding, MVVM-ready architecture
-- **Best For**: Windows desktop applications, UI customization
-
 ### ⚡ FSharpTranslate (F#)
 **Functional Edition** - Most feature-complete implementation
 - **Framework**: Windows Forms (.NET 9)
@@ -47,12 +40,13 @@ TranslateVibe is a polyglot project showcasing how the same application can be i
 - **Best For**: Production use, educational examples, clean architecture patterns
 
 ### 🎭 TranslationFiesta.WinUI (C#)
-**Modern Windows Edition** - Windows 11 native app
+**Modern Windows Edition** - Windows 11 native app *(Untested Code)*
 - **Framework**: WinUI 3 (Windows App SDK)
 - **Language**: C# 12
 - **Key Features**: Fluent Design, MSIX packaging, secure DPAPI storage, persistent settings
-- **Requirements**: Windows 10 19041+ or Windows 11
+- **Requirements**: Windows 10 19041+ or Windows 11, Windows App SDK workload installed
 - **Best For**: Modern Windows experiences, app store distribution
+- **⚠️ Note**: This implementation is currently untested and may require additional setup
 
 ## 🚀 Quick Start
 
@@ -60,7 +54,10 @@ TranslateVibe is a polyglot project showcasing how the same application can be i
 - **Python 3.6+** (for Python version)
 - **.NET 9 SDK** (for .NET versions)
 - **Windows 10+** (all Windows versions)
+- **Windows App SDK workload** (required for WinUI implementation - install via Visual Studio Installer)
 - **Internet connection** (for translation APIs)
+
+> **Note**: The TranslationFiesta.WinUI implementation is currently untested and may require additional setup beyond the standard .NET SDK installation.
 
 ### Running Your First Translation
 
@@ -85,22 +82,22 @@ dotnet run
 
 ## 📊 Feature Comparison
 
-| Feature | Python | C# WinForms | C# WPF | F# | WinUI 3 |
-|---------|--------|-------------|--------|----|---------|
-| **UI Framework** | Tkinter | Windows Forms | WPF | Windows Forms | WinUI 3 |
-| **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **File Import** | ✅ (.txt, .md, .html) | ✅ (.txt) | ✅ (.txt) | ✅ (.txt) | ✅ |
-| **Unofficial API** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Official API** | ✅ | ✅ | ❌ | ✅ | ✅ |
-| **Progress Bar** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Async Processing** | ✅ (threading) | ✅ | ✅ | ✅ | ✅ |
-| **Error Handling** | Basic | Basic | Basic | Comprehensive | Basic |
-| **Logging** | ✅ | Basic | Basic | Comprehensive | Basic |
-| **Retry Logic** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Copy/Save Results** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Secure Storage** | ❌ | ❌ | ❌ | ❌ | ✅ (DPAPI) |
-| **MSIX Packaging** | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Clean Code** | Good | Basic | Basic | ✅ (Applied) | Basic |
+| Feature | Python | C# WinForms | F# | WinUI 3 |
+|---------|--------|-------------|----|---------|
+| **UI Framework** | Tkinter | Windows Forms | Windows Forms | WinUI 3 |
+| **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ |
+| **File Import** | ✅ (.txt, .md, .html) | ✅ (.txt) | ✅ (.txt) | ✅ |
+| **Unofficial API** | ✅ | ✅ | ✅ | ✅ |
+| **Official API** | ✅ | ✅ | ✅ | ✅ |
+| **Progress Bar** | ✅ | ✅ | ✅ | ✅ |
+| **Async Processing** | ✅ (threading) | ✅ | ✅ | ✅ |
+| **Error Handling** | Basic | Basic | Comprehensive | Basic |
+| **Logging** | ✅ | Basic | Comprehensive | Basic |
+| **Retry Logic** | ✅ | ✅ | ✅ | ✅ |
+| **Copy/Save Results** | ✅ | ✅ | ✅ | ✅ |
+| **Secure Storage** | ❌ | ❌ | ❌ | ✅ (DPAPI) |
+| **MSIX Packaging** | ❌ | ❌ | ❌ | ✅ |
+| **Clean Code** | Good | Basic | ✅ (Applied) | Basic |
 
 ## 🛠️ Development
 
@@ -116,7 +113,7 @@ python TranslationFiesta.py
 #### .NET Projects
 ```powershell
 # Build all .NET projects
-foreach ($project in @("CsharpTranslationFiesta", "FreeTranslateWin", "FSharpTranslate", "TranslationFiesta.WinUI")) {
+foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslate", "TranslationFiesta.WinUI")) {
     cd $project
     dotnet build -c Release
     cd ..
