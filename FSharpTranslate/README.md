@@ -15,7 +15,8 @@ A clean, modern Windows Forms application for backtranslation testing built with
 - **Official Google Cloud Translation API**: Enterprise-grade with API key
 
 ### 💾 File Operations
-- **Import .txt files**: Load text content directly from files
+- **Import files**: Load content from .txt, .md, and .html files
+- **HTML Processing**: Automatic text extraction from HTML files
 - **Copy Results**: Quick clipboard access (Ctrl+C)
 - **Save Results**: Export backtranslation results (Ctrl+S)
 - **UTF-8 Support**: Full Unicode compatibility
@@ -67,10 +68,13 @@ dotnet run
    - **Intermediate**: Japanese translation
    - **Final**: Back-translated English
 
-### Importing Text Files
-1. **Click "Import .txt"** or use File → Import .txt
-2. **Select your text file** (UTF-8 recommended)
+### Importing Files
+1. **Click "Import File"** or use File → Import File
+2. **Select your file** (.txt, .md, or .html) - UTF-8 recommended
 3. **Content loads automatically** into the input area
+   - **HTML files**: Readable text is automatically extracted
+   - **Markdown files**: Content loaded as plain text
+   - **Text files**: Direct content loading
 4. **Proceed with backtranslation** as normal
 
 ### Using Official Google Cloud API
@@ -136,7 +140,8 @@ FSharpTranslate/
 - Clean separation of UI state and business logic
 
 #### **File Operations**
-- Import: UTF-8 text file loading
+- Import: UTF-8 file loading (.txt, .md, .html)
+- HTML Processing: Automatic text extraction from HTML
 - Export: Formatted result saving
 - Clipboard: Quick result copying
 
@@ -174,6 +179,9 @@ Solution: Verify API key is correct and has Translation API access
 ```
 Error: Failed to load file: Access denied
 Solution: Check file permissions and ensure UTF-8 encoding
+
+Error: HTML parsing failed
+Solution: File may contain malformed HTML - try a different file or use plain text
 ```
 
 #### **Build Issues**
@@ -261,9 +269,9 @@ This project is provided for educational and development purposes. Usage of tran
 
 ## 🔗 Related Projects
 
-- **CsharpTranslationFiesta**: C# version with multi-language support
-- **FreeTranslateWin**: WPF-based translation tool
-- **TranslationFiesta.WinUI**: Modern WinUI 3 implementation
+- **TranslationFiestaPy**: Python Tkinter version with comprehensive file import (.txt, .md, .html)
+- **CsharpTranslationFiesta**: C# WinForms version with simple file import (.txt)
+- **TranslationFiesta.WinUI**: Modern WinUI 3 implementation (untested)
 
 ## 📞 Support
 

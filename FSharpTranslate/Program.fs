@@ -5,6 +5,7 @@ open System.Text.Json
 open System.Windows.Forms
 open System.IO
 open System.Threading
+open System.Text.RegularExpressions
 
 // Import our custom logger
 open Logger
@@ -21,6 +22,55 @@ type UiState = {
 
 // Shared HTTP client
 let httpClient = new HttpClient()
+
+// HTML text extraction functions
+let extractTextFromHtml (htmlContent: string) =
+    try
+        // Remove script, style, code, and pre blocks using regex
+        let scriptPattern = "<script[^>]*>.*?</script>"
+        let stylePattern = "<style[^>]*>.*?</style>"
+        let codePattern = "<code[^>]*>.*?</code>"
+        let prePattern = "<pre[^>]*>.*?</pre>"
+
+        let withoutScripts = Regex.Replace(htmlContent, scriptPattern, "", RegexOptions.Singleline ||| RegexOptions.IgnoreCase)
+        let withoutStyles = Regex.Replace(withoutScripts, stylePattern, "", RegexOptions.Singleline ||| RegexOptions.IgnoreCase)
+        let withoutCode = Regex.Replace(withoutStyles, codePattern, "", RegexOptions.Singleline ||| RegexOptions.IgnoreCase)
+        let withoutPre = Regex.Replace(withoutCode, prePattern, "", RegexOptions.Singleline ||| RegexOptions.IgnoreCase)
+
+        // Remove all remaining HTML tags
+        let tagPattern = "<[^>]+>"
+        let withoutTags = Regex.Replace(withoutPre, tagPattern, "")
+
+        // Normalize whitespace
+        let normalized = Regex.Replace(withoutTags, @"\s+", " ")
+        normalized.Trim()
+    with ex ->
+        Logger.error (sprintf "HTML parsing failed: %s" ex.Message)
+        htmlContent // Fallback to raw content
+
+// File loading function that handles different file types
+let loadTextFromFile (filePath: string) =
+    try
+        let extension = Path.GetExtension(filePath)
+        let extensionLower =
+            match extension with
+            | null -> ""
+            | ext when String.IsNullOrEmpty(ext) -> ""
+            | ext -> ext.ToLower()
+        let rawContent = File.ReadAllText(filePath, Encoding.UTF8)
+
+        match extensionLower with
+        | ".html" ->
+            let extractedText = extractTextFromHtml rawContent
+            Logger.debug (sprintf "Extracted text from HTML: %d chars -> %d chars" rawContent.Length extractedText.Length)
+            extractedText
+        | ".md" | ".txt" ->
+            rawContent.Trim()
+        | _ ->
+            rawContent.Trim() // Default to plain text
+    with ex ->
+        Logger.error (sprintf "Failed to load file %s: %s" filePath ex.Message)
+        raise ex
 
 // Translation functions
 let translateUnofficialAsync (text: string) (source: string) (target: string) =
@@ -94,7 +144,12 @@ let translateOfficialAsync (text: string) (source: string) (target: string) (api
                     return Error errorMsg
                 else
                     use doc = JsonDocument.Parse(body)
-                    let translation = doc.RootElement.GetProperty("data").GetProperty("translations").[0].GetProperty("translatedText").GetString()
+                    let translationNullable = doc.RootElement.GetProperty("data").GetProperty("translations").[0].GetProperty("translatedText").GetString()
+                    let translation =
+                        match translationNullable with
+                        | null -> ""
+                        | txt when String.IsNullOrEmpty(txt) -> ""
+                        | txt -> txt
                     let result = if String.IsNullOrEmpty(translation) then "" else translation
                     Logger.info (sprintf "Official translation successful: %d chars" result.Length)
                     return Ok result
@@ -371,22 +426,38 @@ do
     btnSaveResult.Click.Add(fun _ -> saveResult())
     btnImportTxt.Click.Add(fun _ ->
         use ofd = new OpenFileDialog()
-        ofd.Filter <- "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+        ofd.Filter <- "Supported files (*.txt;*.md;*.html)|*.txt;*.md;*.html|Text files (*.txt)|*.txt|Markdown files (*.md)|*.md|HTML files (*.html)|*.html|All files (*.*)|*.*"
         ofd.Multiselect <- false
         if ofd.ShowDialog() = DialogResult.OK then
             try
-                txtInput.Text <- File.ReadAllText(ofd.FileName, Encoding.UTF8)
-                setStatus (sprintf "Loaded %s" (Path.GetFileName ofd.FileName))
+                let loadedText = loadTextFromFile ofd.FileName
+                txtInput.Text <- loadedText
+                let fileName = Path.GetFileName ofd.FileName
+                let extensionNullable = Path.GetExtension(ofd.FileName)
+                let extension =
+                    match extensionNullable with
+                    | null -> ""
+                    | ext when String.IsNullOrEmpty(ext) -> ""
+                    | ext -> ext.ToLower()
+                let statusMsg =
+                    match extension with
+                    | ".html" -> sprintf "Loaded HTML: %s (%d chars extracted)" fileName loadedText.Length
+                    | ".md" -> sprintf "Loaded Markdown: %s" fileName
+                    | ".txt" -> sprintf "Loaded Text: %s" fileName
+                    | _ -> sprintf "Loaded: %s" fileName
+                setStatus statusMsg
+                Logger.info (sprintf "Successfully imported file: %s" ofd.FileName)
             with ex ->
                 MessageBox.Show(sprintf "Failed to load file: %s" ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error) |> ignore
                 setStatus "File import failed"
+                Logger.error (sprintf "File import failed: %s" ex.Message)
     )
 
     // Menu
 
     let menuStrip = new MenuStrip()
     let fileMenu = new ToolStripMenuItem("&File")
-    fileMenu.DropDownItems.Add(new ToolStripMenuItem("&Import .txt", null, EventHandler(fun _ _ -> btnImportTxt.PerformClick()))) |> ignore
+    fileMenu.DropDownItems.Add(new ToolStripMenuItem("&Import File (.txt, .md, .html)", null, EventHandler(fun _ _ -> btnImportTxt.PerformClick()))) |> ignore
     fileMenu.DropDownItems.Add(new ToolStripMenuItem("&Copy Result", null, EventHandler(fun _ _ -> copyResult()))) |> ignore
     fileMenu.DropDownItems.Add(new ToolStripMenuItem("&Save Result", null, EventHandler(fun _ _ -> saveResult()))) |> ignore
     menuStrip.Items.Add(fileMenu) |> ignore

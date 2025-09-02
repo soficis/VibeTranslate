@@ -86,7 +86,7 @@ dotnet run
 |---------|--------|-------------|----|---------|
 | **UI Framework** | Tkinter | Windows Forms | Windows Forms | WinUI 3 |
 | **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ |
-| **File Import** | ✅ (.txt, .md, .html) | ✅ (.txt) | ✅ (.txt) | ✅ |
+| **File Import** | ✅ (.txt, .md, .html) | ✅ (.txt) | ✅ (.txt, .md, .html) | ✅ |
 | **Unofficial API** | ✅ | ✅ | ✅ | ✅ |
 | **Official API** | ✅ | ✅ | ✅ | ✅ |
 | **Progress Bar** | ✅ | ✅ | ✅ | ✅ |

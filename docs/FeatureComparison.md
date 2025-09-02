@@ -42,8 +42,8 @@ This document provides a comprehensive comparison of features across all Transla
 
 | Feature | Python | C# WinForms | F# | WinUI 3 |
 |---------|--------|-------------|----|---------|
-| **Text File Import** | ✅ (.txt, .md, .html) | ✅ (.txt) | ✅ (.txt) | ✅ |
-| **HTML Processing** | ✅ (BeautifulSoup) | ❌ | ❌ | ❌ |
+| **Text File Import** | ✅ (.txt, .md, .html) | ✅ (.txt) | ✅ (.txt, .md, .html) | ✅ |
+| **HTML Processing** | ✅ (BeautifulSoup) | ❌ | ✅ (Regex-based) | ❌ |
 | **UTF-8 Support** | ✅ | ✅ | ✅ | ✅ |
 | **File Dialog** | ✅ | ✅ | ✅ | ✅ |
 | **Save Results** | ✅ | ✅ | ✅ | ✅ |
