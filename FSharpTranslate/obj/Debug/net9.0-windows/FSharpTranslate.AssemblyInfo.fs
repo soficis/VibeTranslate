@@ -10,7 +10,7 @@ open System.Reflection
 [<assembly: System.Reflection.AssemblyCompanyAttribute("FSharpTranslate")>]
 [<assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")>]
 [<assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")>]
-[<assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2a7edb8a2297e6a40efc175686ade83451eb897b")>]
+[<assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+158249d5869e3f817d61793a30554a292b6505a1")>]
 [<assembly: System.Reflection.AssemblyProductAttribute("FSharpTranslate")>]
 [<assembly: System.Reflection.AssemblyTitleAttribute("FSharpTranslate")>]
 [<assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")>]
