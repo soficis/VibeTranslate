@@ -227,8 +227,8 @@ This project is open source and available for educational and development purpos
 
 ### **Getting Help**
 - 📖 **Documentation**: [README.md](README.md) | [INSTALLATION.md](INSTALLATION.md)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/Vibes/issues)
-- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/yourusername/Vibes/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/soficis/VibeTranslate/issues)
+- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/soficis/VibeTranslate/discussions)
 - 🤝 **Community**: Join our GitHub community for support and feedback
 
 ---

@@ -8,9 +8,11 @@ This guide provides comprehensive instructions for setting up, building, and run
 
 | Component | Requirement | Download Link |
 |-----------|-------------|---------------|
-| **Operating System** | Windows 10 1903+ or Windows 11 | N/A |
+| **Operating System** | Windows 10 1903+, Windows 11, macOS, Linux | N/A |
 | **.NET SDK** | .NET 9 (recommended) or .NET 7+ | [Download .NET](https://dotnet.microsoft.com/download) |
 | **Python** | Python 3.6+ (for Python version only) | [Download Python](https://python.org) |
+| **Go** | Go 1.21+ (for Go version only) | [Download Go](https://golang.org/dl/) |
+| **Flutter SDK** | Flutter 3.10+ (for Flutter version only) | [Install Flutter](https://flutter.dev/docs/get-started/install) |
 | **Git** | Latest version | [Download Git](https://git-scm.com) |
 | **Visual Studio** | 2022+ (optional, for WinUI development) | [Download VS](https://visualstudio.microsoft.com) |
 
@@ -45,7 +47,34 @@ python --version
 pip --version
 ```
 
-#### 4. Install Windows App SDK (for WinUI)
+#### 4. Install Go (for Go version)
+```powershell
+# Download and install Go 1.21+ from:
+# https://golang.org/dl/
+
+# OR install via winget
+winget install GoLang.Go
+
+# Verify installation
+go version
+
+# Set GOPROXY for faster module downloads (optional)
+go env -w GOPROXY=https://goproxy.cn,direct
+```
+
+#### 5. Install Flutter (for Flutter version)
+```powershell
+# Download and install Flutter SDK from:
+# https://flutter.dev/docs/get-started/install/windows
+
+# Verify installation
+flutter doctor
+
+# Enable Windows desktop development
+flutter config --enable-windows-desktop
+```
+
+#### 6. Install Windows App SDK (for WinUI)
 ```powershell
 # Install via winget
 winget install Microsoft.WindowsAppSDK
@@ -58,14 +87,14 @@ winget install Microsoft.WindowsAppSDK
 
 ### Clone Repository
 ```powershell
-git clone https://github.com/yourusername/VibeTranslate.git
+git clone https://github.com/soficis/VibeTranslate.git
 cd VibeTranslate
 ```
 
 ### Build All Projects
 ```powershell
 # Build all .NET projects
-foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslate", "TranslationFiesta.WinUI")) {
+foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
     Write-Host "Building $project..."
     cd $project
     dotnet build -c Release
@@ -88,7 +117,7 @@ cd ..\FreeTranslateWin
 dotnet run
 
 # F# (most feature-complete)
-cd ..\FSharpTranslate
+cd ..\FSharpTranslationFiesta
 dotnet run
 
 # WinUI (most modern)
@@ -169,11 +198,11 @@ CsharpTranslationFiesta/
 - **System.Net.Http**: HTTP client
 - **System.Text.Json**: JSON processing
 
-## ⚡ FSharpTranslate (F#)
+## ⚡ FSharpTranslationFiesta (F#)
 
 ### Build Configuration
 ```powershell
-cd FSharpTranslate
+cd FSharpTranslationFiesta
 
 # Restore dependencies
 dotnet restore
@@ -187,10 +216,10 @@ dotnet run
 
 ### Project Structure
 ```
-FSharpTranslate/
+FSharpTranslationFiesta/
 ├── Program.fs              # Main application
 ├── Logger.fs               # Logging module
-└── FSharpTranslate.fsproj
+└── FSharpTranslationFiesta.fsproj
 ```
 
 ### Dependencies
@@ -336,7 +365,7 @@ pytest
 ### Integration Testing
 ```powershell
 # Test all builds
-foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslate", "TranslationFiesta.WinUI")) {
+foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
     cd $project
     dotnet build -c Release
     Write-Host "$project build: SUCCESS"
@@ -375,11 +404,63 @@ jobs:
         dotnet-version: '9.0.x'
     - name: Build .NET Projects
       run: |
-        foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslate", "TranslationFiesta.WinUI")) {
+        foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
           cd $project
           dotnet build -c Release
           cd ..
         }
+```
+
+## 🦀 TranslationFiestaGo (Go)
+
+### Build Configuration
+```powershell
+cd TranslationFiestaGo
+
+# Download dependencies
+go mod tidy
+
+# Build CLI version (recommended)
+go build -o translationfiestago-cli.exe cmd/cli/main.go
+
+# Build GUI version (may have OpenGL issues on Windows)
+go build -tags=software -o translationfiestago.exe main.go
+
+# Run CLI version
+.\translationfiestago-cli.exe
+```
+
+### Project Structure
+```
+TranslationFiestaGo/
+├── cmd/cli/main.go          # CLI application
+├── main.go                  # GUI application
+├── internal/
+│   ├── domain/             # Business logic
+│   ├── data/               # Data implementations
+│   ├── gui/                # GUI components
+│   └── utils/              # Shared utilities
+├── go.mod
+├── go.sum
+└── README.md
+```
+
+### Dependencies
+- **fyne.io/fyne/v2**: GUI framework (optional)
+- **github.com/go-resty/resty/v2**: HTTP client
+- **golang.org/x/net/html**: HTML parsing
+
+### Go-Specific Issues
+```bash
+# If GUI build fails on Windows
+CGO_ENABLED=0 go build cmd/cli/main.go
+
+# Update dependencies
+go get -u all
+go mod tidy
+
+# Clean module cache
+go clean -modcache
 ```
 
 ## Troubleshooting
@@ -417,6 +498,22 @@ winget repair Microsoft.WindowsAppSDK
 winver
 ```
 
+#### Go Issues
+```bash
+# Check Go installation
+go version
+
+# Check module status
+go mod verify
+
+# Clear Go cache
+go clean -cache
+go clean -testcache
+
+# GUI build issues on Windows
+go env -w CGO_ENABLED=0
+```
+
 ### Performance Optimization
 
 #### Build Performance
@@ -448,6 +545,10 @@ dotnet --info
 python --version
 pip list
 
+# Go version info
+go version
+go env
+
 # Windows version
 winver
 systeminfo | findstr /B /C:"OS"
@@ -456,6 +557,7 @@ systeminfo | findstr /B /C:"OS"
 ### Log Files
 - **.NET Apps**: Check application directory for `.log` files
 - **Python App**: `translationfiesta.log`
+- **Go App**: `translationfiestago.log` (platform-specific location)
 - **WinUI App**: `%LOCALAPPDATA%\Packages\[AppId]\Temp\`
 
 ### Community Support

@@ -1,5 +1,5 @@
-name: flutter_translate
-description: A Flutter port of FSharpTranslate - Clean Code TranslationFiesta
+name: translation_fiesta_flutter
+description: A Flutter port of FSharpTranslationFiesta - Clean Code TranslationFiesta
 version: 1.0.0+1
 publish_to: none
 

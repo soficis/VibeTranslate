@@ -126,8 +126,8 @@ Review fsharptranslate.log for details
 
 ### **Getting Help**
 - **Logs**: Check `fsharptranslate.log` for detailed error information
-- **Issues**: Report bugs on [GitHub Issues](https://github.com/yourusername/Vibes/issues)
-- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/yourusername/Vibes/discussions)
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/soficis/VibeTranslate/issues)
+- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/soficis/VibeTranslate/discussions)
 
 ## 🔄 Updating from Previous Versions
 

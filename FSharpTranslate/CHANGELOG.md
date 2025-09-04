@@ -130,8 +130,8 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## Support
 
-- **Bug Reports**: [GitHub Issues](https://github.com/yourusername/Vibes/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/yourusername/Vibes/discussions)
+- **Bug Reports**: [GitHub Issues](https://github.com/soficis/VibeTranslate/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/soficis/VibeTranslate/discussions)
 - **Documentation**: [README.md](README.md) and [INSTALLATION.md](INSTALLATION.md)
 - **Community**: Join our discussions for help and feedback
 

@@ -228,7 +228,7 @@ dotnet publish -c Release -r win-x64 --self-contained false
 
 ### Development Setup
 1. **Fork the repository**
-2. **Clone locally**: `git clone your-fork-url`
+2. **Clone locally**: `git clone https://github.com/soficis/VibeTranslate.git`
 3. **Install .NET 9 SDK**
 4. **Build and test**: `dotnet build && dotnet run`
 

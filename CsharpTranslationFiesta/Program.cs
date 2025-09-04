@@ -5,11 +5,71 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Threading;
+using System.Text.RegularExpressions;
+using System.IO;
 
 namespace CsharpTranslationFiesta
 {
     static class Program
     {
+        // HTML text extraction functions (similar to F# version)
+        static string ExtractTextFromHtml(string htmlContent)
+        {
+            try
+            {
+                // Remove script, style, code, and pre blocks using regex
+                var scriptPattern = "<script[^>]*>.*?</script>";
+                var stylePattern = "<style[^>]*>.*?</style>";
+                var codePattern = "<code[^>]*>.*?</code>";
+                var prePattern = "<pre[^>]*>.*?</pre>";
+
+                var withoutScripts = Regex.Replace(htmlContent, scriptPattern, "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                var withoutStyles = Regex.Replace(withoutScripts, stylePattern, "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                var withoutCode = Regex.Replace(withoutStyles, codePattern, "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                var withoutPre = Regex.Replace(withoutCode, prePattern, "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+                // Remove all remaining HTML tags
+                var tagPattern = "<[^>]+>";
+                var withoutTags = Regex.Replace(withoutPre, tagPattern, "");
+
+                // Normalize whitespace
+                var normalized = Regex.Replace(withoutTags, @"\s+", " ");
+                return normalized.Trim();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"HTML parsing failed: {ex.Message}");
+                return htmlContent; // Fallback to raw content
+            }
+        }
+
+        // File loading function that handles different file types (similar to F# version)
+        static string LoadTextFromFile(string filePath)
+        {
+            try
+            {
+                var extension = Path.GetExtension(filePath).ToLower();
+                var rawContent = File.ReadAllText(filePath, Encoding.UTF8);
+
+                switch (extension)
+                {
+                    case ".html":
+                        var extractedText = ExtractTextFromHtml(rawContent);
+                        Logger.Info($"Extracted text from HTML: {rawContent.Length} chars -> {extractedText.Length} chars");
+                        return extractedText;
+                    case ".md":
+                    case ".txt":
+                        return rawContent.Trim();
+                    default:
+                        return rawContent.Trim(); // Default to plain text
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to load file {filePath}: {ex.Message}");
+                throw;
+            }
+        }
     // Use TranslationClient for parsing and HTTP
     static readonly TranslationClient Translator = new TranslationClient();
 
@@ -25,7 +85,7 @@ namespace CsharpTranslationFiesta
             // Menu
             var menu = new MenuStrip();
             var fileMenu = new ToolStripMenuItem("File");
-            var miImport = new ToolStripMenuItem("Import .txt") { ShortcutKeys = Keys.Control | Keys.O };
+            var miImport = new ToolStripMenuItem("Import File (.txt, .md, .html)") { ShortcutKeys = Keys.Control | Keys.O };
             var miSaveBack = new ToolStripMenuItem("Save Back") { ShortcutKeys = Keys.Control | Keys.S };
             var miCopyBack = new ToolStripMenuItem("Copy Back") { ShortcutKeys = Keys.Control | Keys.C };
             var miExit = new ToolStripMenuItem("Exit") { ShortcutKeys = Keys.Alt | Keys.F4 };
@@ -93,30 +153,53 @@ namespace CsharpTranslationFiesta
                 txtApiKey.Enabled = chkOfficial.Checked;
             };
 
-            // File import
-            Action importTxt = () =>
+            // File import (enhanced to support .txt, .md, .html like F# version)
+            Action importFile = () =>
             {
                 using var ofd = new OpenFileDialog();
-                ofd.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+                ofd.Filter = "Supported files (*.txt;*.md;*.html)|*.txt;*.md;*.html|Text files (*.txt)|*.txt|Markdown files (*.md)|*.md|HTML files (*.html)|*.html|All files (*.*)|*.*";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     try
                     {
-                        var content = System.IO.File.ReadAllText(ofd.FileName, Encoding.UTF8);
-                        txtInput.Text = content;
-                        lblFile.Text = "Loaded: " + ofd.SafeFileName;
-                        Logger.Info($"Imported file '{ofd.FileName}' ({content.Length} chars)");
+                        var loadedText = LoadTextFromFile(ofd.FileName);
+                        txtInput.Text = loadedText;
+
+                        var fileName = Path.GetFileName(ofd.FileName);
+                        var extension = Path.GetExtension(ofd.FileName).ToLower();
+                        string statusMsg;
+
+                        switch (extension)
+                        {
+                            case ".html":
+                                statusMsg = $"Loaded HTML: {fileName} ({loadedText.Length} chars extracted)";
+                                break;
+                            case ".md":
+                                statusMsg = $"Loaded Markdown: {fileName}";
+                                break;
+                            case ".txt":
+                                statusMsg = $"Loaded Text: {fileName}";
+                                break;
+                            default:
+                                statusMsg = $"Loaded: {fileName}";
+                                break;
+                        }
+
+                        lblFile.Text = statusMsg;
+                        setStatus(statusMsg, "green");
+                        Logger.Info($"Successfully imported file: {ofd.FileName}");
                     }
                     catch (Exception ex)
                     {
                         MessageBox.Show("Failed to load file: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        Logger.Error($"Failed to import: {ex.Message}");
+                        setStatus("File import failed", "red");
+                        Logger.Error($"File import failed: {ex.Message}");
                     }
                 }
             };
 
-            btnLoad.Click += (s, e) => importTxt();
-            miImport.Click += (s, e) => importTxt();
+            btnLoad.Click += (s, e) => importFile();
+            miImport.Click += (s, e) => importFile();
 
             // Copy
             Action copyBack = () =>
@@ -151,7 +234,7 @@ namespace CsharpTranslationFiesta
             {
                 if (e.Control && e.KeyCode == Keys.S) { e.SuppressKeyPress = true; saveBack(); }
                 if (e.Control && e.KeyCode == Keys.C) { e.SuppressKeyPress = true; copyBack(); }
-                if (e.Control && e.KeyCode == Keys.O) { e.SuppressKeyPress = true; importTxt(); }
+                if (e.Control && e.KeyCode == Keys.O) { e.SuppressKeyPress = true; importFile(); }
             };
 
             // Translation flow

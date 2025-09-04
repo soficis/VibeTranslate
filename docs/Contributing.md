@@ -27,11 +27,11 @@ Before contributing, ensure you have:
 ### Initial Setup
 ```bash
 # Fork and clone the repository
-git clone https://github.com/yourusername/VibeTranslate.git
+git clone https://github.com/soficis/VibeTranslate.git
 cd VibeTranslate
 
 # Set up upstream remote
-git remote add upstream https://github.com/original/VibeTranslate.git
+git remote add upstream https://github.com/soficis/VibeTranslate.git
 
 # Create a feature branch
 git checkout -b feature/your-feature-name

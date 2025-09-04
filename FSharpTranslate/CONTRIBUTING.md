@@ -13,7 +13,7 @@ Thank you for your interest in contributing to F# TranslationFiesta! This docume
 ### Setup Development Environment
 ```powershell
 # Clone the repository
-git clone https://github.com/yourusername/Vibes.git
+git clone https://github.com/soficis/VibeTranslate.git
 cd Vibes/FSharpTranslate
 
 # Restore dependencies

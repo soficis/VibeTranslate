@@ -1,0 +1,8 @@
+2025/09/04 14:39:49 [2025-09-04 14:39:49] INFO: TranslationFiesta Go CLI starting...
+2025/09/04 14:40:26 [2025-09-04 14:40:26] INFO: Starting back-translation of 16 characters
+2025/09/04 14:40:26 [2025-09-04 14:40:26] INFO: Starting back-translation: en -> ja -> en
+2025/09/04 14:40:26 [2025-09-04 14:40:26] INFO: Unofficial translation successful: 33 chars
+2025/09/04 14:40:26 [2025-09-04 14:40:26] INFO: Step 1 completed: 33 chars
+2025/09/04 14:40:27 [2025-09-04 14:40:27] INFO: Unofficial translation successful: 13 chars
+2025/09/04 14:40:27 [2025-09-04 14:40:27] INFO: Back-translation completed successfully: 16 -> 33 -> 13 chars (took 864.4084ms)
+2025/09/04 14:40:27 [2025-09-04 14:40:27] INFO: Back-translation completed in 864.9495ms: 16 -> 33 -> 13 chars

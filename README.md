@@ -1,5 +1,7 @@
 # VibeTranslate 🎉t
 
+[![GitHub Repository](https://img.shields.io/badge/GitHub-soficis/VibeTranslate-blue?logo=github)](https://github.com/soficis/VibeTranslate)
+
 A collection of translation applications built in different languages and frameworks, all implementing the same core functionality: **English ↔ Japanese back-translation** for content quality evaluation and linguistic analysis.
 
 ## 🌟 Overview
@@ -31,7 +33,7 @@ VibeTranslate is a polyglot project showcasing how the same application can be i
 - **Build**: `dotnet build -c Release`
 - **Best For**: Windows-native performance, enterprise deployment
 
-### ⚡ FSharpTranslate (F#)
+### ⚡ FSharpTranslationFiesta (F#)
 **Functional Edition** - Most feature-complete implementation
 - **Framework**: Windows Forms (.NET 9)
 - **Language**: F# 8
@@ -48,12 +50,34 @@ VibeTranslate is a polyglot project showcasing how the same application can be i
 - **Best For**: Modern Windows experiences, app store distribution
 - **⚠️ Note**: This implementation is currently untested and may require additional setup
 
+### 🦋 TranslationFiestaFlutter (Dart)
+**Cross-Platform Edition** - Modern mobile/desktop app
+- **Framework**: Flutter (Material Design)
+- **Language**: Dart 3
+- **Key Features**: Cross-platform support, Clean Code architecture, enhanced UI, file picker integration
+- **Platforms**: Windows, macOS, Linux, Android, iOS, Web
+- **Best For**: Cross-platform deployment, modern UI, mobile/tablet use
+- **Build**: `flutter build` (platform-specific commands)
+
+### 🦀 TranslationFiestaGo (Go)
+**Modern Systems Edition** - Clean Architecture implementation
+- **Framework**: Fyne (GUI) + CLI
+- **Language**: Go 1.21+
+- **Key Features**: Clean Architecture, comprehensive domain modeling, dual API support, cross-platform CLI and GUI
+- **Platforms**: Windows, macOS, Linux (CLI works everywhere, GUI has OpenGL dependencies)
+- **Best For**: Learning Clean Architecture, production CLI tools, cross-platform applications
+- **Build**: `go build -o translationfiestago main.go` (CLI) or `go run cmd/cli/main.go`
+- **⚠️ Note**: GUI version has OpenGL build issues on Windows, CLI version works perfectly
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 - **Python 3.6+** (for Python version)
 - **.NET 9 SDK** (for .NET versions)
-- **Windows 10+** (all Windows versions)
+- **Flutter SDK** (for Flutter version) - [Install from flutter.dev](https://flutter.dev/docs/get-started/install)
+- **Go 1.21+** (for Go version) - [Install from golang.org](https://golang.org/dl/)
+- **Windows 10+** (Windows versions)
+- **macOS/Linux/Windows** (Flutter cross-platform)
 - **Windows App SDK workload** (required for WinUI implementation - install via Visual Studio Installer)
 - **Internet connection** (for translation APIs)
 
@@ -68,36 +92,51 @@ pip install -r requirements.txt
 python TranslationFiesta.py
 ```
 
+#### Flutter Version (Cross-platform)
+```bash
+cd flutter_translate
+flutter pub get
+flutter run
+```
+
+#### Go Version (Cross-platform)
+```bash
+cd TranslationFiestaGo
+go run cmd/cli/main.go  # CLI version (recommended)
+# OR
+go run main.go          # GUI version (may have build issues)
+```
+
 #### .NET Versions (Windows)
 ```powershell
 # Choose your preferred implementation
-cd FSharpTranslate          # Most feature-complete
+cd FSharpTranslationFiesta  # Most feature-complete
 # OR
 cd TranslationFiesta.WinUI  # Most modern UI
 # OR
-cd CsharpTranslationFiesta  # Simplest
+cd CsharpTranslationFiesta  # Enhanced with HTML support
 
 dotnet run
 ```
 
 ## 📊 Feature Comparison
 
-| Feature | Python | C# WinForms | F# | WinUI 3 |
-|---------|--------|-------------|----|---------|
-| **UI Framework** | Tkinter | Windows Forms | Windows Forms | WinUI 3 |
-| **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ |
-| **File Import** | ✅ (.txt, .md, .html) | ✅ (.txt) | ✅ (.txt, .md, .html) | ✅ |
-| **Unofficial API** | ✅ | ✅ | ✅ | ✅ |
-| **Official API** | ✅ | ✅ | ✅ | ✅ |
-| **Progress Bar** | ✅ | ✅ | ✅ | ✅ |
-| **Async Processing** | ✅ (threading) | ✅ | ✅ | ✅ |
-| **Error Handling** | Basic | Basic | Comprehensive | Basic |
-| **Logging** | ✅ | Basic | Comprehensive | Basic |
-| **Retry Logic** | ✅ | ✅ | ✅ | ✅ |
-| **Copy/Save Results** | ✅ | ✅ | ✅ | ✅ |
-| **Secure Storage** | ❌ | ❌ | ❌ | ✅ (DPAPI) |
-| **MSIX Packaging** | ❌ | ❌ | ❌ | ✅ |
-| **Clean Code** | Good | Basic | ✅ (Applied) | Basic |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Flutter | Go |
+|---------|--------|-------------|----|---------|---------|----|
+| **UI Framework** | Tkinter | Windows Forms | Windows Forms | WinUI 3 | Material Design | Fyne + CLI |
+| **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ | ✅ (System) | ✅ |
+| **File Import** | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) |
+| **Unofficial API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Official API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Progress Bar** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Async Processing** | ✅ (threading) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Error Handling** | Basic | Basic | Comprehensive | Basic | Comprehensive | Comprehensive |
+| **Logging** | ✅ | Basic | Comprehensive | Basic | Comprehensive | ✅ |
+| **Retry Logic** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Copy/Save Results** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Secure Storage** | ❌ | ❌ | ❌ | ✅ (DPAPI) | ❌ | ❌ |
+| **MSIX Packaging** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Clean Code** | Good | Basic | ✅ (Applied) | Basic | ✅ (Applied) | ✅ (Clean Architecture) |
 
 ## 🛠️ Development
 
@@ -110,10 +149,30 @@ pip install -r requirements.txt
 python TranslationFiesta.py
 ```
 
+#### Flutter
+```bash
+cd TranslationFiestaFlutter
+flutter pub get
+flutter build windows    # For Windows
+flutter build linux      # For Linux
+flutter build macos      # For macOS
+flutter build apk        # For Android APK
+flutter build ios        # For iOS
+flutter build web        # For Web
+```
+
+#### Go
+```bash
+cd TranslationFiestaGo
+go mod tidy
+go build -o translationfiestago-cli.exe cmd/cli/main.go  # CLI version
+# GUI version may have build issues due to OpenGL dependencies
+```
+
 #### .NET Projects
 ```powershell
 # Build all .NET projects
-foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslate", "TranslationFiesta.WinUI")) {
+foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
     cd $project
     dotnet build -c Release
     cd ..
@@ -123,8 +182,20 @@ foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslate", "Translatio
 #### Publishing for Distribution
 ```powershell
 # F# version (recommended for production)
-cd FSharpTranslate
+cd FSharpTranslationFiesta
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+
+# Flutter cross-platform builds
+cd TranslationFiestaFlutter
+flutter build windows --release  # Windows executable
+flutter build apk --release      # Android APK
+flutter build appbundle --release # Android App Bundle
+flutter build ios --release      # iOS (requires macOS)
+flutter build web --release      # Web deployment
+
+# Go CLI build (most reliable)
+cd TranslationFiestaGo
+go build -o translationfiestago-cli.exe -ldflags="-s -w" cmd/cli/main.go
 
 # WinUI version (for Microsoft Store)
 cd TranslationFiesta.WinUI
@@ -156,7 +227,7 @@ cd TranslationFiesta.WinUI
 ### Development Setup
 1. **Choose your language/framework** of interest
 2. **Fork the repository**
-3. **Clone locally**: `git clone your-fork-url`
+3. **Clone locally**: `git clone https://github.com/soficis/VibeTranslate.git`
 4. **Install prerequisites** for your chosen implementation
 5. **Build and test**: Follow the quick start guides above
 
@@ -164,6 +235,7 @@ cd TranslationFiesta.WinUI
 - **Python**: PEP 8, type hints, comprehensive docstrings
 - **C#**: .NET coding conventions, async/await patterns
 - **F#**: Clean Code principles, meaningful names, single responsibility
+- **Flutter/Dart**: Effective Dart guidelines, Clean Code architecture, Material Design principles
 - **Cross-platform**: Consistent feature parity across implementations
 
 ### Adding New Features
@@ -184,10 +256,11 @@ cd TranslationFiesta.WinUI
 ### 🚀 Future Enhancements
 - **More Languages**: Rust, Go, Swift implementations
 - **Web Version**: React/TypeScript and Blazor WebAssembly
-- **Mobile Apps**: React Native, .NET MAUI, Flutter
+- **Mobile Apps**: React Native, .NET MAUI (Flutter ✅ completed)
 - **Additional APIs**: DeepL, Microsoft Translator, Yandex
 - **Batch Processing**: Handle multiple files/directories
 - **Plugin Architecture**: Extensible translation providers
+- **Flutter Enhancements**: Desktop app optimization, advanced file processing, offline mode
 
 ## 🔧 Troubleshooting
 
@@ -244,10 +317,10 @@ A: Japanese provides good linguistic distance from English for effective back-tr
 A: Yes! Modify the `intermediateLanguageCode` (typically "ja") in each implementation.
 
 **Q: Which version should I use?**
-A: **FSharpTranslate** for production use, **TranslationFiestaPy** for cross-platform, **TranslationFiesta.WinUI** for modern Windows UI.
+A: **FSharpTranslationFiesta** for production use, **TranslationFiestaFlutter** for cross-platform deployment, **TranslationFiestaGo CLI** for reliable cross-platform CLI, **TranslationFiestaPy** for simple cross-platform needs, **TranslationFiesta.WinUI** for modern Windows UI.
 
 **Q: Are these production-ready?**
-A: Yes, especially FSharpTranslate and TranslationFiesta.WinUI. For high-volume translation workflows, use the official Google Cloud Translation API.
+A: Yes, especially FSharpTranslationFiesta, TranslationFiestaFlutter, TranslationFiestaGo CLI, and TranslationFiesta.WinUI. For high-volume translation workflows, use the official Google Cloud Translation API.
 
 ---
 
