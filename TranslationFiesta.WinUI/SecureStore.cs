@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Security.Cryptography;
+using static System.Security.Cryptography.ProtectedData;
 using System.Text;
 
 namespace TranslationFiesta.WinUI
@@ -14,7 +15,11 @@ namespace TranslationFiesta.WinUI
         {
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(StorePath));
+                var directoryPath = Path.GetDirectoryName(StorePath);
+                if (!string.IsNullOrEmpty(directoryPath))
+                {
+                    Directory.CreateDirectory(directoryPath);
+                }
                 var bytes = Encoding.UTF8.GetBytes(apiKey);
                 var enc = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
                 File.WriteAllBytes(StorePath, enc);

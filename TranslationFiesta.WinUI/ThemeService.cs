@@ -9,8 +9,8 @@ namespace TranslationFiesta.WinUI
             var dictionaries = Application.Current?.Resources?.MergedDictionaries;
             if (dictionaries == null) return;
 
-            ResourceDictionary light = null;
-            ResourceDictionary darkDict = null;
+            ResourceDictionary? light = null;
+            ResourceDictionary? darkDict = null;
             foreach (var d in dictionaries)
             {
                 var src = d.Source?.OriginalString ?? string.Empty;

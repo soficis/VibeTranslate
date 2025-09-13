@@ -9,6 +9,18 @@ namespace TranslationFiesta.WinUI
         public string? LastSource { get; set; }
         public string? LastTarget { get; set; }
         public bool DarkMode { get; set; }
+        public bool UseOfficialApi { get; set; }
+        public string? LastFilePath { get; set; }
+        public string? LastSavePath { get; set; }
+        public int WindowWidth { get; set; } = 1200;
+        public int WindowHeight { get; set; } = 800;
+        public int WindowX { get; set; } = -1;
+        public int WindowY { get; set; } = -1;
+
+        // Cost tracking settings
+        public decimal MonthlyBudget { get; set; } = 50.0M;
+        public bool EnableCostAlerts { get; set; } = true;
+        public bool ShowCostInUI { get; set; } = true;
     }
 
     public static class SettingsService

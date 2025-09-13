@@ -1,4 +1,6 @@
-# Setup and Build Guide - VibeTranslate
+# Setup and Build Guide
+
+**Repository**: [https://github.com/soficis/VibeTranslate](https://github.com/soficis/VibeTranslate) - VibeTranslate
 
 This guide provides comprehensive instructions for setting up, building, and running all TranslationFiesta applications in the repository.
 
@@ -94,7 +96,7 @@ cd VibeTranslate
 ### Build All Projects
 ```powershell
 # Build all .NET projects
-foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
+foreach ($project in @("TranslationFiestaCSharp", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
     Write-Host "Building $project..."
     cd $project
     dotnet build -c Release
@@ -109,11 +111,7 @@ pip install -r requirements.txt
 ### Run Applications
 ```powershell
 # C# WinForms
-cd CsharpTranslationFiesta
-dotnet run
-
-# C# WPF
-cd ..\FreeTranslateWin
+cd TranslationFiestaCSharp
 dotnet run
 
 # F# (most feature-complete)
@@ -168,11 +166,11 @@ python -m pip install --upgrade pip
 pip cache purge
 ```
 
-## 🔷 CsharpTranslationFiesta (.NET WinForms)
+## 🔷 TranslationFiestaCSharp (.NET WinForms)
 
 ### Build Configuration
 ```powershell
-cd CsharpTranslationFiesta
+cd TranslationFiestaCSharp
 
 # Debug build
 dotnet build
@@ -186,11 +184,11 @@ dotnet run
 
 ### Project Structure
 ```
-CsharpTranslationFiesta/
+TranslationFiestaCSharp/
 ├── Program.cs              # Main application
 ├── TranslationClient.cs    # API client
 ├── Logger.cs               # Logging utility
-└── CsharpTranslationFiesta.csproj
+└── TranslationFiestaCSharp.csproj
 ```
 
 ### Dependencies
@@ -365,7 +363,7 @@ pytest
 ### Integration Testing
 ```powershell
 # Test all builds
-foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
+foreach ($project in @("TranslationFiestaCSharp", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
     cd $project
     dotnet build -c Release
     Write-Host "$project build: SUCCESS"
@@ -404,7 +402,7 @@ jobs:
         dotnet-version: '9.0.x'
     - name: Build .NET Projects
       run: |
-        foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
+        foreach ($project in @("TranslationFiestaCSharp", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
           cd $project
           dotnet build -c Release
           cd ..

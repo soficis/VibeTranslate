@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TranslationFiesta.WinUI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+158249d5869e3f817d61793a30554a292b6505a1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4ab29a93b824b5cf5cb843ba08c7866c2a63b524")]
 [assembly: System.Reflection.AssemblyProductAttribute("TranslationFiesta.WinUI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TranslationFiesta.WinUI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

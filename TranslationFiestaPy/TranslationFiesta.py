@@ -20,17 +20,43 @@ import requests
 import threading
 import sys
 import os
+import platform
+if platform.system() == "Windows":
+    import ctypes
+try:
+    from tkinterweb import HtmlFrame
+except ImportError:
+    # Fallback if tkinterweb is not available or doesn't have HtmlFrame
+    HtmlFrame = None
 
-from app_logger import create_logger
+from exceptions import get_user_friendly_message, TranslationFiestaError
+from result import Result, Success, Failure
+from enhanced_logger import get_logger
 from file_utils import load_text_from_path
-from translation_services import translate_text
+from epub_processor import EpubProcessor
+from translation_services import TranslationService, translate_text
+from secure_storage import get_secure_storage, store_api_key, get_api_key, delete_api_key
+from settings_storage import get_settings_storage, get_theme, set_theme
+from batch_processor import BatchProcessor
+from bleu_scorer import get_bleu_scorer
 
 
 class TranslationFiesta:
     def __init__(self, root):
         self.root = root
         self.root.title("TranslationFiesta - English ↔ Japanese Backtranslation")
-        self.root.geometry("820x640")
+
+        # DPI Awareness and Scaling
+        self.dpi_factor = self.get_dpi_factor()
+        self.scale_factor = self.dpi_factor / 96.0 if self.dpi_factor else 1.0
+
+        # Initialize storage modules
+        self.settings = get_settings_storage()
+        self.secure_storage = get_secure_storage()
+
+        # Load window geometry from settings
+        geometry = self.settings.get_window_geometry()
+        self.root.geometry(geometry)
         self.root.resizable(True, True)
 
         # Configure grid weights for responsive layout
@@ -60,10 +86,12 @@ class TranslationFiesta:
                 'label_fg': '#ffffff'
             }
         }
-        self.current_theme = 'light'
 
-        # Logging
-        self.logger = create_logger()
+        # Load theme from settings
+        self.current_theme = self.settings.get_theme()
+
+        # Enhanced logging
+        self.logger = get_logger()
 
         # HTTP session for connection reuse
         self.session = requests.Session()
@@ -71,18 +99,54 @@ class TranslationFiesta:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
 
-        # Translation settings
-        self.use_official_var = tk.BooleanVar(value=False)
-        self.api_key_var = tk.StringVar(value="")
+        # Translation settings - load from storage
+        use_official = self.settings.get_use_official_api()
+        self.use_official_var = tk.BooleanVar(value=use_official)
+
+        # Load API key from secure storage
+        api_key = get_api_key("google_translate") or ""
+        self.api_key_var = tk.StringVar(value=api_key)
 
         # Threading/UI state
         self.translation_thread = None
         self.is_translating = False
         self.progress_bar = None
 
+        # Translation service with enhanced error handling
+        self.translation_service = TranslationService()
+
+        # BLEU scorer for quality assessment
+        self.bleu_scorer = get_bleu_scorer()
+
+        # Initialize UI text labels
+        self.lbl_input_text = "Input (English):"
+        self.lbl_ja_text = "Japanese (intermediate):"
+        self.lbl_back_text = "Back to English:"
+        self.btn_translate_text = "Backtranslate"
+        self.lbl_status_text = "Ready"
+        self.output_format_var = tk.StringVar(value="HTML") # Default output format
+
         # Create GUI elements
         self.create_widgets()
         self.bind_shortcuts()
+
+        # Bind window close event to save settings
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        # UI initialization complete
+
+    def get_dpi_factor(self):
+        """Get the DPI scaling factor for the current display."""
+        try:
+            # The `winfo_fpixels` method converts a distance to a number of pixels.
+            # '1i' represents one inch. The result is the number of pixels per inch, i.e., DPI.
+            return self.root.winfo_fpixels('1i')
+        except Exception:
+            return 96.0  # Default DPI for safety
+
+    def scale_font(self, size):
+        """Scale font size based on DPI."""
+        return int(size * self.scale_factor)
 
     def create_widgets(self):
         """Create and layout all GUI widgets"""
@@ -101,32 +165,47 @@ class TranslationFiesta:
 
         # Theme toggle button
         self.btn_theme = tk.Button(
-            toolbar_frame, text="🌙 Dark", command=self.toggle_theme,
-            bg=theme['button_bg'], fg=theme['button_fg'], font=("Arial", 9)
+            toolbar_frame, text="☀️ Light" if self.current_theme == 'dark' else "🌙 Dark", command=self.toggle_theme,
+            bg=theme['button_bg'], fg=theme['button_fg'], font=("Arial", self.scale_font(9))
         )
         self.btn_theme.grid(row=0, column=0, padx=(0, 10))
 
         # File load button
         self.btn_load_file = tk.Button(
             toolbar_frame, text="📁 Load File", command=self.load_file,
-            bg=theme['button_bg'], fg=theme['button_fg'], font=("Arial", 9)
+            bg=theme['button_bg'], fg=theme['button_fg'], font=("Arial", self.scale_font(9))
         )
         self.btn_load_file.grid(row=0, column=1, padx=(0, 10))
 
+        # Batch process button
+        self.btn_batch_process = tk.Button(
+            toolbar_frame, text="📦 Batch Process", command=self.show_batch_processor,
+            bg=theme['button_bg'], fg=theme['button_fg'], font=("Arial", self.scale_font(9))
+        )
+        self.btn_batch_process.grid(row=0, column=2, padx=(0, 10))
+
+        # Mysterious "Panic" Button
+        self.btn_panic = tk.Button(
+            toolbar_frame, text="Panic", command=self.on_panic,
+            bg="#ff4d4d", fg="#ffffff", font=("Arial", self.scale_font(9), "bold")
+        )
+        self.btn_panic.grid(row=0, column=3, padx=(0, 10))
+
         # File info label
         self.lbl_file_info = tk.Label(
-            toolbar_frame, text="", anchor="w", bg=theme['bg'], fg=theme['fg'], font=("Arial", 9)
+            toolbar_frame, text="", anchor="w", bg=theme['bg'], fg=theme['fg'], font=("Arial", self.scale_font(9))
         )
-        self.lbl_file_info.grid(row=0, column=2, sticky="ew")
+        self.lbl_file_info.grid(row=0, column=4, sticky="ew")
 
         # Official API toggle and key
         self.chk_official = tk.Checkbutton(
             toolbar_frame, text="Use Official API", variable=self.use_official_var,
-            command=self.on_toggle_official, bg=theme['bg'], fg=theme['fg'], font=("Arial", 9)
+            command=self.on_toggle_official, bg=theme['bg'], fg=theme['fg'],
+            selectcolor=theme['button_bg'], font=("Arial", self.scale_font(9))
         )
         self.chk_official.grid(row=1, column=0, sticky="w", pady=(6, 0))
 
-        tk.Label(toolbar_frame, text="API Key:", bg=theme['bg'], fg=theme['fg'], font=("Arial", 9)).grid(row=1, column=1, sticky="e", pady=(6, 0))
+        tk.Label(toolbar_frame, text="API Key:", bg=theme['bg'], fg=theme['fg'], font=("Arial", self.scale_font(9))).grid(row=1, column=1, sticky="e", pady=(6, 0))
         self.entry_api_key = tk.Entry(
             toolbar_frame, textvariable=self.api_key_var, show='*', width=40,
             bg=theme['text_bg'], fg=theme['text_fg'], insertbackground=theme['text_fg']
@@ -135,12 +214,12 @@ class TranslationFiesta:
         self.entry_api_key.config(state="disabled")
 
         # Input section
-        lbl_input = tk.Label(self.root, text="Input (English):", anchor="w",
-                           bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", 10))
-        lbl_input.grid(row=1, column=0, sticky="ew", padx=10, pady=(5, 2))
+        self.lbl_input = tk.Label(self.root, text=self.lbl_input_text, anchor="w",
+                           bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", self.scale_font(10)))
+        self.lbl_input.grid(row=1, column=0, sticky="ew", padx=10, pady=(5, 2))
 
         self.txt_input = scrolledtext.ScrolledText(
-            self.root, height=10, wrap=tk.WORD, font=("Arial", 10),
+            self.root, height=10, wrap=tk.WORD, font=("Arial", self.scale_font(10)),
             bg=theme['text_bg'], fg=theme['text_fg'], insertbackground=theme['text_fg']
         )
         self.txt_input.grid(row=2, column=0, sticky="ew", padx=10, pady=(0, 10))
@@ -151,15 +230,15 @@ class TranslationFiesta:
         button_frame.grid_columnconfigure(1, weight=1)
 
         self.btn_translate = tk.Button(
-            button_frame, text="Backtranslate", command=self.start_translation,
-            height=2, font=("Arial", 10, "bold"),
+            button_frame, text=self.btn_translate_text, command=self.start_translation,
+            height=2, font=("Arial", self.scale_font(10), "bold"),
             bg=theme['button_bg'], fg=theme['button_fg']
         )
         self.btn_translate.grid(row=0, column=0, padx=(0, 10))
 
         self.lbl_status = tk.Label(
-            button_frame, text="Ready", anchor="w", fg="blue",
-            bg=theme['bg'], font=("Arial", 9)
+            button_frame, text=self.lbl_status_text, anchor="w", fg="blue",
+            bg=theme['bg'], font=("Arial", self.scale_font(9))
         )
         self.lbl_status.grid(row=0, column=1, sticky="ew")
 
@@ -169,26 +248,65 @@ class TranslationFiesta:
         self.progress_bar.grid_remove()
 
         # Japanese intermediate section
-        lbl_ja = tk.Label(self.root, text="Japanese (intermediate):", anchor="w",
-                         bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", 10))
-        lbl_ja.grid(row=4, column=0, sticky="ew", padx=10, pady=(10, 2))
+        self.lbl_ja = tk.Label(self.root, text=self.lbl_ja_text, anchor="w",
+                         bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", self.scale_font(10)))
+        self.lbl_ja.grid(row=4, column=0, sticky="ew", padx=10, pady=(10, 2))
 
         self.txt_ja = scrolledtext.ScrolledText(
-            self.root, height=10, wrap=tk.WORD, state="disabled", font=("Arial", 10),
+            self.root, height=10, wrap=tk.WORD, state="disabled", font=("Arial", self.scale_font(10)),
             bg=theme['text_bg'], fg=theme['text_fg']
         )
         self.txt_ja.grid(row=5, column=0, sticky="ew", padx=10, pady=(0, 10))
 
         # Back to English section
-        lbl_back = tk.Label(self.root, text="Back to English:", anchor="w",
-                           bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", 10))
-        lbl_back.grid(row=6, column=0, sticky="ew", padx=10, pady=(10, 2))
+        self.lbl_back = tk.Label(self.root, text=self.lbl_back_text, anchor="w",
+                           bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", self.scale_font(10)))
+        self.lbl_back.grid(row=6, column=0, sticky="ew", padx=10, pady=(10, 2))
 
         self.txt_back = scrolledtext.ScrolledText(
-            self.root, height=8, wrap=tk.WORD, state="disabled", font=("Arial", 10),
+            self.root, height=8, wrap=tk.WORD, state="disabled", font=("Arial", self.scale_font(10)),
             bg=theme['text_bg'], fg=theme['text_fg']
         )
         self.txt_back.grid(row=7, column=0, sticky="ew", padx=10, pady=(0, 10))
+ 
+        # Output format selection
+        format_frame = tk.Frame(self.root, bg=theme['bg'])
+        format_frame.grid(row=8, column=0, sticky="ew", padx=10, pady=(10, 0))
+ 
+        tk.Label(format_frame, text="Output Format:", bg=theme['bg'], fg=theme['fg'], font=("Arial", self.scale_font(9))).pack(side=tk.LEFT, padx=(0, 5))
+        self.format_combo = ttk.Combobox(
+            format_frame, textvariable=self.output_format_var,
+            values=["HTML", "Markdown", "Plain Text"], state="readonly",
+            font=("Arial", self.scale_font(9))
+        )
+        self.format_combo.pack(side=tk.LEFT, padx=(0, 10))
+        self.format_combo.bind("<<ComboboxSelected>>", self.on_format_selected)
+ 
+        # Preview pane
+        self.lbl_preview = tk.Label(self.root, text="Preview:", anchor="w",
+                                    bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", self.scale_font(10)))
+        self.lbl_preview.grid(row=9, column=0, sticky="ew", padx=10, pady=(10, 2))
+ 
+        # Webview for HTML preview (fallback to Text widget if not available)
+        if HtmlFrame is not None:
+            try:
+                self.webview = HtmlFrame(self.root, width=600, height=200)
+                self.webview.grid(row=10, column=0, sticky="nsew", padx=10, pady=(0, 10))
+                self.root.grid_rowconfigure(10, weight=1) # Make webview expandable
+            except Exception as e:
+                print(f"Warning: Could not create HTML preview: {e}")
+                self.create_fallback_preview()
+        else:
+            self.create_fallback_preview()
+
+    def create_fallback_preview(self):
+        """Create a fallback text preview when HTML preview is not available"""
+        theme = self.themes[self.current_theme]
+        self.webview = tk.Text(self.root, height=10, wrap=tk.WORD, state="disabled",
+                              font=("Arial", self.scale_font(10)),
+                              bg=theme['text_bg'], fg=theme['text_fg'])
+        self.webview.grid(row=10, column=0, sticky="nsew", padx=10, pady=(0, 10))
+        self.root.grid_rowconfigure(10, weight=1)
 
         # Configure padding for grid-managed widgets only
         for child in self.root.winfo_children():
@@ -203,6 +321,10 @@ class TranslationFiesta:
     def toggle_theme(self):
         """Toggle between light and dark themes"""
         self.current_theme = 'dark' if self.current_theme == 'light' else 'light'
+
+        # Save theme setting
+        self.settings.set_theme(self.current_theme)
+
         theme = self.themes[self.current_theme]
 
         # Update button text
@@ -224,12 +346,13 @@ class TranslationFiesta:
         self.create_widgets()
 
     def load_file(self):
-        """Load content from .txt, .md, or .html file"""
+        """Load content from .txt, .md, .html, or .epub file"""
         filetypes = [
             ('Text files', '*.txt'),
             ('Markdown files', '*.md'),
             ('HTML files', '*.html'),
-            ('All supported files', '*.txt;*.md;*.html')
+            ('EPUB files', '*.epub'),
+            ('All supported files', '*.txt;*.md;*.html;*.epub')
         ]
 
         filename = filedialog.askopenfilename(
@@ -239,34 +362,88 @@ class TranslationFiesta:
 
         if filename:
             try:
-                content = load_text_from_path(filename)
-                if content:
-                    self.txt_input.delete("1.0", tk.END)
-                    self.txt_input.insert("1.0", content)
-                    self.lbl_file_info.config(text=f"Loaded: {os.path.basename(filename)}")
-                    self.logger.info(f"Loaded file: {filename}")
+                if filename.lower().endswith('.epub'):
+                    processor = EpubProcessor(filename)
+                    title = processor.get_book_title()
+                    chapters = processor.get_chapters()
+                    if chapters:
+                        # For simplicity, load the first chapter's content
+                        content = processor.get_chapter_content(chapters[0])
+                        self.txt_input.delete("1.0", tk.END)
+                        self.txt_input.insert("1.0", content)
+                        self.lbl_file_info.config(text=f"Loaded EPUB: {os.path.basename(filename)} (First chapter)")
+                        self.logger.info(f"Loaded EPUB file: {filename}, Title: {title}")
+                    else:
+                        messagebox.showwarning("No content", "EPUB file contains no chapters.")
+                        self.logger.warning(f"EPUB file {filename} loaded but contains no chapters.")
+                        return
                 else:
-                    messagebox.showwarning("No content", "No translatable content found in the file.")
+                    result = load_text_from_path(filename)
+
+                    if result.is_success():
+                        content = result.value  # type: ignore
+                        if content:
+                            self.txt_input.delete("1.0", tk.END)
+                            self.txt_input.insert("1.0", content)
+                            self.lbl_file_info.config(text=f"Loaded: {os.path.basename(filename)}")
+                            self.logger.info(f"Loaded file: {filename}")
+                        else:
+                            messagebox.showwarning("No content", "No translatable content found in the file.")
+                    else:
+                        # Handle failure case
+                        error = result.error  # type: ignore
+                        user_friendly_msg = get_user_friendly_message(error)
+                        self.logger.error(
+                            "File loading failed",
+                            extra={
+                                "file_path": filename,
+                                "error_type": type(error).__name__,
+                                "user_message": user_friendly_msg,
+                                "technical_details": str(error),
+                            }
+                        )
+                        messagebox.showerror("File Loading Error", user_friendly_msg)
+
+                # Save to recent files
+                self.settings.add_recent_file(filename)
+
             except Exception as e:
-                self.logger.error(f"Failed to load file: {e}")
-                messagebox.showerror("Error", f"Failed to load file: {str(e)}")
+                # Fallback for unexpected errors
+                user_friendly_msg = get_user_friendly_message(e)
+                self.logger.error(
+                    "Unexpected file loading error",
+                    extra={
+                        "file_path": filename,
+                        "error_type": type(e).__name__,
+                        "user_message": user_friendly_msg,
+                        "technical_details": str(e),
+                    }
+                )
+                messagebox.showerror("File Loading Error", user_friendly_msg)
     def process_file(self, filename):
         """Deprecated: use file_utils.load_text_from_path instead"""
         return load_text_from_path(filename)
 
     def translate_async(self, text, source_lang, target_lang):
-        """Translate text via unofficial or official API with retries."""
+        """Translate text using enhanced TranslationService with comprehensive error handling."""
         if not text or text.isspace():
             return ""
-        return translate_text(
-            self.session,
-            text,
-            source_lang,
-            target_lang,
+
+        result = self.translation_service.translate_text(
+            session=self.session,
+            text=text,
+            source_lang=source_lang,
+            target_lang=target_lang,
             use_official_api=self.use_official_var.get(),
             api_key=(self.api_key_var.get() or None),
-            logger=self.logger,
         )
+
+        if result.is_success():
+            return result.value
+        else:
+            # For backward compatibility, raise the exception
+            # The UI will handle this and show user-friendly messages
+            raise result.error
 
     def perform_backtranslation(self):
         """Perform the back-translation process in a separate thread"""
@@ -309,14 +486,52 @@ class TranslationFiesta:
             self.root.after(0, lambda: self.txt_back.insert("1.0", backtranslated_text))
             self.root.after(0, lambda: self.txt_back.config(state="disabled"))
 
-            # Update status
-            self.root.after(0, lambda: self.lbl_status.config(text="Done", fg="green"))
+            # Update preview
+            self.root.after(0, lambda: self.update_preview(backtranslated_text))
+
+            # Calculate BLEU score for quality assessment
+            quality_assessment = self.bleu_scorer.assess_translation_quality(
+                input_text, backtranslated_text
+            )
+
+            # Update status with BLEU score and confidence
+            status_text = f"Done - BLEU: {quality_assessment['bleu_percentage']} ({quality_assessment['confidence_level']})"
+            status_color = "green" if quality_assessment['bleu_score'] >= 0.6 else "orange" if quality_assessment['bleu_score'] >= 0.4 else "red"
+            self.root.after(0, lambda: self.lbl_status.config(text=status_text, fg=status_color))
+
+            # Log quality assessment
+            self.logger.info(
+                "Back-translation completed",
+                extra={
+                    "bleu_score": quality_assessment['bleu_score'],
+                    "confidence_level": quality_assessment['confidence_level'],
+                    "quality_rating": quality_assessment['quality_rating'],
+                    "recommendations": quality_assessment['recommendations'],
+                    "input_length": len(input_text),
+                    "japanese_length": len(japanese_text),
+                    "backtranslated_length": len(backtranslated_text)
+                }
+            )
 
         except Exception as e:
-            # Show error message
-            error_msg = str(e)
-            self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
-            self.root.after(0, lambda: self.lbl_status.config(text=f"Error: {error_msg[:50]}...", fg="red"))
+            # Show user-friendly error message
+            user_friendly_msg = get_user_friendly_message(e)
+            technical_details = str(e)
+
+            # Log the full technical details
+            self.logger.error(
+                "Backtranslation failed",
+                extra={
+                    "error_type": type(e).__name__,
+                    "user_message": user_friendly_msg,
+                    "technical_details": technical_details,
+                    "input_length": len(input_text) if 'input_text' in locals() else 0,
+                }
+            )
+
+            # Show user-friendly message in UI
+            self.root.after(0, lambda: messagebox.showerror("Translation Error", user_friendly_msg))
+            self.root.after(0, lambda: self.lbl_status.config(text=f"Error: {user_friendly_msg[:50]}...", fg="red"))
 
         finally:
             # Re-enable controls
@@ -349,6 +564,9 @@ class TranslationFiesta:
         else:
             self.entry_api_key.config(state="disabled")
             self.set_status("Using unofficial API.", "blue")
+
+        # Save the setting
+        self.settings.set_use_official_api(self.use_official_var.get())
 
     def set_status(self, text: str, color: str = "blue"):
         self.lbl_status.config(text=text, fg=color)
@@ -397,8 +615,17 @@ class TranslationFiesta:
             self.logger.info(f"Saved results to {filename}")
             messagebox.showinfo("Saved", f"Results saved to {os.path.basename(filename)}")
         except Exception as e:
-            self.logger.error(f"Failed to save results: {e}")
-            messagebox.showerror("Error", f"Failed to save results: {e}")
+            user_friendly_msg = get_user_friendly_message(e)
+            self.logger.error(
+                "File saving failed",
+                extra={
+                    "file_path": filename,
+                    "error_type": type(e).__name__,
+                    "user_message": user_friendly_msg,
+                    "technical_details": str(e),
+                }
+            )
+            messagebox.showerror("Save Error", user_friendly_msg)
 
     def copy_results(self, *_):
         """Copy the back-translated text to the clipboard."""
@@ -412,8 +639,16 @@ class TranslationFiesta:
             self.logger.info("Copied results to clipboard")
             self.set_status("Copied back-translated text.", "green")
         except Exception as e:
-            self.logger.error(f"Clipboard copy failed: {e}")
-            messagebox.showerror("Error", f"Failed to copy: {e}")
+            user_friendly_msg = get_user_friendly_message(e)
+            self.logger.error(
+                "Clipboard copy failed",
+                extra={
+                    "error_type": type(e).__name__,
+                    "user_message": user_friendly_msg,
+                    "technical_details": str(e),
+                }
+            )
+            messagebox.showerror("Clipboard Error", user_friendly_msg)
 
     def _get_textbox_value(self, textbox: scrolledtext.ScrolledText) -> str:
         state = textbox.cget("state")
@@ -426,27 +661,184 @@ class TranslationFiesta:
     def build_menu(self):
         menubar = tk.Menu(self.root)
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Import .txt", command=self.load_file)
-        file_menu.add_command(label="Save Results	Ctrl+S", command=self.save_results)
+        file_menu.add_command(label="Import File (Ctrl+O)", command=self.load_file)
+        file_menu.add_command(label="Save Results (Ctrl+S)", command=self.save_results)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.root.quit)
         menubar.add_cascade(label="File", menu=file_menu)
 
         edit_menu = tk.Menu(menubar, tearoff=0)
-        edit_menu.add_command(label="Copy Results	Ctrl+C", command=self.copy_results)
+        edit_menu.add_command(label="Copy Results (Ctrl+Shift+C)", command=self.copy_results)
         menubar.add_cascade(label="Edit", menu=edit_menu)
+
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(label="Toggle Theme (Ctrl+T)", command=self.toggle_theme)
+        menubar.add_cascade(label="View", menu=view_menu)
+
+        settings_menu = tk.Menu(menubar, tearoff=0)
+        settings_menu.add_command(label="Toggle API (Ctrl+P)", command=self.toggle_api_shortcut)
+        menubar.add_cascade(label="Settings", menu=settings_menu)
 
         self.root.config(menu=menubar)
 
     def bind_shortcuts(self):
-        self.root.bind('<Control-s>', self.save_results)
-        self.root.bind('<Control-S>', self.save_results)
-        self.root.bind('<Control-c>', self.copy_results)
-        self.root.bind('<Control-C>', self.copy_results)
+        """Bind keyboard shortcuts to application functions."""
+        self.root.bind('<Control-o>', lambda event: self.load_file())
+        self.root.bind('<Control-O>', lambda event: self.load_file())
+        self.root.bind('<Control-s>', lambda event: self.save_results())
+        self.root.bind('<Control-S>', lambda event: self.save_results())
+        self.root.bind('<Control-t>', lambda event: self.toggle_theme())
+        self.root.bind('<Control-T>', lambda event: self.toggle_theme())
+        self.root.bind('<Control-p>', lambda event: self.toggle_api_shortcut())
+        self.root.bind('<Control-P>', lambda event: self.toggle_api_shortcut())
+        self.root.bind('<Control-Shift-C>', lambda event: self.copy_results())
+
+        # Bind API key entry changes to save automatically
+        self.api_key_var.trace_add("write", self.on_api_key_changed)
+
+    def on_api_key_changed(self, *args):
+        """Handle API key changes and save to secure storage."""
+        api_key = self.api_key_var.get().strip()
+        if api_key:
+            if store_api_key("google_translate", api_key):
+                self.logger.info("API key saved to secure storage")
+            else:
+                self.logger.error("Failed to save API key to secure storage")
+        else:
+            # If API key is empty, remove it from storage
+            delete_api_key("google_translate")
+            self.logger.info("API key removed from secure storage")
+
+    def on_closing(self):
+        """Handle window closing - save settings."""
+        try:
+            # Save window geometry
+            geometry = f"{self.root.winfo_width()}x{self.root.winfo_height()}"
+            self.settings.set_window_geometry(geometry)
+
+            # Save current theme
+            self.settings.set_theme(self.current_theme)
+
+            self.logger.info("Settings saved on application close")
+        except Exception as e:
+            self.logger.error(f"Failed to save settings on close: {e}")
+
+        # Close the window
+        self.root.destroy()
+ 
+    def on_format_selected(self, event):
+        """Handle format selection change."""
+        selected_format = self.output_format_var.get()
+        self.logger.info(f"Output format selected: {selected_format}")
+        # Update preview immediately if there's content
+        if self.txt_back.get("1.0", tk.END).strip():
+            self.update_preview(self.txt_back.get("1.0", tk.END).strip())
+ 
+    def update_preview(self, content):
+        """Update the WebView with formatted content."""
+        selected_format = self.output_format_var.get()
+
+        # Handle HtmlFrame (tkinterweb) case
+        if hasattr(self.webview, 'load_html'):
+            if selected_format == "HTML":
+                self.webview.load_html(content)
+            elif selected_format == "Markdown":
+                # Basic Markdown to HTML conversion for preview
+                html_content = f"<html><body><pre>{content}</pre></body></html>" # Placeholder
+                self.webview.load_html(html_content)
+            else: # Plain Text
+                html_content = f"<html><body><pre>{content}</pre></body></html>"
+                self.webview.load_html(html_content)
+        else:
+            # Handle Text widget fallback case
+            self.webview.config(state="normal")
+            self.webview.delete(1.0, tk.END)
+            self.webview.insert(tk.END, content)
+            self.webview.config(state="disabled")
+
+    def toggle_api_shortcut(self):
+        """Toggle the API and provide user feedback."""
+        self.use_official_var.set(not self.use_official_var.get())
+        self.on_toggle_official()
+        status = "Official API" if self.use_official_var.get() else "Unofficial API"
+        self.show_status_message(f"Switched to {status}", "green")
+
+    def show_status_message(self, message, color="green", duration=3000):
+        """Display a message in the status bar for a short duration."""
+        self.lbl_status.config(text=message, fg=color)
+        self.root.after(duration, lambda: self.lbl_status.config(text="Ready", fg="blue"))
+
+    def show_batch_processor(self):
+        """Show the batch processing window."""
+        batch_window = tk.Toplevel(self.root)
+        batch_window.title("Batch Processing")
+        batch_window.geometry("400x200")
+
+        tk.Label(batch_window, text="Select a directory to process:").pack(pady=10)
+
+        def select_directory():
+            directory = filedialog.askdirectory()
+            if directory:
+                self.start_batch_processing(directory)
+                batch_window.destroy()
+
+        tk.Button(batch_window, text="Select Directory", command=select_directory).pack(pady=10)
+
+    def start_batch_processing(self, directory):
+        """Start the batch processing in a separate thread."""
+        self.batch_processor = BatchProcessor(self.translation_service, self.update_batch_progress)
+        thread = threading.Thread(
+            target=self.batch_processor.process_directory,
+            args=(directory, self.use_official_var.get(), self.api_key_var.get())
+        )
+        thread.daemon = True
+        thread.start()
+        self.show_batch_progress_window()
+
+    def show_batch_progress_window(self):
+        """Show a window with the batch processing progress."""
+        self.progress_window = tk.Toplevel(self.root)
+        self.progress_window.title("Batch Progress")
+        self.progress_window.geometry("300x100")
+
+        self.progress_label = tk.Label(self.progress_window, text="Starting...")
+        self.progress_label.pack(pady=10)
+
+        self.progress_bar = ttk.Progressbar(self.progress_window, orient="horizontal", length=280, mode="determinate")
+        self.progress_bar.pack(pady=10)
+
+        tk.Button(self.progress_window, text="Stop", command=self.stop_batch_processing).pack(pady=5)
+
+    def update_batch_progress(self, current, total):
+        """Update the progress bar and label in the batch progress window."""
+        if hasattr(self, 'progress_window') and self.progress_window.winfo_exists():
+            self.progress_bar['value'] = (current / total) * 100
+            self.progress_label['text'] = f"Processing file {current} of {total}"
+            self.progress_window.update_idletasks()
+            if current == total:
+                messagebox.showinfo("Batch Complete", "Batch processing is complete.")
+                self.progress_window.destroy()
+
+    def stop_batch_processing(self):
+        """Stop the batch processing."""
+        if hasattr(self, 'batch_processor'):
+            self.batch_processor.stop()
+        if hasattr(self, 'progress_window') and self.progress_window.winfo_exists():
+            self.progress_window.destroy()
+
+
+    def on_panic(self):
+        """Handle the 'Panic' button click."""
+        messagebox.showinfo("Emergency Stop", "Translation process has been stopped.")
 
 
 def main():
     """Main application entry point"""
+    if platform.system() == "Windows":
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except Exception as e:
+            print(f"Warning: Could not set DPI awareness: {e}")
     try:
         # Create the main window
         root = tk.Tk()

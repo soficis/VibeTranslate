@@ -131,8 +131,23 @@ func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sou
 	backTranslation.Result = step2Result.TranslatedText
 	backTranslation.Duration = time.Since(startTime)
 
+	// Calculate BLEU score for quality assessment
+	bleuScorer := utils.GetBLEUScorer()
+	qualityAssessment := bleuScorer.AssessTranslationQuality(text, backTranslation.Result)
+	backTranslation.QualityAssessment = qualityAssessment
+
+	r.logger.Info("Back-translation quality assessment: BLEU=%s, Confidence=%s",
+		qualityAssessment.BLEUPercentage, qualityAssessment.ConfidenceLevel)
+	r.logger.Info("Quality rating: %s", qualityAssessment.QualityRating)
+	r.logger.Info("Recommendations: %s", qualityAssessment.Recommendations)
+
 	r.logger.Info("Back-translation completed successfully: %d -> %d -> %d chars (took %v)",
 		len(text), len(backTranslation.Intermediate), len(backTranslation.Result), backTranslation.Duration)
 
 	return backTranslation, nil
+}
+
+// DetectLanguage implements the DetectLanguage method
+func (r *TranslationRepositoryImpl) DetectLanguage(ctx context.Context, text string, apiKey string) (string, error) {
+	return r.translationService.DetectLanguage(ctx, text, apiKey)
 }

@@ -18,4 +18,7 @@ type TranslationRepository interface {
 
 	// BackTranslate performs a full back-translation (source -> intermediate -> source)
 	BackTranslate(ctx context.Context, text, sourceLang, intermediateLang string, useOfficial bool, apiKey string) (*entities.BackTranslation, error)
+
+	// DetectLanguage detects the source language
+	DetectLanguage(ctx context.Context, text string, apiKey string) (string, error)
 }
