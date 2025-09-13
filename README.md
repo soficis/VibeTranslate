@@ -1,4 +1,4 @@
-# VibeTranslate 🎉t
+# VibeTranslate 🎉
 
 [![GitHub Repository](https://img.shields.io/badge/GitHub-soficis/VibeTranslate-blue?logo=github)](https://github.com/soficis/VibeTranslate)
 
@@ -15,313 +15,162 @@ VibeTranslate is a polyglot project showcasing how the same application can be i
 - **Modern UI**: Dark/Light themes, responsive design, progress indicators
 - **Export Features**: Save results, copy to clipboard, file operations
 
+### ✨ Advanced Features
+- **Batch Processing**: Process entire directories of text files (implemented in Python, Go, WinUI; available in others).
+- **Quality Metrics (BLEU)**: Assess translation quality with BLEU scores (implemented in Python, Go, F#, WinUI, C#; integrated with export and batch processing).
+- **Cost Tracking**: Track API usage costs and set monthly budgets (implemented in Python, Go, WinUI; with persistent storage).
+- **Advanced Exporting**: Export to PDF, DOCX, and HTML with custom templates (implemented in Python, Go, WinUI; F# supports as undocumented feature).
+- **Secure Storage**: Securely store API keys using platform-specific features (Go uses keyring with AES fallback; WinUI uses DPAPI).
+- **EPUB Processing**: Extract and translate text from .epub files (implemented in Flutter, Go; disabled in C#, not in others).
+- **Translation Memory**: Cache translations to improve performance and reduce costs (implemented in Python, Go, WinUI, C#; missing in F#, Flutter).
+
 ## 📱 Applications
 
 ### 🐍 TranslationFiestaPy (Python)
 **Original Implementation** - The foundation for all other ports
-- **Framework**: Tkinter GUI
-- **Language**: Python 3.6+
-- **Key Features**: Async processing, smart HTML extraction, comprehensive logging
-- **Dependencies**: `requests`, `beautifulsoup4`
-- **Best For**: Cross-platform compatibility, easy customization
 
-### 🔷 CsharpTranslationFiesta (C#)
-**WinForms Edition** - .NET 9 console application
-- **Framework**: Windows Forms (.NET 9)
-- **Language**: C# 12
-- **Key Features**: Native Windows integration, high DPI support
-- **Build**: `dotnet build -c Release`
-- **Best For**: Windows-native performance, enterprise deployment
+**Functionality**:
+- Core: English ↔ Japanese back-translation, file import (.txt, .md, .html), dual API support (unofficial/official Google Cloud Translation).
+- Advanced: Batch processing, BLEU scoring, cost tracking, advanced exporting, secure storage, translation memory.
 
-### ⚡ FSharpTranslationFiesta (F#)
-**Functional Edition** - Most feature-complete implementation
-- **Framework**: Windows Forms (.NET 9)
-- **Language**: F# 8
-- **Key Features**: Clean Code principles, comprehensive error handling, dual API support, enterprise logging
-- **Build**: `dotnet build && dotnet run`
-- **Best For**: Production use, educational examples, clean architecture patterns
+**Architecture**: Modular design with dedicated modules for each feature (batch_processor.py, bleu_scorer.py, cost_tracker.py, etc.).
 
-### 🎭 TranslationFiesta.WinUI (C#)
-**Modern Windows Edition** - Windows 11 native app *(Untested Code)*
-- **Framework**: WinUI 3 (Windows App SDK)
-- **Language**: C# 12
-- **Key Features**: Fluent Design, MSIX packaging, secure DPAPI storage, persistent settings
-- **Requirements**: Windows 10 19041+ or Windows 11, Windows App SDK workload installed
-- **Best For**: Modern Windows experiences, app store distribution
-- **⚠️ Note**: This implementation is currently untested and may require additional setup
+**Dependencies**: Google Translate API (unofficial/ official), Python 3.6+, Tkinter GUI, additional libraries for export and scoring.
 
-### 🦋 TranslationFiestaFlutter (Dart)
-**Cross-Platform Edition** - Modern mobile/desktop app
-- **Framework**: Flutter (Material Design)
-- **Language**: Dart 3
-- **Key Features**: Cross-platform support, Clean Code architecture, enhanced UI, file picker integration
-- **Platforms**: Windows, macOS, Linux, Android, iOS, Web
-- **Best For**: Cross-platform deployment, modern UI, mobile/tablet use
-- **Build**: `flutter build` (platform-specific commands)
+**Integration Points**: Google Translate APIs, secure storage via environment variables, file system for batch operations.
+
+**Framework**: Tkinter GUI
+
+**Language**: Python 3.6+
+
+**Best For**: Cross-platform compatibility, easy customization, educational reference.
 
 ### 🦀 TranslationFiestaGo (Go)
 **Modern Systems Edition** - Clean Architecture implementation
-- **Framework**: Fyne (GUI) + CLI
-- **Language**: Go 1.21+
-- **Key Features**: Clean Architecture, comprehensive domain modeling, dual API support, cross-platform CLI and GUI
-- **Platforms**: Windows, macOS, Linux (CLI works everywhere, GUI has OpenGL dependencies)
-- **Best For**: Learning Clean Architecture, production CLI tools, cross-platform applications
-- **Build**: `go build -o translationfiestago main.go` (CLI) or `go run cmd/cli/main.go`
-- **⚠️ Note**: GUI version has OpenGL build issues on Windows, CLI version works perfectly
+
+**Functionality**:
+- Core: English ↔ Japanese back-translation, file import, dual API support.
+- Advanced: Batch processing, BLEU scoring, cost tracking, advanced exporting, secure storage, EPUB processing, translation memory.
+
+**Architecture**: Clean Architecture with domain/usecases/repositories layers (internal/domain/usecases/, internal/data/repositories/), cross-cutting concerns (logging, utils), modular design.
+
+**Dependencies**: Go 1.21+, Fyne (GUI), Google Translate APIs, go-keyring for secure storage.
+
+**Integration Points**: Google Translate APIs, secure storage (keyring with AES encrypted file fallback), EPUS processing, cost tracking dashboard.
+
+**Framework**: Fyne (GUI) + CLI
+
+**Language**: Go 1.21+
+
+**Best For**: Learning Clean Architecture, production CLI tools, cross-platform applications.
+
+**Known Issues**: GUI version has OpenGL build issues on Windows; Security note: Go secure storage uses simple key derivation for AES fallback, recommended to use stronger derivation in production.
+
+### 🎭 TranslationFiesta.WinUI (C#)
+**Modern Windows Edition** - Windows 11 native app
+
+**Functionality**:
+- Core: Back-translation, file import, dual API support.
+- Advanced: Batch processing, BLEU scoring, cost tracking, advanced exporting, secure storage, translation memory.
+
+**Architecture**: MVVM pattern, modular design with dedicated classes (BatchProcessor.cs, CostTracker.cs, etc.).
+
+**Dependencies**: Windows App SDK, .NET 9, Google Translate APIs, Windows DPAPI for secure storage.
+
+**Integration Points**: Google Translate APIs, secure storage via DPAPI, batch operations via file system.
+
+**Framework**: WinUI 3 (Windows App SDK)
+
+**Language**: C# 12
+
+**Best For**: Modern Windows experiences, app store distribution via MSIX.
+
+### 🦋 TranslationFiestaFlutter (Dart)
+**Cross-Platform Edition** - Modern mobile/desktop app
+
+**Functionality**:
+- Core: Back-translation, file import, dual API support.
+- Advanced: EPUB processing (chapter selection, preview), secure storage, cost tracking.
+
+**Architecture**: Clean Code architecture with domain/repositories/data layers (lib/domain/, lib/data/), provider pattern for state management.
+
+**Dependencies**: Flutter 3.0+, Dart 3, Google Translate APIs, epub package for EPUB processing.
+
+**Integration Points**: Google Translate APIs, secure storage via flutter_secure_storage, file picker, EPUB repository/usecases.
+
+**Framework**: Flutter (Material Design)
+
+**Language**: Dart 3
+
+**Best For**: Cross-platform deployment, modern UI, interactive features like EPUB preview and surrealist themes.
+
+**Feature Gap**: Missing translation memory implementation.
+
+### ⚡ TranslationFiestaFSharp (F#)
+**Functional Edition** - Feature-complete implementation
+
+**Functionality**:
+- Core: Back-translation, file import, dual API support.
+- Advanced: Batch processing, BLEU scoring, cost tracking, advanced exporting with BLEU integration, secure storage, high error handling.
+
+**Architecture**: Clean Code principles with immutability, modular design, dependency injection (e.g., BLEUScorer passed to ExportManager).
+
+**Dependencies**: .NET 9, F# 8, Windows Forms, Google Translate APIs.
+
+**Integration Points**: Google Translate APIs, secure storage via secure store pattern.
+
+**Framework**: Windows Forms (.NET 9)
+
+**Language**: F# 8
+
+**Best For**: Production use, functional programming examples, comprehensive error handling.
+
+**Feature Gap**: Missing translation memory implementation. **Undocumented Feature**: Advanced exporting with BLEU scoring.
+
+### 🔷 TranslationFiestaCSharp (C#)
+**WinForms Edition** - .NET 9 console application
+
+**Functionality**:
+- Core: Back-translation, file import, dual API support.
+- Advanced: BLEU scoring, secure storage, translation memory.
+
+**Architecture**: Object-oriented design, modular with dedicated classes.
+
+**Dependencies**: .NET 9, C# 12, Windows Forms, Google Translate APIs.
+
+**Integration Points**: Google Translate APIs, secure storage via SecureStore.
+
+**Framework**: Windows Forms (.NET 9)
+
+**Language**: C# 12
+
+**Best For**: Windows-native performance, enterprise deployment.
+
+**Feature Gap**: EPUB processing disabled (EpubProcessor.cs.disabled file present, indicating planned but not active feature).
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- **Python 3.6+** (for Python version)
-- **.NET 9 SDK** (for .NET versions)
-- **Flutter SDK** (for Flutter version) - [Install from flutter.dev](https://flutter.dev/docs/get-started/install)
-- **Go 1.21+** (for Go version) - [Install from golang.org](https://golang.org/dl/)
-- **Windows 10+** (Windows versions)
-- **macOS/Linux/Windows** (Flutter cross-platform)
-- **Windows App SDK workload** (required for WinUI implementation - install via Visual Studio Installer)
-- **Internet connection** (for translation APIs)
-
-> **Note**: The TranslationFiesta.WinUI implementation is currently untested and may require additional setup beyond the standard .NET SDK installation.
-
-### Running Your First Translation
-
-#### Python Version (Cross-platform)
-```bash
-cd TranslationFiestaPy
-pip install -r requirements.txt
-python TranslationFiesta.py
-```
-
-#### Flutter Version (Cross-platform)
-```bash
-cd flutter_translate
-flutter pub get
-flutter run
-```
-
-#### Go Version (Cross-platform)
-```bash
-cd TranslationFiestaGo
-go run cmd/cli/main.go  # CLI version (recommended)
-# OR
-go run main.go          # GUI version (may have build issues)
-```
-
-#### .NET Versions (Windows)
-```powershell
-# Choose your preferred implementation
-cd FSharpTranslationFiesta  # Most feature-complete
-# OR
-cd TranslationFiesta.WinUI  # Most modern UI
-# OR
-cd CsharpTranslationFiesta  # Enhanced with HTML support
-
-dotnet run
-```
+For detailed setup and build instructions, please see the [`docs/SetupAndBuild.md`](docs/SetupAndBuild.md) file.
 
 ## 📊 Feature Comparison
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Flutter | Go |
-|---------|--------|-------------|----|---------|---------|----|
-| **UI Framework** | Tkinter | Windows Forms | Windows Forms | WinUI 3 | Material Design | Fyne + CLI |
-| **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ | ✅ (System) | ✅ |
-| **File Import** | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) |
-| **Unofficial API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Official API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Progress Bar** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Async Processing** | ✅ (threading) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Error Handling** | Basic | Basic | Comprehensive | Basic | Comprehensive | Comprehensive |
-| **Logging** | ✅ | Basic | Comprehensive | Basic | Comprehensive | ✅ |
-| **Retry Logic** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Copy/Save Results** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Secure Storage** | ❌ | ❌ | ❌ | ✅ (DPAPI) | ❌ | ❌ |
-| **MSIX Packaging** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| **Clean Code** | Good | Basic | ✅ (Applied) | Basic | ✅ (Applied) | ✅ (Clean Architecture) |
-
-## 🛠️ Development
-
-### Building All Projects
-
-#### Python
-```bash
-cd TranslationFiestaPy
-pip install -r requirements.txt
-python TranslationFiesta.py
-```
-
-#### Flutter
-```bash
-cd TranslationFiestaFlutter
-flutter pub get
-flutter build windows    # For Windows
-flutter build linux      # For Linux
-flutter build macos      # For macOS
-flutter build apk        # For Android APK
-flutter build ios        # For iOS
-flutter build web        # For Web
-```
-
-#### Go
-```bash
-cd TranslationFiestaGo
-go mod tidy
-go build -o translationfiestago-cli.exe cmd/cli/main.go  # CLI version
-# GUI version may have build issues due to OpenGL dependencies
-```
-
-#### .NET Projects
-```powershell
-# Build all .NET projects
-foreach ($project in @("CsharpTranslationFiesta", "FSharpTranslationFiesta", "TranslationFiesta.WinUI")) {
-    cd $project
-    dotnet build -c Release
-    cd ..
-}
-```
-
-#### Publishing for Distribution
-```powershell
-# F# version (recommended for production)
-cd FSharpTranslationFiesta
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
-
-# Flutter cross-platform builds
-cd TranslationFiestaFlutter
-flutter build windows --release  # Windows executable
-flutter build apk --release      # Android APK
-flutter build appbundle --release # Android App Bundle
-flutter build ios --release      # iOS (requires macOS)
-flutter build web --release      # Web deployment
-
-# Go CLI build (most reliable)
-cd TranslationFiestaGo
-go build -o translationfiestago-cli.exe -ldflags="-s -w" cmd/cli/main.go
-
-# WinUI version (for Microsoft Store)
-cd TranslationFiesta.WinUI
-.\tools\package-winui-msix.ps1 -AppExecutablePath "bin\Release\net9.0-windows10.0.19041.0\win10-x64\TranslationFiesta.WinUI.exe" -OutputMsix "TranslationFiesta.msix"
-```
-
-## 🎨 UI Screenshots
-
-*Coming soon - screenshots of each application's interface showing the consistent yet distinct approaches to the same functionality.*
-
-## 📋 API Usage Notes
-
-### Unofficial Google Translate API
-- **Endpoint**: `https://translate.googleapis.com/translate_a/single`
-- **Rate Limits**: Subject to Google's discretion
-- **Usage**: Free, no API key required
-- **Reliability**: May change without notice
-- **Best For**: Development, testing, personal use
-
-### Official Google Cloud Translation API
-- **Service**: Google Cloud Translation API v2
-- **Pricing**: Pay-per-use ($20/1M characters)
-- **Setup**: Requires Google Cloud account and API key
-- **Reliability**: Enterprise-grade SLA
-- **Best For**: Production applications, high-volume usage
+For a detailed feature comparison across all implementations, please see the [`docs/FeatureComparison.md`](docs/FeatureComparison.md) file.
 
 ## 🤝 Contributing
 
-### Development Setup
-1. **Choose your language/framework** of interest
-2. **Fork the repository**
-3. **Clone locally**: `git clone https://github.com/soficis/VibeTranslate.git`
-4. **Install prerequisites** for your chosen implementation
-5. **Build and test**: Follow the quick start guides above
-
-### Code Standards
-- **Python**: PEP 8, type hints, comprehensive docstrings
-- **C#**: .NET coding conventions, async/await patterns
-- **F#**: Clean Code principles, meaningful names, single responsibility
-- **Flutter/Dart**: Effective Dart guidelines, Clean Code architecture, Material Design principles
-- **Cross-platform**: Consistent feature parity across implementations
-
-### Adding New Features
-1. **Implement in one language first** (preferably F# for complex features)
-2. **Document the feature** and its API requirements
-3. **Port to other languages** maintaining consistent behavior
-4. **Update this README** with new feature comparisons
-5. **Test across all platforms**
-
-## 📈 Project Goals
-
-### 🎯 Technical Objectives
-- **Polyglot Implementation**: Same app in multiple languages/frameworks
-- **Best Practices**: Each implementation follows its language's conventions
-- **Feature Parity**: Core functionality consistent across versions
-- **Educational Value**: Learning resource for different technologies
-
-### 🚀 Future Enhancements
-- **More Languages**: Rust, Go, Swift implementations
-- **Web Version**: React/TypeScript and Blazor WebAssembly
-- **Mobile Apps**: React Native, .NET MAUI (Flutter ✅ completed)
-- **Additional APIs**: DeepL, Microsoft Translator, Yandex
-- **Batch Processing**: Handle multiple files/directories
-- **Plugin Architecture**: Extensible translation providers
-- **Flutter Enhancements**: Desktop app optimization, advanced file processing, offline mode
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-#### Translation Failures
-```
-Error: HTTP 429 (Rate Limited)
-Solution: Wait and retry, or switch to official API with key
-```
-
-#### Build Issues
-```powershell
-# Clear NuGet cache and rebuild
-dotnet clean
-dotnet restore
-dotnet build
-```
-
-#### File Import Problems
-```
-Error: Access denied or encoding issues
-Solution: Check file permissions, ensure UTF-8 encoding
-```
-
-### Getting Help
-- **Check logs**: Each app creates log files for debugging
-- **Network connectivity**: Ensure stable internet for API calls
-- **API keys**: Verify Google Cloud credentials for official API
-- **GitHub Issues**: Report bugs and request features
+We welcome contributions! Please see the [`docs/Contributing.md`](docs/Contributing.md) file for guidelines on how to get started.
 
 ## 📄 License
 
-This project is provided for educational and development purposes. Usage of translation APIs should comply with respective terms of service:
+This project is provided for educational and development purposes. Usage of translation APIs should comply with respective terms of service.
 
-- **Unofficial Google Translate**: Personal, non-commercial use
-- **Google Cloud Translation API**: Per your Google Cloud agreement
+## 🔒 Security Notes
 
-## 🙏 Acknowledgments
+- **Go Secure Storage**: Uses keyring for secure API key storage with AES encrypted file fallback. Key derivation for fallback is simple; recommend stronger derivation (e.g., PBKDF2) for production to address potential security gaps.
+- All implementations use Google Translate APIs; ensure compliance with terms of service and handle API keys securely.
 
-- **Google Translate**: For providing both official and unofficial API access
-- **.NET Foundation**: For the excellent .NET platform and tooling
-- **Python Community**: For the robust ecosystem and libraries
-- **F# Community**: For functional programming inspiration
+## ⚠️ Known Issues
 
-## 📞 Support
-
-### FAQ
-
-**Q: Why only English ↔ Japanese?**
-A: Japanese provides good linguistic distance from English for effective back-translation quality evaluation.
-
-**Q: Can I add more languages?**
-A: Yes! Modify the `intermediateLanguageCode` (typically "ja") in each implementation.
-
-**Q: Which version should I use?**
-A: **FSharpTranslationFiesta** for production use, **TranslationFiestaFlutter** for cross-platform deployment, **TranslationFiestaGo CLI** for reliable cross-platform CLI, **TranslationFiestaPy** for simple cross-platform needs, **TranslationFiesta.WinUI** for modern Windows UI.
-
-**Q: Are these production-ready?**
-A: Yes, especially FSharpTranslationFiesta, TranslationFiestaFlutter, TranslationFiestaGo CLI, and TranslationFiesta.WinUI. For high-volume translation workflows, use the official Google Cloud Translation API.
-
----
-
-**Built with ❤️ across multiple languages and frameworks | Educational Project | Translation Quality Evaluation Tools**
+- **Go GUI**: OpenGL build issues on Windows; CLI version works perfectly.
+- **Feature Disparities**: Translation memory missing in F# and Flutter; EPUB processing disabled in C#; advanced exporting undocumented in F#.
+- Full feature parity matrix available in [docs/FeatureComparison.md](docs/FeatureComparison.md).

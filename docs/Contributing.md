@@ -1,5 +1,7 @@
 # Contributing to VibeTranslate
 
+**Repository**: [https://github.com/soficis/VibeTranslate](https://github.com/soficis/VibeTranslate)
+
 Welcome! This guide provides comprehensive information for contributors to the VibeTranslate project, which contains multiple implementations of the same translation application in different languages and frameworks.
 
 ## Table of Contents
@@ -40,7 +42,7 @@ git checkout -b feature/your-feature-name
 ### Development Environment
 ```bash
 # Build all projects
-foreach ($project in @("CsharpTranslationFiesta", "FreeTranslateWin", "FSharpTranslate", "TranslationFiesta.WinUI")) {
+foreach ($project in @("TranslationFiestaCSharp", "TranslationFiestaFSharp", "TranslationFiesta.WinUI")) {
     cd $project
     dotnet restore
     dotnet build
@@ -56,16 +58,15 @@ pip install -r requirements.txt
 
 ```
 VibeTranslate/
-├── 📁 CsharpTranslationFiesta/     # C# WinForms implementation
-├── 📁 FreeTranslateWin/           # C# WPF implementation
-├── 📁 FSharpTranslate/            # F# implementation
+├── 📁 TranslationFiestaCSharp/     # C# WinForms implementation
+├── 📁 TranslationFiestaFSharp/            # F# implementation
 ├── 📁 TranslationFiesta.WinUI/    # WinUI 3 implementation
 ├── 📁 TranslationFiestaPy/        # Python implementation
 ├── 📁 docs/                       # Documentation
 │   ├── FeatureComparison.md       # Feature comparison
 │   ├── SetupAndBuild.md          # Build instructions
 │   ├── TranslationFiestaPy.md    # Python docs
-│   ├── FSharpTranslate.md        # F# docs
+│   ├── TranslationFiestaFSharp.md        # F# docs
 │   ├── CsharpImplementations.md  # C# docs
 │   ├── TranslationFiesta.WinUI.md # WinUI docs
 │   └── Contributing.md           # This file

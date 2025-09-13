@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from logging.handlers import RotatingFileHandler
 from typing import Optional
 
@@ -31,6 +32,7 @@ def create_logger(name: str = "translationfiesta", log_file: Optional[str] = Non
     formatter = logging.Formatter(fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.INFO)
+    file_handler.setLock(threading.Lock())
 
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)

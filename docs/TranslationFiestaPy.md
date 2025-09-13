@@ -15,10 +15,19 @@
 - **Layout**: Grid-based responsive layout with weight distribution
 
 #### Supporting Modules
-- **`app_logger.py`**: Configures logging with rotating file handler
-- **`file_utils.py`**: File I/O operations and HTML text extraction
-- **`translation_services.py`**: Translation API client with retry logic
-- **`requirements.txt`**: Python dependencies specification
+- **`enhanced_logger.py`**: Structured, thread-safe logging.
+- **`file_utils.py`**: File I/O operations and HTML text extraction.
+- **`translation_services.py`**: Translation API client with retry logic and translation memory.
+- **`batch_processor.py`**: Handles batch processing of directories.
+- **`bleu_scorer.py`**: Calculates BLEU scores for translation quality assessment.
+- **`cost_tracker.py`**: Tracks API usage costs.
+- **`cost_dashboard.py`**: UI for viewing cost data.
+- **`export_manager.py`**: Exports translations to PDF, DOCX, and HTML.
+- **`secure_storage.py`**: Securely stores API keys.
+- **`epub_processor.py`**: Processes `.epub` files.
+- **`exceptions.py`**: Defines custom exceptions for the application.
+- **`result.py`**: Implements a `Result` type for robust error handling.
+- **`requirements.txt`**: Python dependencies specification.
 
 ### Key Classes and Functions
 
@@ -69,6 +78,16 @@ class TranslationFiesta:
 - **Input Validation**: Sanitizes and validates user input
 - **State Management**: Maintains UI state across operations
 
+### ✨ Advanced Features
+- **Batch Processing**: Process entire directories of text files.
+- **Quality Metrics (BLEU)**: Assess translation quality with BLEU scores.
+- **Cost Tracking**: Track API usage costs and set monthly budgets.
+- **Advanced Exporting**: Export to PDF, DOCX, and HTML with custom templates.
+- **Secure Storage**: Securely store API keys using the `keyring` library.
+- **EPUB Processing**: Extract and translate text from `.epub` files.
+- **Translation Memory**: Cache translations to improve performance and reduce costs.
+- **Creative Text Engines**: Experiment with wordplay and text mutations.
+
 ## Installation & Setup
 
 ### Prerequisites
@@ -97,7 +116,14 @@ class TranslationFiesta:
 #### Core Dependencies
 - **`tkinter`**: GUI framework (usually included with Python)
 - **`requests`**: HTTP client for API calls
-- **`beautifulsoup4`**: HTML parsing and text extraction
+- **`beautifulsoup4`**: HTML parsing and text extraction.
+- **`requests`**: HTTP client for API calls.
+- **`reportlab`**: PDF generation.
+- **`python-docx`**: DOCX generation.
+- **`Jinja2`**: HTML templating.
+- **`keyring`**: Secure credential storage.
+- **`sacrebleu`**: BLEU score calculation.
+- **`ebooklib`**: EPUB file processing.
 
 #### Development Dependencies
 - **`typing`**: Type hints (Python 3.5+ built-in)

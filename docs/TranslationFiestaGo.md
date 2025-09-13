@@ -49,6 +49,15 @@ internal/
 - ✅ **Cross-platform**: Windows, macOS, Linux support
 - ✅ **Clean Architecture**: Domain-driven design implementation
 
+### Advanced Features
+- **Batch Processing**: Process entire directories of text files.
+- **Quality Metrics (BLEU)**: Assess translation quality with BLEU scores.
+- **Cost Tracking**: Track API usage costs and set monthly budgets.
+- **Advanced Exporting**: Export to PDF, DOCX, and HTML with custom templates.
+- **Secure Storage**: Securely store API keys using platform-specific features.
+- **EPUB Processing**: Extract and translate text from `.epub` files.
+- **Translation Memory**: Cache translations to improve performance and reduce costs.
+
 ### CLI Features
 - Interactive command-line interface
 - File import/export functionality

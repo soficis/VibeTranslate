@@ -72,6 +72,11 @@ lib/
 - **Graceful Degradation**: App continues working even when some features fail
 - **Retry Logic**: Intelligent retry mechanisms for network operations
 
+### ✨ **Advanced Features**
+- **Quality Metrics (BLEU)**: Assess translation quality with BLEU scores.
+- **EPUB Processing**: Extract and translate text from `.epub` files.
+- **"Surrealist" UI Theme**: A unique, artistic UI theme with custom widgets.
+
 ## Technical Implementation
 
 ### Core Components

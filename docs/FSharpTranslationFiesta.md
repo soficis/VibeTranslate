@@ -1,8 +1,10 @@
-# FSharpTranslate - F# Implementation
+# TranslationFiestaFSharp - F# Implementation
+
+**Repository**: [https://github.com/soficis/VibeTranslate](https://github.com/soficis/VibeTranslate)
 
 ## Overview
 
-**FSharpTranslate** is the most feature-complete implementation of the TranslationFiesta application, written in F# with Windows Forms. This version demonstrates Clean Code principles, comprehensive error handling, and enterprise-grade logging while maintaining the same core functionality as other implementations.
+**TranslationFiestaFSharp** is the most feature-complete implementation of the TranslationFiesta application, written in F# with Windows Forms. This version demonstrates Clean Code principles, comprehensive error handling, and enterprise-grade logging while maintaining the same core functionality as other implementations.
 
 ## Architecture
 
@@ -84,6 +86,15 @@ This implementation follows Robert C. Martin's Clean Code principles:
 - **Window State**: Remembers size and position
 - **Error Handling**: Configurable retry attempts and timeouts
 
+### ✨ Advanced Features
+- **Batch Processing**: Process entire directories of text files.
+- **Quality Metrics (BLEU)**: Assess translation quality with BLEU scores.
+- **Cost Tracking**: Track API usage costs and set monthly budgets.
+- **Advanced Exporting**: Export to PDF, DOCX, and HTML with custom templates.
+- **Secure Storage**: Securely store API keys using DPAPI.
+- **EPUB Processing**: Extract and translate text from `.epub` files.
+- **Creative Text Engines**: Experiment with wordplay and text mutations.
+
 ## Installation & Setup
 
 ### Prerequisites
@@ -93,10 +104,10 @@ This implementation follows Robert C. Martin's Clean Code principles:
 
 ### Installation Steps
 
-1. **Clone or download** the FSharpTranslate folder
+1. **Clone or download** the TranslationFiestaFSharp folder
 2. **Navigate to the directory**:
    ```powershell
-   cd FSharpTranslate
+   cd TranslationFiestaFSharp
    ```
 3. **Build the project**:
    ```powershell
@@ -197,10 +208,10 @@ let createLogger () =
 
 ### Project Structure
 ```
-FSharpTranslate/
+TranslationFiestaFSharp/
 ├── Program.fs              # Main application and UI
 ├── Logger.fs               # Thread-safe logging module
-├── FSharpTranslate.fsproj  # .NET 9 project configuration
+├── TranslationFiestaFSharp.fsproj  # .NET 9 project configuration
 ├── README.md               # Basic documentation
 ├── CHANGELOG.md            # Version history
 ├── CONTRIBUTING.md         # Development guidelines
@@ -211,7 +222,7 @@ FSharpTranslate/
 
 #### Program.fs Structure
 ```fsharp
-module FSharpTranslate
+module TranslationFiestaFSharp
 
 // Type definitions
 type TranslationResult = Success of string | Failure of string
@@ -325,7 +336,7 @@ The application logs all operations with timestamps:
 ### Single Executable
 ```powershell
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
-# Output: bin/Release/net9.0-windows/win-x64/publish/FSharpTranslate.exe
+# Output: bin/Release/net9.0-windows/win-x64/publish/TranslationFiestaFSharp.exe
 ```
 
 ### Framework-Dependent

@@ -1,0 +1,70 @@
+# Flutter
+.dart_tool/
+.packages
+.pub/
+build/
+flutter_*.log
+
+# Android
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# iOS
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/Flutter/flutter_export/
+ios/Flutter/generated.xcconfig
+ios/Pods/
+
+# Web
+web/index.html
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.rooroo/
+*.roo
+
+# Logs
+*.log
+flutter_translate.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Pub cache (optional - uncomment if you want to ignore)
+# pubspec.lock
+
+# Additional OS files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Windows executables
+*.exe
+*.dll
+
+# Package files
+*.apk
+*.aab
+*.ipa
+*.tar.gz
+*.zip

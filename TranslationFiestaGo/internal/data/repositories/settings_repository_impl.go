@@ -8,11 +8,10 @@ import (
 	"translationfiestago/internal/utils"
 )
 
-// Settings represents the application settings
+// Settings represents the application settings (API key stored securely)
 type Settings struct {
 	Theme                string `json:"theme"`
 	UseOfficialAPI       bool   `json:"use_official_api"`
-	APIKey               string `json:"api_key"`
 	SourceLanguage       string `json:"source_language"`
 	TargetLanguage       string `json:"target_language"`
 	IntermediateLanguage string `json:"intermediate_language"`
@@ -24,9 +23,10 @@ type Settings struct {
 
 // SettingsRepositoryImpl implements the SettingsRepository interface
 type SettingsRepositoryImpl struct {
-	settingsFile string
-	settings     *Settings
-	logger       *utils.Logger
+	settingsFile  string
+	settings      *Settings
+	secureStorage repositories.SecureStorage
+	logger        *utils.Logger
 }
 
 // NewSettingsRepository creates a new settings repository
@@ -36,7 +36,6 @@ func NewSettingsRepository(settingsFile string) repositories.SettingsRepository 
 		settings: &Settings{
 			Theme:                "light",
 			UseOfficialAPI:       false,
-			APIKey:               "",
 			SourceLanguage:       "en",
 			TargetLanguage:       "ja",
 			IntermediateLanguage: "ja",
@@ -45,7 +44,8 @@ func NewSettingsRepository(settingsFile string) repositories.SettingsRepository 
 			WindowX:              100,
 			WindowY:              100,
 		},
-		logger: utils.GetLogger(),
+		secureStorage: NewSecureStorage("TranslationFiestaGo"),
+		logger:        utils.GetLogger(),
 	}
 
 	// Load existing settings
@@ -85,6 +85,24 @@ func (r *SettingsRepositoryImpl) loadSettings() {
 	}
 
 	r.settings = &loadedSettings
+
+	// Check for legacy API key in settings file and migrate to secure storage
+	var legacyData map[string]interface{}
+	if err := json.Unmarshal(data, &legacyData); err == nil {
+		if apiKey, exists := legacyData["api_key"]; exists {
+			if apiKeyStr, ok := apiKey.(string); ok && apiKeyStr != "" {
+				r.logger.Info("Migrating legacy API key to secure storage")
+				if err := r.secureStorage.StoreAPIKey("main_api_key", apiKeyStr); err != nil {
+					r.logger.Error("Failed to migrate API key to secure storage: %v", err)
+				} else {
+					r.logger.Info("API key migrated to secure storage successfully")
+					// Remove the API key from the settings file after successful migration
+					r.saveSettings()
+				}
+			}
+		}
+	}
+
 	r.logger.Info("Settings loaded from %s", r.settingsFile)
 }
 
@@ -132,12 +150,32 @@ func (r *SettingsRepositoryImpl) SetUseOfficialAPI(useOfficial bool) error {
 }
 
 func (r *SettingsRepositoryImpl) GetAPIKey() string {
-	return r.settings.APIKey
+	apiKey, err := r.secureStorage.GetAPIKey("main_api_key")
+	if err != nil {
+		r.logger.Debug("Failed to get API key from secure storage: %v", err)
+		return ""
+	}
+	return apiKey
 }
 
 func (r *SettingsRepositoryImpl) SetAPIKey(apiKey string) error {
-	r.settings.APIKey = apiKey
-	r.saveSettings()
+	if apiKey == "" {
+		// Delete the API key if empty
+		err := r.secureStorage.DeleteAPIKey("main_api_key")
+		if err != nil {
+			r.logger.Error("Failed to delete API key from secure storage: %v", err)
+			return err
+		}
+		return nil
+	}
+
+	err := r.secureStorage.StoreAPIKey("main_api_key", apiKey)
+	if err != nil {
+		r.logger.Error("Failed to store API key in secure storage: %v", err)
+		return err
+	}
+
+	r.logger.Info("API key stored securely")
 	return nil
 }
 

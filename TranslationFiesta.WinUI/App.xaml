@@ -4,9 +4,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Themes/LightTheme.xaml" x:Key="LightTheme" />
-                <ResourceDictionary Source="Themes/DarkTheme.xaml" x:Key="DarkTheme" />
-                <ResourceDictionary Source="Themes/Controls.xaml" />
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

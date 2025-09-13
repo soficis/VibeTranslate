@@ -7,11 +7,31 @@ Requirements
 - .NET 9 SDK
 - Windows App SDK (Microsoft.WindowsAppSDK) and Visual Studio or MSBuild with WinUI support
 
-Build
-Use Visual Studio 2022/2023 with the "Windows App SDK" workload, or install the Windows App SDK and MSBuild tooling that supports WinUI 3.
+## Building and Running
 
-Run (locally via Visual Studio)
-- Open the solution in Visual Studio and run the WinUI project.
+### Method 1: Command Line Build (Recommended)
+```bash
+# Build with specific runtime
+dotnet build TranslationFiesta.WinUI.csproj -c Debug --runtime win-x64
+
+# Run the application
+.\bin\Debug\net9.0-windows10.0.19041.0\win-x64\TranslationFiesta.WinUI.exe
+```
+
+### Method 2: Using the Batch Script
+```bash
+# Build first
+dotnet build TranslationFiesta.WinUI.csproj -c Debug --runtime win-x64
+
+# Then run
+.\run.bat
+```
+
+### Method 3: Visual Studio
+- Open the solution in Visual Studio 2022/2023 with the "Windows App SDK" workload
+- Build and run the WinUI project
+
+**Important**: Always use `--runtime win-x64` when building from command line to avoid architecture-neutral errors.
 
 Publish & Packaging (MSIX)
 1. Build a Release of the WinUI app.

@@ -3,7 +3,7 @@
   <Style TargetType="Button">
     <Setter Property="Padding" Value="10,6" />
     <Setter Property="Margin" Value="4" />
-    <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+    <Setter Property="Background" Value="#0078D4" />
     <Setter Property="Foreground" Value="White" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="6" />

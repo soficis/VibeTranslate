@@ -1,32 +1,50 @@
-# C# Implementations - WinForms & WPF
+# C# Implementations - WinForms & WinUI 3
+
+**Repository**: [https://github.com/soficis/VibeTranslate](https://github.com/soficis/VibeTranslate)
 
 ## Overview
 
 The repository contains two C# implementations of the TranslationFiesta application:
 
-### CsharpTranslationFiesta (WinForms)
-**Console Application Edition** - A straightforward Windows Forms implementation targeting .NET 9, designed for simplicity and ease of deployment.
+### TranslationFiestaCSharp (WinForms)
+**Traditional Desktop Edition** - A straightforward Windows Forms implementation targeting .NET Framework, designed for simplicity and ease of deployment.
 
-### FreeTranslateWin (WPF)
-**Modern Desktop Edition** - A Windows Presentation Foundation implementation with rich UI controls, data binding, and MVVM-ready architecture.
+### TranslationFiesta.WinUI (WinUI 3)
+**Modern Desktop Edition** - A Windows App SDK/WinUI 3 implementation with advanced features, modern UI, and enhanced translation capabilities.
 
-Both implementations maintain the same core functionality while showcasing different approaches to Windows desktop development.
+Both implementations maintain core functionality while showcasing different approaches to Windows desktop development.
 
-## Architecture Comparison
+## Architecture Overview
 
-### WinForms vs WPF
+### Framework Comparison
 
-| Aspect | WinForms | WPF |
-|--------|----------|-----|
-| **Framework Age** | Mature (2002) | Modern (2006) |
+| Aspect | WinForms | WinUI 3 |
+|--------|----------|---------|
+| **Framework Age** | Mature (2002) | Modern (2021) |
 | **UI Paradigm** | Procedural | Declarative (XAML) |
-| **Styling** | Limited | Extensive |
-| **Data Binding** | Basic | Advanced |
-| **Performance** | Fast startup | Rich features |
-| **Learning Curve** | Gentle | Steeper |
-| **Deployment** | Simple | Feature-rich |
+| **Target Framework** | .NET Framework | .NET 6+ |
+| **Packaging** | Traditional EXE | MSIX/Windows App SDK |
+| **Performance** | Fast startup | Rich features with slight overhead |
+| **Learning Curve** | Gentle | Moderate |
+| **Deployment** | Simple | Modern packaging |
 
-## CsharpTranslationFiesta - WinForms Implementation
+### WinForms Architecture
+
+WinForms provides a mature, procedural approach to Windows desktop development with:
+- **Simple UI Construction**: Procedural control placement and event handling
+- **Fast Startup**: Lightweight framework with minimal overhead
+- **Easy Deployment**: Self-contained executables
+- **Familiar API**: Long-standing .NET Framework integration
+
+### WinUI 3 Architecture
+
+WinUI 3 represents the modern approach to Windows desktop development with:
+- **Declarative UI**: XAML-based interface definition
+- **Component-Based**: Modern control library with consistent styling
+- **Async-Native**: Built-in support for modern async patterns
+- **Cross-Platform Ready**: Foundation for future Windows/cross-platform development
+
+## TranslationFiestaCSharp - WinForms Implementation
 
 ### Architecture
 
@@ -94,130 +112,121 @@ public partial class MainForm : Form
 - **Input Validation**: Basic text validation
 - **Keyboard Shortcuts**: Ctrl+O, Ctrl+S, Ctrl+C
 
-## FreeTranslateWin - WPF Implementation
+## TranslationFiesta.WinUI - WinUI 3 Implementation
 
 ### Architecture
 
 #### Core Components
-- **MainWindow.xaml**: Declarative UI definition
-- **MainWindow.xaml.cs**: Code-behind with event handling
-- **App.xaml**: Application resources and startup
-- **Translation Logic**: Integrated API client
+- **MainWindow.xaml**: Declarative UI definition with modern controls
+- **MainWindow.xaml.cs**: Code-behind with comprehensive event handling
+- **TranslationClient.cs**: Advanced HTTP client with caching and quality assessment
+- **BatchProcessor.cs**: Asynchronous batch file processing
+- **BLEUScorer.cs**: Translation quality assessment with BLEU scoring
+- **TranslationMemory.cs**: Intelligent caching and translation memory
 
-#### XAML Structure
-```xml
-<Window x:Class="FreeTranslateWin.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Free Google Translate WinForms" Height="600" Width="800">
+#### Key Classes
 
-    <Grid>
-        <!-- Menu -->
-        <Menu Grid.Row="0">
-            <MenuItem Header="File">
-                <MenuItem Header="Import .txt" Click="ImportTxtMenuItem_Click" />
-                <MenuItem Header="Save Back" Click="SaveBackMenuItem_Click" />
-            </MenuItem>
-        </Menu>
+##### TranslationClient
+```csharp
+public class TranslationClient
+{
+    private static readonly HttpClient _httpClient = new HttpClient();
+    private readonly TranslationMemory _tm = new TranslationMemory();
 
-        <!-- Main Content -->
-        <Grid Grid.Row="1">
-            <!-- Input Section -->
-            <TextBox x:Name="inputTextBox" Grid.Row="0" />
-
-            <!-- Output Section -->
-            <TextBox x:Name="intermediateTextBox" Grid.Row="1" />
-            <TextBox x:Name="backTranslatedTextBox" Grid.Row="2" />
-
-            <!-- Controls -->
-            <Button x:Name="translateButton" Grid.Row="3" Click="TranslateButton_Click" />
-        </Grid>
-    </Grid>
-</Window>
+    public async Task<BackTranslationResult> BackTranslateAsync(string text)
+    public async Task<string> TranslateAsync(string text, string fromLang, string toLang)
+    public async Task<TranslationResult> TranslateWithQualityAsync(string text, string from, string to)
+}
 ```
 
-#### Code-Behind Organization
+##### BackTranslationResult
 ```csharp
-public partial class MainWindow : Window
+public class BackTranslationResult
 {
-    // Fields
-    private readonly HttpClient _httpClient = new();
-
-    // Constructor
-    public MainWindow()
-    {
-        InitializeComponent();
-    }
-
-    // Event Handlers
-    private async void TranslateButton_Click(object sender, RoutedEventArgs e)
-    private void ImportTxtMenuItem_Click(object sender, Object e)
-    private void SaveBackMenuItem_Click(object sender, Object e)
+    public string? JapaneseTranslation { get; set; }
+    public string? BackTranslation { get; set; }
+    public QualityAssessment? QualityAssessment { get; set; }
+    public double ProcessingTime { get; set; }
 }
 ```
 
 ### Features
 
-#### 🎨 WPF UI
-- **Rich Controls**: Advanced text boxes, buttons, and layout panels
-- **Data Binding**: Basic data binding capabilities
-- **Styling**: XAML-based styling and theming
-- **Modern Appearance**: More polished UI than WinForms
+#### 🎨 Modern WinUI 3 UI
+- **Fluent Design**: Microsoft's modern design language
+- **Responsive Layout**: Adaptive UI with proper spacing and typography
+- **Native Windows Integration**: Seamless Windows 11/10 integration
+- **High DPI Support**: Automatic scaling for all display densities
+- **Dark/Light Theme Support**: System-aware theming
 
-#### 🌐 Translation Engine
-- **Unofficial API Only**: Uses free Google Translate endpoint
-- **Async Processing**: Modern async/await implementation
-- **Error Handling**: Comprehensive exception management
-- **Network Resilience**: Timeout and retry logic
+#### 🌐 Advanced Translation Engine
+- **Dual API Support**: Official Google Cloud Translation + unofficial Google Translate
+- **Intelligent Caching**: TranslationMemory for performance optimization
+- **Quality Assessment**: BLEU scoring for translation quality metrics
+- **Backtranslation Workflow**: EN → JA → EN with separate result display
+- **Batch Processing**: Directory-based file processing capabilities
 
-#### 📁 File Operations
-- **Import Support**: Load .txt files with file dialog
-- **Export Results**: Save back-translation to file
-- **Menu Integration**: Standard Windows menu system
-- **Keyboard Shortcuts**: Standard shortcuts support
+#### 📁 Enhanced File Operations
+- **Native File Picker**: Windows.Storage.Pickers integration
+- **Multiple Format Support**: .txt, .html, .md files
+- **Batch Directory Processing**: Process entire folders of documents
+- **Smart Export**: Structured output with quality metrics
+- **Real-time Progress**: Progress tracking during batch operations
 
-#### ⚙️ UI Features
-- **Window Management**: Resizable, minimizable window
-- **Status Updates**: Progress feedback during operations
-- **Input Areas**: Separate text boxes for different content
-- **Control Layout**: Grid-based responsive layout
+#### ⚙️ Advanced Features
+- **Async/Await Patterns**: Modern asynchronous programming throughout
+- **Comprehensive Logging**: Detailed operation logging with Logger.cs
+- **Error Recovery**: Robust exception handling and user feedback
+- **Translation Memory**: Intelligent caching to reduce API calls
+- **Quality Metrics**: BLEU scoring and confidence assessment
 
 ## Installation & Setup
 
-### Prerequisites (Both Implementations)
-- **.NET 7+ SDK** (.NET 9 recommended)
-- **Windows OS** (WinForms/WPF dependency)
-- **Internet connection** for translation services
+### Prerequisites
+- **.NET 8.0 SDK**: Required for WinUI 3 development
+- **Windows App SDK 1.4+**: For WinUI 3 runtime components
+- **Windows 10/11**: Target platform support
+- **Internet connection**: For translation services
 
-### CsharpTranslationFiesta Setup
+### TranslationFiestaCSharp Setup (WinForms)
 1. **Navigate to directory**:
    ```powershell
-   cd CsharpTranslationFiesta
+   cd TranslationFiestaCSharp
    ```
 2. **Build and run**:
    ```powershell
    dotnet build -c Release
-   dotnet run --project CsharpTranslationFiesta.csproj
+   dotnet run --project TranslationFiestaCSharp.csproj
    ```
 
-### FreeTranslateWin Setup
+### TranslationFiesta.WinUI Setup (WinUI 3)
 1. **Navigate to directory**:
    ```powershell
-   cd FreeTranslateWin
+   cd TranslationFiesta.WinUI
    ```
-2. **Build and run**:
+2. **Restore packages**:
    ```powershell
-   dotnet build "FreeTranslateWin.csproj"
-   dotnet run --project "FreeTranslateWin.csproj"
+   dotnet restore
+   ```
+3. **Build and run**:
+   ```powershell
+   dotnet build -c Release
+   dotnet run --project TranslationFiesta.WinUI.csproj
    ```
 
 ### Dependencies
 
-#### Shared Dependencies
-- **System.Windows.Forms** (WinForms only)
-- **PresentationFramework** (WPF only)
+#### TranslationFiestaCSharp (WinForms)
+- **System.Windows.Forms**: Core WinForms framework
 - **System.Net.Http**: HTTP client for API calls
-- **System.Text.Json**: JSON processing
+- **System.Text.Json**: JSON processing for API responses
+
+#### TranslationFiesta.WinUI (WinUI 3)
+- **Microsoft.WindowsAppSDK**: WinUI 3 framework and Windows App SDK
+- **Microsoft.Windows.SDK.NET.Ref**: Windows SDK references
+- **System.Net.Http**: HTTP client for API calls
+- **System.Text.Json**: JSON processing for API responses
+- **WinRT.Runtime**: Windows Runtime interop
 
 ## Usage Guide
 
@@ -230,19 +239,21 @@ public partial class MainWindow : Window
    - **Intermediate**: Japanese translation
    - **Final**: Back-translated English
 
-### CsharpTranslationFiesta Features
+### TranslationFiestaCSharp Features
 - **API Selection**: Toggle between unofficial/official API
 - **API Key Input**: Secure password field for Google Cloud key
 - **Theme Toggle**: Switch between dark/light modes
 - **File Menu**: Standard Windows menu operations
 
-### FreeTranslateWin Features
-- **Simplified UI**: Focused on core translation functionality
-- **Menu System**: File operations via menu bar
-- **Status Updates**: Progress feedback in UI
-- **Window Management**: Standard Windows window controls
+### TranslationFiesta.WinUI Features
+- **Advanced Backtranslation**: Separate EN→JA and JA→EN display
+- **Batch Processing**: Process entire directories of files
+- **Quality Assessment**: BLEU scoring and confidence metrics
+- **Translation Memory**: Intelligent caching for performance
+- **Modern File Operations**: Native Windows file pickers
+- **Async Processing**: Non-blocking operations with progress feedback
 
-### Keyboard Shortcuts (Both)
+### Keyboard Shortcuts
 - **Ctrl+O**: Import text file
 - **Ctrl+S**: Save results
 - **Ctrl+C**: Copy results to clipboard
@@ -251,31 +262,39 @@ public partial class MainWindow : Window
 
 ### Project Structure Comparison
 
-#### CsharpTranslationFiesta
+#### TranslationFiestaCSharp (WinForms)
 ```
-CsharpTranslationFiesta/
+TranslationFiestaCSharp/
 ├── Program.cs              # Entry point and form creation
 ├── TranslationClient.cs    # API client
 ├── Logger.cs               # Simple logging
-├── CsharpTranslationFiesta.csproj
+├── TranslationFiestaCSharp.csproj
 └── README.md
 ```
 
-#### FreeTranslateWin
+#### TranslationFiesta.WinUI (WinUI 3)
 ```
-FreeTranslateWin/
+TranslationFiesta.WinUI/
+├── MainWindow.xaml         # Declarative UI definition
+├── MainWindow.xaml.cs      # Code-behind with event handlers
 ├── App.xaml                # Application definition
-├── App.xaml.cs             # Application code
-├── MainWindow.xaml         # Window XAML
-├── MainWindow.xaml.cs      # Window code-behind
-├── FreeTranslateWin.csproj
+├── App.xaml.cs             # Application startup
+├── TranslationClient.cs    # Advanced API client with caching
+├── BatchProcessor.cs       # Batch file processing
+├── BLEUScorer.cs          # Quality assessment
+├── TranslationMemory.cs    # Intelligent caching
+├── Logger.cs               # Comprehensive logging
+├── SettingsService.cs      # User settings management
+├── SecureStore.cs          # Secure data storage
+├── TranslationFiesta.WinUI.csproj
 ├── app.manifest            # Application manifest
 └── README.md
 ```
 
+
 ### Code Patterns
 
-#### WinForms Pattern (CsharpTranslationFiesta)
+#### WinForms Pattern (TranslationFiestaCSharp)
 ```csharp
 // Procedural UI creation
 private void InitializeComponent()
@@ -292,50 +311,51 @@ private void InitializeComponent()
 }
 ```
 
-#### WPF Pattern (FreeTranslateWin)
+#### WinUI 3 Pattern (TranslationFiesta.WinUI)
 ```xml
-<!-- Declarative UI in XAML -->
-<TextBox x:Name="inputTextBox"
-         Grid.Row="0"
-         Margin="10"
-         AcceptsReturn="True"
-         TextWrapping="Wrap"
-         VerticalScrollBarVisibility="Auto" />
+<!-- Declarative XAML UI -->
+<StackPanel Margin="20">
+    <TextBlock Text="Translation Fiesta" FontSize="24" FontWeight="Bold" />
+    <TextBox x:Name="TxtSource" Height="100" Margin="0,10,0,0"
+             PlaceholderText="Enter text to translate..." />
+    <Button x:Name="BtnTranslate" Content="Translate" Margin="0,10,0,0" />
+    <TextBox x:Name="TxtResult" Height="100" Margin="0,10,0,0" />
+</StackPanel>
 ```
 
 ```csharp
-// Code-behind for event handling
-private async void TranslateButton_Click(object sender, RoutedEventArgs e)
+// Modern async event handling
+private async void BtnTranslate_Click(object sender, RoutedEventArgs e)
 {
-    // Access controls by name
-    string inputText = inputTextBox.Text;
-    // Process translation
+    var result = await _translator.BackTranslateAsync(TxtSource.Text);
+    TxtResult.Text = result.BackTranslation ?? "Translation failed";
 }
 ```
+
 
 ### Building and Testing
 
 #### Debug Build
 ```powershell
 # WinForms
-dotnet build CsharpTranslationFiesta.csproj
+dotnet build TranslationFiestaCSharp.csproj
 
-# WPF
-dotnet build FreeTranslateWin.csproj
+# WinUI 3
+dotnet build TranslationFiesta.WinUI.csproj
 ```
 
 #### Release Build
 ```powershell
 # WinForms
-dotnet build CsharpTranslationFiesta.csproj -c Release
+dotnet build TranslationFiestaCSharp.csproj -c Release
 
-# WPF
-dotnet build FreeTranslateWin.csproj -c Release
+# WinUI 3
+dotnet build TranslationFiesta.WinUI.csproj -c Release
 ```
 
 ## Troubleshooting
 
-### Common Issues (Both)
+### Common Issues
 
 #### Build Failures
 ```
@@ -361,10 +381,16 @@ Error: High DPI scaling issues
 Solution: Add app.manifest with DPI awareness settings
 ```
 
-### WPF-Specific Issues
+### WinUI 3-Specific Issues
 ```
-Error: XAML parsing errors
-Solution: Check XAML syntax and namespace declarations
+Error: Windows App SDK not found
+Solution: Install Windows App SDK 1.4+ from Microsoft Store or Visual Studio
+
+Error: XAML compilation failed
+Solution: Ensure Windows SDK version matches target framework
+
+Error: WinRT interop issues
+Solution: Check WinRT.Runtime package version compatibility
 ```
 
 ## Performance Comparison
@@ -372,19 +398,20 @@ Solution: Check XAML syntax and namespace declarations
 ### Benchmarks
 - **Startup Time**:
   - WinForms: ~1 second
-  - WPF: ~2 seconds
+  - WinUI 3: ~2-3 seconds
 - **Memory Usage**:
   - WinForms: ~40MB typical
-  - WPF: ~60MB typical
+  - WinUI 3: ~70MB typical
 - **UI Responsiveness**:
   - WinForms: Fast, immediate
-  - WPF: Smooth, hardware-accelerated
+  - WinUI 3: Smooth, fluent animations
 
 ### Optimization Considerations
-- **WinForms**: Better for simple, fast applications
-- **WPF**: Better for complex, feature-rich applications
-- **Resource Usage**: WinForms generally lighter
-- **Rendering**: WPF more consistent across different DPIs
+- **WinForms**: Best for simple, lightweight applications with fast startup
+- **WinUI 3**: Best for modern applications requiring advanced UI features
+- **Resource Usage**: WinForms generally lighter weight
+- **Rendering**: WinUI 3 provides consistent, high-DPI rendering
+- **Future-Proofing**: WinUI 3 aligns with Microsoft's modern development roadmap
 
 ## Deployment
 
@@ -397,10 +424,14 @@ dotnet publish -c Release -r win-x64 --self-contained true
 dotnet publish -c Release -r win-x64 --self-contained false
 ```
 
-### WPF Deployment
+### WinUI 3 Deployment
 ```powershell
+# MSIX Package (recommended)
+dotnet build -c Release
+# Creates MSIX package for Microsoft Store or sideloading
+
 # Self-contained executable
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish -c Release -r win-x64 --self-contained true
 
 # Framework-dependent
 dotnet publish -c Release -r win-x64 --self-contained false
@@ -408,32 +439,36 @@ dotnet publish -c Release -r win-x64 --self-contained false
 
 ## Architecture Decisions
 
-### Why Two C# Implementations?
+### Choosing the Right Implementation
 
-#### CsharpTranslationFiesta (WinForms)
-- **Simplicity**: Easier for beginners to understand
-- **Performance**: Faster startup and lower resource usage
-- **Deployment**: Simpler distribution
-- **Maintenance**: Less complex codebase
+#### When to Use TranslationFiestaCSharp (WinForms)
+- **Simple Requirements**: Basic translation functionality without advanced features
+- **Performance Priority**: Fast startup and minimal resource usage
+- **Legacy Compatibility**: Support for older Windows versions
+- **Development Speed**: Quick prototyping and implementation
+- **Familiarity**: Developers experienced with traditional Windows development
 
-#### FreeTranslateWin (WPF)
-- **Modern UI**: Better visual appearance
-- **Scalability**: Easier to extend and enhance
-- **Data Binding**: Better separation of UI and logic
-- **Future-Proof**: More aligned with modern .NET development
+#### When to Use TranslationFiesta.WinUI (WinUI 3)
+- **Modern UI Requirements**: Fluent Design and contemporary user experience
+- **Advanced Features**: Batch processing, quality assessment, translation memory
+- **Future-Proofing**: Alignment with Microsoft's modern development roadmap
+- **Rich Functionality**: Enhanced file operations and user feedback
+- **Cross-Platform Potential**: Foundation for future Windows/cross-platform development
 
-### Technology Choice Guidelines
-- **Choose WinForms** for:
-  - Simple applications
-  - Fast development
-  - Low resource requirements
-  - Familiar procedural programming
+### Technology Comparison Benefits
 
-- **Choose WPF** for:
-  - Complex user interfaces
-  - Rich data visualization
-  - MVVM architecture
-  - Modern Windows integration
+#### WinForms Benefits
+- **Procedural UI**: Familiar programming model for traditional developers
+- **Lightweight**: Lower memory footprint and faster startup
+- **Compatibility**: Broad Windows version support
+- **Simplicity**: Easier learning curve and maintenance
+
+#### WinUI 3 Benefits
+- **Modern UI**: Fluent Design system and contemporary aesthetics
+- **Advanced Features**: Rich controls, animations, and theming
+- **Async-Native**: Built-in support for modern async patterns
+- **Scalability**: Better suited for complex, feature-rich applications
+- **Future-Ready**: Microsoft's recommended path for new Windows applications
 
 ## Contributing
 
@@ -456,5 +491,6 @@ Educational and development purposes. Google Translate API usage subject to Goog
 ## Related Documentation
 - [Main Repository README](../README.md)
 - [WinForms Documentation](https://docs.microsoft.com/en-us/dotnet/desktop/winforms/)
-- [WPF Documentation](https://docs.microsoft.com/en-us/dotnet/desktop/wpf/)
+- [WinUI 3 Documentation](https://docs.microsoft.com/en-us/windows/apps/winui/winui3/)
+- [Windows App SDK](https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/)
 - [Google Cloud Translation API](https://cloud.google.com/translate/docs)

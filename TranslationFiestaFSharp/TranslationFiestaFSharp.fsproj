@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Logger.fs" />
+    <Compile Include="SecureStore.fs" />
+    <Compile Include="Settings.fs" />
+    <Compile Include="CostTracker.fs" />
+    <Compile Include="BLEUScorer.fs" />
+    <Compile Include="BatchProcessor.fs" />
+    <Compile Include="ExportManager.fs" />
+    <Compile Include="EpubProcessor.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PdfSharp" Version="6.0.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.0.2" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+    <PackageReference Include="VersOne.Epub" Version="3.3.4" />
+  </ItemGroup>
+</Project>

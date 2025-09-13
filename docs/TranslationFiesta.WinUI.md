@@ -37,10 +37,17 @@ WinUI 3 is Microsoft's modern UI framework for Windows applications, providing:
 - **Exception Handling**: Global error management
 
 #### Services
-- **TranslationService**: API client for Google Translate
-- **SettingsService**: Persistent application settings
-- **SecureStore**: DPAPI-based credential storage
-- **ThemeService**: Theme management and switching
+- **TranslationClient**: Advanced API client with translation memory and quality assessment.
+- **BatchProcessor**: Handles batch processing of directories.
+- **BLEUScorer**: Calculates BLEU scores for translation quality assessment.
+- **CostTracker**: Tracks API usage costs.
+- **ExportManager**: Exports translations to PDF, DOCX, and HTML.
+- **SecureStore**: DPAPI-based credential storage.
+- **SettingsService**: Persistent application settings.
+- **ThemeService**: Theme management and switching.
+- **TemplateManager**: Manages custom templates for exporting.
+- **AnalyticsManager**: Provides analytics and dashboarding features.
+- **TranslationMemoryManager**: Manages the translation memory.
 
 ## Features
 
@@ -70,11 +77,15 @@ WinUI 3 is Microsoft's modern UI framework for Windows applications, providing:
 - **Error Handling**: Comprehensive exception management
 - **Retry Logic**: Intelligent retry with exponential backoff
 
-### ⚙️ Advanced Configuration
-- **Persistent Settings**: Window size, theme preference, API choice
-- **Secure Credentials**: Encrypted API key storage
-- **Import/Export**: File operations with native dialogs
-- **Keyboard Shortcuts**: Standard Windows shortcuts (Ctrl+C, Ctrl+S, Ctrl+O)
+### ⚙️ Advanced Features
+- **Batch Processing**: Process entire directories of text files.
+- **Quality Metrics (BLEU)**: Assess translation quality with BLEU scores.
+- **Cost Tracking**: Track API usage costs and set monthly budgets.
+- **Advanced Exporting**: Export to PDF, DOCX, and HTML with custom templates.
+- **Secure Storage**: Securely store API keys using DPAPI.
+- **Translation Memory**: Cache translations to improve performance and reduce costs.
+- **Analytics Dashboard**: View detailed analytics on translation usage.
+- **Template Editor**: Create and manage custom export templates.
 
 ## Installation & Setup
 

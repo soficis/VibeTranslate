@@ -1,6 +1,9 @@
 package entities
 
-import "time"
+import (
+	"time"
+	"translationfiestago/internal/utils"
+)
 
 // Translation represents a translation operation
 type Translation struct {
@@ -34,13 +37,14 @@ type TranslationResult struct {
 
 // BackTranslation represents a full back-translation operation
 type BackTranslation struct {
-	Input            string
-	Intermediate     string
-	Result           string
-	SourceLang       string
-	IntermediateLang string
-	FinalLang        string
-	Error            error
-	Timestamp        time.Time
-	Duration         time.Duration
+	Input             string
+	Intermediate      string
+	Result            string
+	SourceLang        string
+	IntermediateLang  string
+	FinalLang         string
+	Error             error
+	Timestamp         time.Time
+	Duration          time.Duration
+	QualityAssessment *utils.TranslationQualityAssessment
 }

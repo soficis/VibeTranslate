@@ -1,23 +1,24 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\fanph\\Desktop\\VibeTranslate\\VibeTranslate\\TranslationFiesta.WinUI\\TranslationFiesta.WinUI.csproj": {}
+    "V:\\VibeTranslate\\TranslationFiesta.WinUI\\TranslationFiesta.WinUI.csproj": {}
   },
   "projects": {
-    "C:\\Users\\fanph\\Desktop\\VibeTranslate\\VibeTranslate\\TranslationFiesta.WinUI\\TranslationFiesta.WinUI.csproj": {
+    "V:\\VibeTranslate\\TranslationFiesta.WinUI\\TranslationFiesta.WinUI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\fanph\\Desktop\\VibeTranslate\\VibeTranslate\\TranslationFiesta.WinUI\\TranslationFiesta.WinUI.csproj",
+        "projectUniqueName": "V:\\VibeTranslate\\TranslationFiesta.WinUI\\TranslationFiesta.WinUI.csproj",
         "projectName": "TranslationFiesta.WinUI",
-        "projectPath": "C:\\Users\\fanph\\Desktop\\VibeTranslate\\VibeTranslate\\TranslationFiesta.WinUI\\TranslationFiesta.WinUI.csproj",
-        "packagesPath": "C:\\Users\\fanph\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\fanph\\Desktop\\VibeTranslate\\VibeTranslate\\TranslationFiesta.WinUI\\obj\\",
+        "projectPath": "V:\\VibeTranslate\\TranslationFiesta.WinUI\\TranslationFiesta.WinUI.csproj",
+        "packagesPath": "C:\\Users\\fanph_000\\.nuget\\packages\\",
+        "outputPath": "V:\\VibeTranslate\\TranslationFiesta.WinUI\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "c:\\program files\\dotnet\\sdk\\NuGetFallbackFolder"
         ],
         "configFilePaths": [
-          "C:\\Users\\fanph\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\fanph_000\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -26,7 +27,7 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
+          "c:\\program files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -51,9 +52,29 @@
         "net9.0-windows10.0.19041": {
           "targetAlias": "net9.0-windows10.0.19041.0",
           "dependencies": {
+            "DocumentFormat.OpenXml": {
+              "target": "Package",
+              "version": "[3.1.1, )"
+            },
+            "FuzzySharp": {
+              "target": "Package",
+              "version": "[2.0.2, )"
+            },
+            "HtmlAgilityPack": {
+              "target": "Package",
+              "version": "[1.11.61, )"
+            },
             "Microsoft.WindowsAppSDK": {
               "target": "Package",
-              "version": "[1.7.250606001, )"
+              "version": "[1.7.250310001, )"
+            },
+            "PdfSharp": {
+              "target": "Package",
+              "version": "[6.0.0, )"
+            },
+            "System.Security.Cryptography.ProtectedData": {
+              "target": "Package",
+              "version": "[9.0.1, )"
             }
           },
           "imports": [
@@ -69,8 +90,20 @@
           "warn": true,
           "downloadDependencies": [
             {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[9.0.9, 9.0.9]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[9.0.9, 9.0.9]"
+            },
+            {
               "name": "Microsoft.Windows.SDK.NET.Ref",
               "version": "[10.0.19041.57, 10.0.19041.57]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+              "version": "[9.0.9, 9.0.9]"
             }
           ],
           "frameworkReferences": {
@@ -81,7 +114,12 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "c:\\program files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
         }
       }
     }

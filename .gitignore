@@ -1,0 +1,255 @@
+# Build artifacts and binaries
+bin/
+obj/
+build/
+dist/
+*.exe
+*.dll
+*.pdb
+*.so
+*.dylib
+*.app
+*.msix
+*.appx
+*.appxsym
+*.appxupload
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+*.7z
+*.egg-info/
+*.egg
+*.whl
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+*.log
+translationfiesta.log
+
+# .NET (C#, F#, WinUI)
+*.user
+*.suo
+*.cache
+*.tmp
+*.temp
+project.assets.json
+project.nuget.cache
+TestResults/
+*.trx
+*.coverage
+*.nupkg
+*.snupkg
+packages/
+.vs/
+*.xbf
+*.mui
+*.pri
+*.appx
+*.msix
+*.appxsym
+*.appxupload
+*.pfx
+*.snk
+procdump.exe
+procdump64.exe
+
+# Go
+*.test
+*.out
+go.work
+go.work.sum
+coverage.txt
+coverage.html
+
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub/
+flutter_*.log
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+android/.gradle/
+android/app/build/
+android/local.properties
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/Flutter/flutter_export/
+ios/Flutter/generated.xcconfig
+ios/Pods/
+web/index.html
+*.apk
+*.aab
+*.ipa
+
+# Node.js/npm (for frontend components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+package-lock.json.md5
+*.log
+wailsjs/
+frontend/dist/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.roomodes
+.roo
+.rooroo/
+*.roo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Personal/Private files
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.crt
+secrets.json
+config.local.json
+.env
+.env.local
+.env.*.local
+api_keys.json
+credentials.json
+private/
+personal/
+
+# Logs and debugging
+*.log
+logs/
+debug.log
+app.log
+error.log
+build_diagnostic.log
+msbuild.log
+winui_debug.log
+app_output.log
+error.log
+output.log
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+*.bak
+*.backup
+*~
+
+# Project specific
+tm_cache.json
+translationfiesta.log
+settings.json
+secure_storage/
+
+# Wails specific
+wails.json.bak
+.ipc
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# NuGet
+.nuget/
+
+# Package files
+*.nupkg
+*.snupkg
+
+# MSIX/Windows packaging
+msix/
+installer/
+*.wixpdb
+*.wixobj
+
+# Documentation builds
+docs/_build/
+*.pdf
+*.docx
+
+# Additional artifacts
+*.manifest
+*.spec
+MANIFEST
+*.tgz
+*.gem
+*.deb
+*.rpm
+*.snap
+
+# Additional personal/private files
+*.key
+*.pem
+*.p12
+secrets/
+private/
+personal/
+credentials/
+config.local.*
+*.local
+auth.json
+keys.json
+tokens.json
+
+# Backup files
+*.orig
+*.rej
+*.bak
+*.old
+
+# Lock files (uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# Pipfile.lock
+# poetry.lock
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock

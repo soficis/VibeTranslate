@@ -1,0 +1,72 @@
+using EpubSharp.Core;
+using EpubSharp.Format;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+
+namespace TranslationFiestaCSharp
+{
+    public class EpubProcessor
+    {
+        private EpubBook _epubBook;
+
+        public EpubProcessor()
+        {
+        }
+
+        public bool LoadEpub(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                Console.WriteLine($"Error: EPUB file not found at {filePath}");
+                return false;
+            }
+
+            try
+            {
+                _epubBook = EpubReader.Read(filePath);
+                Console.WriteLine($"Successfully loaded EPUB: {_epubBook.Title}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading EPUB: {ex.Message}");
+                return false;
+            }
+        }
+
+        public string GetBookTitle()
+        {
+            return _epubBook?.Title ?? "No Title";
+        }
+
+        public List<EpubChapter> GetChapters()
+        {
+            return _epubBook?.Chapters?.ToList() ?? new List<EpubChapter>();
+        }
+
+        public string GetChapterContent(EpubChapter chapter)
+        {
+            if (chapter == null) return string.Empty;
+
+            // EpubSharp provides chapter HTML directly
+            return chapter.HtmlContent;
+        }
+
+        public string GetChapterContent(int chapterIndex)
+        {
+            if (_epubBook == null || chapterIndex < 0 || chapterIndex >= _epubBook.Chapters.Count)
+            {
+                return string.Empty;
+            }
+            return _epubBook.Chapters[chapterIndex].HtmlContent;
+        }
+    }
+
+    public class EpubChapter
+    {
+        public string Title { get; set; }
+        public string HtmlContent { get; set; }
+        public string ContentFileName { get; set; }
+    }
+}
