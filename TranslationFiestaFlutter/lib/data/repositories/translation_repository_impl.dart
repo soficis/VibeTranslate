@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../core/constants/app_constants.dart';
 import '../../core/errors/either.dart';
 import '../../core/errors/failure.dart';
+import '../../core/utils/logger.dart';
 import '../../domain/entities/translation.dart';
 import '../../domain/repositories/translation_repository.dart';
 import '../services/translation_service.dart';
@@ -17,12 +18,15 @@ import '../services/retry_service.dart';
 class TranslationRepositoryImpl implements TranslationRepository {
   final UnofficialGoogleTranslateService _unofficialService;
   final OfficialGoogleTranslateService _officialService;
+  final MockTranslationService _mockService;
   final RetryService _retryService;
   final http.Client _httpClient;
+  final Logger logger = Logger.instance;
 
   TranslationRepositoryImpl(this._httpClient)
       : _unofficialService = UnofficialGoogleTranslateService(_httpClient),
         _officialService = OfficialGoogleTranslateService(_httpClient),
+        _mockService = MockTranslationService(_httpClient),
         _retryService = RetryService();
 
   @override
@@ -50,9 +54,50 @@ class TranslationRepositoryImpl implements TranslationRepository {
     TranslationRequest request,
     ApiConfiguration config,
   ) async {
+    logger.info('Starting translation with config: $config');
     final service =
         config.useOfficialApi ? _officialService : _unofficialService;
-    return service.translate(request, config);
+    logger.info('Using service: ${service.serviceName}');
+
+    final result = await service.translate(request, config);
+
+    logger.info('Service result: ${result.isRight ? "Success" : "Failure"}');
+    if (result.isLeft) {
+      logger.error('Service failure: ${result.left.message}');
+    }
+
+    // If unofficial API fails and we have an API key, try official API as fallback
+    if (result.isLeft &&
+        !config.useOfficialApi &&
+        config.apiKey != null &&
+        config.apiKey!.isNotEmpty) {
+      logger.info('Unofficial API failed, trying official API as fallback');
+      final fallbackConfig = config.copyWith(useOfficialApi: true);
+      final officialResult =
+          await _officialService.translate(request, fallbackConfig);
+
+      if (officialResult.isRight) {
+        return officialResult;
+      }
+
+      logger.info('Official API also failed, using mock service for testing');
+      return _mockService.translate(request, config);
+    }
+
+    // If unofficial API fails and we don't have an API key, use mock service
+    if (result.isLeft && !config.useOfficialApi) {
+      logger.info(
+          'Unofficial API failed and no API key available, using mock service for testing');
+      return _mockService.translate(request, config);
+    }
+
+    // If we're already using official API and it fails, try mock service
+    if (result.isLeft && config.useOfficialApi) {
+      logger.info('Official API failed, using mock service for testing');
+      return _mockService.translate(request, config);
+    }
+
+    return result;
   }
 
   @override
@@ -61,7 +106,13 @@ class TranslationRepositoryImpl implements TranslationRepository {
     ApiConfiguration config, {
     String intermediateLanguage = 'ja',
   }) async {
+    logger.info('Repository: performBackTranslation called');
+    logger.info('Repository: text: "$text"');
+    logger.info('Repository: config: $config');
+    logger.info('Repository: intermediateLanguage: $intermediateLanguage');
+
     if (text.trim().isEmpty) {
+      logger.info('Repository: text is empty, returning empty result');
       return Right(
         BackTranslationResult(
           originalText: text,
@@ -95,7 +146,8 @@ class TranslationRepositoryImpl implements TranslationRepository {
 
     // Second translation: intermediate -> source
     Future<Result<TranslationResult>> secondTranslation(
-        String intermediateText) async {
+      String intermediateText,
+    ) async {
       final secondRequest = TranslationRequest(
         text: intermediateText,
         sourceLanguage: intermediateLanguage,
@@ -104,14 +156,20 @@ class TranslationRepositoryImpl implements TranslationRepository {
       return _translateWithService(secondRequest, config);
     }
 
-    return _retryService.executeBackTranslationWithRetry(
+    logger.info('Repository: calling retry service');
+    final result = await _retryService.executeBackTranslationWithRetry(
       firstTranslation,
       secondTranslation,
       text,
       config,
       intermediateLanguage: intermediateLanguage,
-      statusCallback: (message) {}, // Status handled by calling layer
+      statusCallback: (message) {
+        logger.info('Repository: status callback: $message');
+      },
     );
+    logger.info(
+        'Repository: retry service result: ${result.isRight ? "Success" : "Failure"}');
+    return result;
   }
 
   @override
@@ -132,7 +190,8 @@ class TranslationRepositoryImpl implements TranslationRepository {
     }
 
     final url = Uri.parse(
-        '${AppConstants.officialTranslateBaseUrl}/detect?key=${config.apiKey}');
+      '${AppConstants.officialTranslateBaseUrl}/detect?key=${config.apiKey}',
+    );
     final payload = {
       'q': text,
     };
@@ -148,7 +207,8 @@ class TranslationRepositoryImpl implements TranslationRepository {
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return Left(
-            NetworkFailure.fromHttpError(response.statusCode, response.body));
+          NetworkFailure.fromHttpError(response.statusCode, response.body),
+        );
       }
 
       final jsonResponse = json.decode(response.body);

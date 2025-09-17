@@ -222,6 +222,25 @@ MANIFEST
 *.rpm
 *.snap
 
+# Ruby / TranslationFiestaRuby
+.bundle/
+vendor/bundle/
+Gemfile.lock
+*.gem
+.yardoc
+yardoc/
+_yardoc/
+coverage/
+tmp/
+exports/
+log/
+*.log
+/.bundle
+/.rbenv-vars
+
+# Ignore the clean code book file (large, not source)
+cleancode.md
+
 # Additional personal/private files
 *.key
 *.pem

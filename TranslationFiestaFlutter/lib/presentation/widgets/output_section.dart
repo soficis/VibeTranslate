@@ -180,7 +180,6 @@ Widget _buildFormattedText(
             ),
       );
     case OutputFormat.plain:
-    default:
       return SelectableText(
         content,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -194,7 +193,7 @@ Widget _buildFormattedText(
 String _stripHtmlIfNeeded(String text) {
   try {
     final document = html_parser.parse(text);
-    final String parsedString =
+    final parsedString =
         html_parser.parse(document.body?.text).documentElement?.text ?? '';
     return parsedString;
   } catch (e) {

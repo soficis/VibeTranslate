@@ -461,6 +461,210 @@ go mod tidy
 go clean -modcache
 ```
 
+## 💎 TranslationFiestaRuby (Ruby) *(Experimental Implementation)*
+
+> **⚠️ Important Note**: This Ruby implementation is currently experimental and untested. It provides feature parity with other ports but may require additional setup for native gem compilation on Windows.
+
+### Prerequisites
+
+#### Ruby Installation (Windows)
+```powershell
+# Option 1: RubyInstaller with DevKit (Recommended)
+# Download from: https://rubyinstaller.org/
+# Choose Ruby+Devkit version (e.g., Ruby 3.4.x with DevKit)
+
+# After installation, run:
+ridk install  # Install MSYS2 and MINGW toolchains
+ridk enable   # Enable toolchains for gem compilation
+
+# Option 2: MSYS2 (Advanced)
+# Download from: https://www.msys2.org/
+# Install and update:
+pacman -Syu
+pacman -S mingw-w64-x86_64-ruby
+pacman -S mingw-w64-x86_64-gcc  # For native compilation
+```
+
+#### Verify Ruby Installation
+```powershell
+# Check Ruby version
+ruby -v
+
+# Check Gem version
+gem -v
+
+# Check Bundler
+bundle -v
+
+# Verify DevKit (RubyInstaller)
+gcc --version  # Should show MinGW GCC
+make --version # Should show GNU Make
+```
+
+### Build Configuration
+```powershell
+cd TranslationFiestaRuby
+
+# Install dependencies
+bundle install
+
+# Setup database
+rake setup_db
+
+# Run web UI (recommended)
+rake web
+
+# Run CLI
+rake cli translate "Hello world"
+
+# Run in mock mode (no API keys needed)
+TF_USE_MOCK=1 rake web
+```
+
+### Project Structure
+```
+TranslationFiestaRuby/
+├── lib/translation_fiesta/
+│   ├── domain/             # Business logic
+│   ├── use_cases/         # Application orchestration
+│   ├── data/              # Data implementations
+│   ├── features/          # Feature modules
+│   ├── infrastructure/    # Cross-cutting concerns
+│   ├── web/               # Sinatra web UI
+│   └── gui/               # Legacy Tk GUI (deprecated)
+├── bin/translation_fiesta # Executable
+├── spec/                  # RSpec tests
+├── Rakefile               # Build tasks
+├── Gemfile                # Dependencies
+└── README.md
+```
+
+### Dependencies
+- **sinatra**: Web framework (replaces Tk GUI)
+- **nokogiri**: HTML/XML parsing (requires native compilation)
+- **sqlite3**: Database (requires native compilation)
+- **prawn**: PDF generation
+- **google-cloud-translate-v2**: Official Google Translate API
+- **easy_translate**: Unofficial Google Translate API
+
+### Windows-Specific Setup
+
+#### Native Gem Compilation Issues
+```powershell
+# If bundle install fails with native gems:
+# 1. Ensure DevKit is properly installed
+ridk install
+ridk enable
+
+# 2. Set environment variables for compilation
+$env:MAKE = "make"
+$env:CC = "gcc"
+$env:CXX = "g++"
+
+# 3. Install problematic gems individually
+gem install nokogiri --platform=ruby
+gem install sqlite3 --platform=ruby
+
+# 4. Alternative: Use precompiled binaries
+# Edit Gemfile to pin specific versions:
+# gem 'nokogiri', '1.18.10-x64-mingw-ucrt'
+# gem 'sqlite3', '1.7.3-x64-mingw-ucrt'
+
+# 5. Clean and retry
+bundle clean --force
+bundle install
+```
+
+#### MSYS2 Toolchain Setup
+```bash
+# If using MSYS2, ensure proper PATH
+# Add to PATH: C:\msys64\mingw64\bin
+# Add to PATH: C:\msys64\usr\bin
+
+# Update MSYS2 packages
+pacman -Syu
+pacman -S mingw-w64-x86_64-gcc
+pacman -S mingw-w64-x86_64-make
+pacman -S mingw-w64-x86_64-sqlite3
+pacman -S mingw-w64-x86_64-libxml2  # For nokogiri
+```
+
+#### Troubleshooting Ruby Issues
+```powershell
+# Check Ruby environment
+ruby -e "puts RUBY_PLATFORM"
+
+# Verify gem installation
+gem list nokogiri
+gem list sqlite3
+
+# Clear gem cache
+gem cleanup
+
+# Reinstall bundler
+gem uninstall bundler
+gem install bundler
+
+# Check for conflicting installations
+where.exe ruby
+where.exe gem
+where.exe bundle
+```
+
+### Environment Variables
+```powershell
+# Web server configuration
+$env:TF_WEB_BIND = "127.0.0.1"
+$env:TF_WEB_PORT = "4567"
+
+# Mock mode (no API keys required)
+$env:TF_USE_MOCK = "1"
+
+# API token for web UI (optional)
+$env:TF_API_TOKEN = "your-secret-token"
+
+# Rate limiting (requests per minute)
+$env:TF_RATE_LIMIT = "60"
+
+# Export directory
+$env:TF_EXPORT_DIR = "exports"
+```
+
+### Running Applications
+```powershell
+# Web UI (Sinatra)
+rake web
+
+# Web UI with browser launch
+rake web:open
+
+# CLI mode
+rake cli translate "Hello world"
+
+# Setup database
+rake setup_db
+
+# Run tests
+rake spec
+```
+
+### Ruby-Specific Issues
+```bash
+# If Sinatra fails to start
+gem install sinatra
+gem install rack
+
+# If database issues
+rake setup_db
+
+# If mock mode not working
+TF_USE_MOCK=1 rake web
+
+# Clear all caches
+bundle clean --force
+gem cleanup
+```
+
 ## Troubleshooting
 
 ### Common Build Issues

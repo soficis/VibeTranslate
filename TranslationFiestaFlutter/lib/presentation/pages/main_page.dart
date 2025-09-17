@@ -61,7 +61,7 @@ class _MainPageState extends State<MainPage> {
                       await context.read<EpubProvider>().loadBook(filePath);
                       if (context.mounted) {
                         Navigator.of(context).pop();
-                        showDialog(
+                        await showDialog(
                           context: context,
                           builder: (context) =>
                               const EpubChapterSelectionDialog(),
@@ -87,25 +87,24 @@ class _MainPageState extends State<MainPage> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Responsive breakpoints
-            bool isWide = constraints.maxWidth > 900;
-            bool isMedium =
+            final isWide = constraints.maxWidth > 900;
+            final isMedium =
                 constraints.maxWidth > 600 && constraints.maxWidth <= 900;
-            bool isNarrow = constraints.maxWidth <= 600;
 
             if (isWide) {
               // Wide screen layout (> 900px)
-              return Column(
+              return const Column(
                 children: [
                   // Main content area
                   Expanded(
                     child: Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           flex: 2,
                           child: InputSection(),
                         ),
-                        const SizedBox(width: 16),
-                        const Expanded(
+                        SizedBox(width: 16),
+                        Expanded(
                           flex: 3,
                           child: OutputSection(),
                         ),
@@ -113,7 +112,7 @@ class _MainPageState extends State<MainPage> {
                     ),
                   ),
                   // Control Panel at bottom for wide screens
-                  const ControlPanel(),
+                  ControlPanel(),
                 ],
               );
             } else if (isMedium) {

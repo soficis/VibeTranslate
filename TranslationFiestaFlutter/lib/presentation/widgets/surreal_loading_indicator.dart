@@ -6,11 +6,10 @@ class SurrealLoadingIndicator extends StatefulWidget {
   const SurrealLoadingIndicator({super.key});
 
   @override
-  _SurrealLoadingIndicatorState createState() =>
-      _SurrealLoadingIndicatorState();
+  SurrealLoadingIndicatorState createState() => SurrealLoadingIndicatorState();
 }
 
-class _SurrealLoadingIndicatorState extends State<SurrealLoadingIndicator>
+class SurrealLoadingIndicatorState extends State<SurrealLoadingIndicator>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 

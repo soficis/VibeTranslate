@@ -152,6 +152,10 @@ VibeTranslate is a polyglot project showcasing how the same application can be i
 
 For detailed setup and build instructions, please see the [`docs/SetupAndBuild.md`](docs/SetupAndBuild.md) file.
 
+Note: A new Ruby port (`TranslationFiestaRuby`) has been added to this repository. It is experimental and currently untested. Refer to `TranslationFiestaRuby/README.md` for run instructions and the `TF_USE_MOCK=1` mode for local testing without API keys. For Windows setup, see the [Setup and Build Guide](docs/SetupAndBuild.md#translationfiestaruby-ruby-experimental-implementation) for native toolchain installation.
+
+CI guidance: The Ruby port is experimental and not included in the main CI. If you add CI for the Ruby port, ensure the runner has Ruby and any native build toolchains required for gems like `nokogiri` or pin precompiled binaries for Windows.
+
 ## 📊 Feature Comparison
 
 For a detailed feature comparison across all implementations, please see the [`docs/FeatureComparison.md`](docs/FeatureComparison.md) file.
