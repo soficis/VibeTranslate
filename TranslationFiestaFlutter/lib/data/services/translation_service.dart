@@ -66,7 +66,7 @@ class UnofficialGoogleTranslateService extends BaseTranslationService {
       final result = _parseUnofficialResponse(response.body, request);
       return result.map((translationResult) {
         logger.info(
-            '$serviceName successful: ${translationResult.characterCount} chars');
+            '$serviceName successful: ${translationResult.characterCount} chars',);
         return translationResult;
       });
     } catch (e) {
@@ -87,7 +87,7 @@ class UnofficialGoogleTranslateService extends BaseTranslationService {
       if (jsonResponse is! List || jsonResponse.isEmpty) {
         return Left(TranslationFailure.invalidResponse(
           'Response is not a valid array',
-        ));
+        ),);
       }
 
       final translationArray = jsonResponse[0] as List<dynamic>;
@@ -179,7 +179,7 @@ class OfficialGoogleTranslateService extends BaseTranslationService {
       final result = _parseOfficialResponse(response.body, request);
       return result.map((translationResult) {
         logger.info(
-            '$serviceName successful: ${translationResult.characterCount} chars');
+            '$serviceName successful: ${translationResult.characterCount} chars',);
         return translationResult;
       });
     } catch (e) {

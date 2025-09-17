@@ -38,7 +38,7 @@ class _UncooperativeButtonState extends State<UncooperativeButton>
     ).animate(CurvedAnimation(
       parent: _controller,
       curve: Curves.elasticIn,
-    ));
+    ),);
   }
 
   @override
@@ -80,9 +80,7 @@ class _UncooperativeButtonState extends State<UncooperativeButton>
         break;
       case 3:
         // Delayed Response
-        Timer(const Duration(seconds: 1), () {
-          widget.onPressed();
-        });
+        Timer(const Duration(seconds: 1), widget.onPressed);
         break;
     }
   }

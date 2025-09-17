@@ -258,7 +258,7 @@ class TranslationProvider extends ChangeNotifier {
         (content) {
           _inputText = content;
           _updateStatus(
-              'File loaded successfully (${content.length} characters)');
+              'File loaded successfully (${content.length} characters)',);
           notifyListeners();
         },
       );

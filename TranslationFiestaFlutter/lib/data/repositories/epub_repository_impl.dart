@@ -32,7 +32,7 @@ class EpubRepositoryImpl implements EpubRepository {
         title: epubBook.Title ?? 'Unknown Title',
         author: epubBook.Author ?? 'Unknown Author',
         chapters: chapters,
-      ));
+      ),);
     } catch (e) {
       return Left(AppFailure.unexpected(e.toString()));
     }
@@ -40,7 +40,7 @@ class EpubRepositoryImpl implements EpubRepository {
 
   @override
   Future<Result<String>> getChapterContent(
-      EpubBook book, String chapterId) async {
+      EpubBook book, String chapterId,) async {
     try {
       final chapter = book.chapters.firstWhere((c) => c.id == chapterId);
       return Right(chapter.content);
