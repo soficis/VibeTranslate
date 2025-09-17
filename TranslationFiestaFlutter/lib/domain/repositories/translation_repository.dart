@@ -55,7 +55,7 @@ abstract class FileRepository {
 abstract class PreferencesRepository {
   /// Get boolean preference value
   Future<Result<bool>> getBoolPreference(String key,
-      {bool defaultValue = false});
+      {bool defaultValue = false,});
 
   /// Set boolean preference value
   Future<Result<void>> setBoolPreference(String key, bool value);

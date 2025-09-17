@@ -79,7 +79,7 @@ class RetryService {
       if (remainingAttempts <= 1) {
         return Left(NetworkFailure(
           message: '$operationName failed after all retries: $e',
-        ));
+        ),);
       }
 
       final delay = _calculateDelay(attemptNumber);

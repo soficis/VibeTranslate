@@ -17,7 +17,7 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
 
   @override
   Future<Result<bool>> getBoolPreference(String key,
-      {bool defaultValue = false}) async {
+      {bool defaultValue = false,}) async {
     try {
       final prefs = await _getPrefs();
       final value = prefs.getBool(key) ?? defaultValue;
@@ -109,7 +109,7 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   /// Convenience methods for theme preferences
   Future<Result<bool>> getThemePreference() async {
     return getBoolPreference(AppConstants.themePreferenceKey,
-        defaultValue: false);
+        defaultValue: false,);
   }
 
   Future<Result<void>> setThemePreference(bool isDark) async {
@@ -127,12 +127,12 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
 
   Future<Result<bool>> getUseOfficialApiPreference() async {
     return getBoolPreference(AppConstants.useOfficialApiPreferenceKey,
-        defaultValue: false);
+        defaultValue: false,);
   }
 
   Future<Result<void>> setUseOfficialApiPreference(bool useOfficial) async {
     return setBoolPreference(
-        AppConstants.useOfficialApiPreferenceKey, useOfficial);
+        AppConstants.useOfficialApiPreferenceKey, useOfficial,);
   }
 }
 

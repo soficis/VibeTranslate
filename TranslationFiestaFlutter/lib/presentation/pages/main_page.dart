@@ -87,10 +87,10 @@ class _MainPageState extends State<MainPage> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Responsive breakpoints
-            bool isWide = constraints.maxWidth > 900;
-            bool isMedium =
+            final bool isWide = constraints.maxWidth > 900;
+            final var isMedium =
                 constraints.maxWidth > 600 && constraints.maxWidth <= 900;
-            bool isNarrow = constraints.maxWidth <= 600;
+            final bool isNarrow = constraints.maxWidth <= 600;
 
             if (isWide) {
               // Wide screen layout (> 900px)

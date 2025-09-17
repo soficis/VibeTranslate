@@ -95,7 +95,7 @@ class TranslationRepositoryImpl implements TranslationRepository {
 
     // Second translation: intermediate -> source
     Future<Result<TranslationResult>> secondTranslation(
-        String intermediateText) async {
+        String intermediateText,) async {
       final secondRequest = TranslationRequest(
         text: intermediateText,
         sourceLanguage: intermediateLanguage,
@@ -132,7 +132,7 @@ class TranslationRepositoryImpl implements TranslationRepository {
     }
 
     final url = Uri.parse(
-        '${AppConstants.officialTranslateBaseUrl}/detect?key=${config.apiKey}');
+        '${AppConstants.officialTranslateBaseUrl}/detect?key=${config.apiKey}',);
     final payload = {
       'q': text,
     };
@@ -148,7 +148,7 @@ class TranslationRepositoryImpl implements TranslationRepository {
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return Left(
-            NetworkFailure.fromHttpError(response.statusCode, response.body));
+            NetworkFailure.fromHttpError(response.statusCode, response.body),);
       }
 
       final jsonResponse = json.decode(response.body);

@@ -44,7 +44,7 @@ class _SurrealistFileDropTargetState extends State<SurrealistFileDropTarget> {
       },
       child: GestureDetector(
         onTap: () async {
-          FilePickerResult? result = await FilePicker.platform.pickFiles(
+          var result = await FilePicker.platform.pickFiles(
             type: FileType.custom,
             allowedExtensions: ['epub'],
           );

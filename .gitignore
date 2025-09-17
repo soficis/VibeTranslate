@@ -22,6 +22,9 @@ dist/
 *.egg
 *.whl
 
+# Documentation and reference files
+cleancode.md
+
 # Python
 __pycache__/
 *.py[cod]
@@ -253,3 +256,66 @@ pids
 *.pid
 *.seed
 *.pid.lock
+
+# Additional Swift/macOS specific build artifacts
+.build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.playground/xcuserdata/
+*.framework/
+*.xcframework/
+
+# More temporary files
+*.swp
+*.swo
+*.un~
+*~
+.nfs*
+*.lock
+*.lck
+
+# Additional test artifacts
+test-results/
+junit.xml
+test_output.log
+*.testresult
+coverage/
+.nyc_output/
+
+# More personal/private files
+id_rsa
+id_rsa.pub
+.ssh/
+aws-credentials
+gcp-key.json
+azure-secrets.json
+firebase-config.json
+stripe-keys.json
+
+# Debug and profiling files
+*.prof
+*.heap
+*.trace
+profile.log
+diagnostic.log
+memory.log
+
+# Cache directories
+.cache/
+.npm/
+.yarn/
+.pip/
+__pycache__/
+node_modules/.cache/
+
+# System and editor temp files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
+*.old
+*~
