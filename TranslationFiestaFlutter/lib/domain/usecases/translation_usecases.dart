@@ -2,6 +2,8 @@
 /// Following Clean Architecture principles
 library;
 
+import '../../core/utils/logger.dart';
+
 import '../../core/errors/either.dart';
 import '../../core/errors/failure.dart';
 import '../entities/translation.dart';
@@ -56,7 +58,13 @@ class PerformBackTranslationUseCase {
     String sourceLanguage = 'en',
     String targetLanguage = 'ja',
   }) async {
+    Logger.instance.info('UseCase: execute called with text: "$text"');
+    Logger.instance.info('UseCase: config: $config');
+    Logger.instance.info(
+        'UseCase: sourceLanguage: $sourceLanguage, targetLanguage: $targetLanguage');
+
     if (text.trim().isEmpty) {
+      Logger.instance.info('UseCase: text is empty, returning empty result');
       return Right(
         BackTranslationResult(
           originalText: text,
@@ -78,11 +86,15 @@ class PerformBackTranslationUseCase {
       );
     }
 
-    return _repository.performBackTranslation(
+    Logger.instance.info('UseCase: calling repository.performBackTranslation');
+    final result = await _repository.performBackTranslation(
       text,
       config,
       intermediateLanguage: targetLanguage,
     );
+    Logger.instance.info(
+        'UseCase: repository result: ${result.isRight ? "Success" : "Failure"}');
+    return result;
   }
 
   Future<Result<String>> detectLanguage(

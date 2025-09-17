@@ -2,7 +2,15 @@
 
 **Repository**: [https://github.com/soficis/VibeTranslate](https://github.com/soficis/VibeTranslate) - TranslationFiesta Applications
 
-This document provides a comprehensive comparison of features across all TranslationFiesta implementations in the repository.
+This document provides a comprehensive comparison of f| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Single Executable** | ✅ (PyInstaller) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Self-Contained** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Framework-Dependent** | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| **MSIX Packaging** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Cross-Platform** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **Build Time** | Fast | Fast | Medium | Slow | Fast | Medium | Medium |
+| **Distribution Size** | Small | Medium | Medium | Large | Small | Medium | Medium |cross all TranslationFiesta implementations in the repository.
 
 ## Overview
 
@@ -13,6 +21,7 @@ This document provides a comprehensive comparison of features across all Transla
 | **TranslationFiestaFSharp** | F# | WinForms | Windows | High | Production, clean functional code |
 | **TranslationFiesta.WinUI** | C# | WinUI 3 | Windows 11 | High | Modern Windows, enterprise deployment |
 | **TranslationFiestaGo** | Go | Fyne/Custom | Cross-platform | Medium | CLI tools, system integration |
+| **TranslationFiestaRuby** | Ruby | Sinatra/Custom | Cross-platform | Medium | Web-based, Clean Architecture |
 | **FlutterTranslate** | Dart | Flutter | Cross-platform | Medium | Mobile/desktop, modern UI frameworks |
 
 ## 🎉 Major Feature Enhancements
@@ -81,207 +90,208 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 
 ### Translation Engine
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Unofficial Google API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Official Google API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Retry Logic** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
-| **Async Processing** | ✅ (threading) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Error Handling** | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive |
-| **Rate Limiting** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
-| **Timeout Handling** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Connection Pooling** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Unofficial Google API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Official Google API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Retry Logic** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
+| **Async Processing** | ✅ (threading) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Error Handling** | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive |
+| **Rate Limiting** | Advanced | Advanced | Advanced | Advanced | Advanced | ✅ | Advanced |
+| **Timeout Handling** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Connection Pooling** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### User Interface
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ (System) | ✅ | ✅ (System) |
-| **Responsive Layout** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Progress Indication** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Status Updates** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Keyboard Shortcuts** | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **Window Management** | Basic | Basic | Good | Excellent | Good | Good |
-| **Accessibility** | Basic | Basic | Basic | Excellent | Basic | Good |
-| **High DPI Support** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Theme Service** | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ (System) | ✅ | ✅ (Web) | ✅ (System) |
+| **Responsive Layout** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Progress Indication** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Status Updates** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Keyboard Shortcuts** | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Window Management** | Basic | Basic | Good | Excellent | Good | N/A (Web) | Good |
+| **Accessibility** | Basic | Basic | Basic | Excellent | Basic | Good | Good |
+| **High DPI Support** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Theme Service** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
 
 ### File Operations
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Text File Import** | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) |
-| **HTML Processing** | ✅ (BeautifulSoup) | ✅ (HtmlAgilityPack) | ✅ (Regex-based) | ✅ (HtmlAgilityPack) | ✅ | ✅ (Regex-based) |
-| **UTF-8 Support** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **File Dialog** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (Native) |
-| **Save Results** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Copy to Clipboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Import Validation** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Text File Import** | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) |
+| **HTML Processing** | ✅ (BeautifulSoup) | ✅ (HtmlAgilityPack) | ✅ (Regex-based) | ✅ (HtmlAgilityPack) | ✅ | ✅ (Nokogiri) | ✅ (Regex-based) |
+| **UTF-8 Support** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **File Dialog** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ (Web) | ✅ (Native) |
+| **Save Results** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Copy to Clipboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ (Web) | ✅ |
+| **Import Validation** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
 
 ## Advanced Features
 
 ### Batch Processing
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Directory Processing** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **File Type Filtering** | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) |
-| **Progress Tracking** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Error Handling** | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive |
-| **Cancellation Support** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Quality Assessment** | ✅ (BLEU Score) | ✅ (BLEU Score) | ✅ (BLEU Score) | ✅ (BLEU Score) | ✅ (BLEU Score) | ✅ (BLEU Score) |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Directory Processing** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **File Type Filtering** | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) | ✅ (.txt, .md, .html) |
+| **Progress Tracking** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Error Handling** | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive |
+| **Cancellation Support** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Quality Assessment** | ✅ (BLEU Score) | ✅ (BLEU Score) | ✅ (BLEU Score) | ✅ (BLEU Score) | ✅ (BLEU Score) | ✅ (BLEU Score) | ✅ (BLEU Score) |
 
 ### Quality Metrics & Translation Assessment
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **BLEU Score Calculation** | ✅ (SacreBLEU) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) |
-| **Confidence Levels** | ✅ (5 levels) | ✅ (5 levels) | ✅ (5 levels) | ✅ (5 levels) | ✅ (5 levels) | ✅ (5 levels) |
-| **Quality Rating** | ✅ (Star-based) | ✅ (Star-based) | ✅ (Star-based) | ✅ (Star-based) | ✅ (Star-based) | ✅ (Star-based) |
-| **Back-translation** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Detailed Reports** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Recommendations** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **BLEU Score Calculation** | ✅ (SacreBLEU) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) |
+| **Confidence Levels** | ✅ (5 levels) | ✅ (5 levels) | ✅ (5 levels) | ✅ (5 levels) | ✅ (5 levels) | ✅ (5 levels) | ✅ (5 levels) |
+| **Quality Rating** | ✅ (Star-based) | ✅ (Star-based) | ✅ (Star-based) | ✅ (Star-based) | ✅ (Star-based) | ✅ (Star-based) | ✅ (Star-based) |
+| **Back-translation** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Detailed Reports** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Recommendations** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Export Formats & Document Generation
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **PDF Export** | ✅ (ReportLab) | ✅ (PDFsharp) | ✅ (PDFsharp) | ✅ (PDFsharp) | ✅ | ✅ |
-| **DOCX Export** | ✅ (python-docx) | ✅ (OpenXML) | ✅ (OpenXML) | ✅ (OpenXML) | ✅ | ✅ |
-| **HTML Export** | ✅ (Templates) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) | ✅ | ✅ |
-| **Metadata Inclusion** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Quality Metrics** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Custom Templates** | ✅ (Jinja2) | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **PDF Export** | ✅ (ReportLab) | ✅ (PDFsharp) | ✅ (PDFsharp) | ✅ (PDFsharp) | ✅ | ✅ (Prawn) | ✅ |
+| **DOCX Export** | ✅ (python-docx) | ✅ (OpenXML) | ✅ (OpenXML) | ✅ (OpenXML) | ✅ | ✅ (Optional) | ✅ |
+| **HTML Export** | ✅ (Templates) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) | ✅ | ✅ (Templates) | ✅ |
+| **Metadata Inclusion** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Quality Metrics** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Custom Templates** | ✅ (Jinja2) | ❌ | ❌ | ❌ | ✅ | ✅ (ERB) | ✅ |
 
 ### Cost Tracking & Budget Management
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Character Usage Tracking** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Cost Calculation** | ✅ ($20/1M chars) | ✅ ($20/1M chars) | ✅ ($20/1M chars) | ✅ ($20/1M chars) | ✅ ($20/1M chars) | ✅ ($20/1M chars) |
-| **Monthly Budgets** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Budget Alerts** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Usage Reports** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Persistent Storage** | ✅ (JSON) | ✅ (JSON) | ✅ (JSON) | ✅ (JSON) | ✅ (JSON) | ✅ (JSON) |
-| **Implementation Tracking** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Character Usage Tracking** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Cost Calculation** | ✅ ($20/1M chars) | ✅ ($20/1M chars) | ✅ ($20/1M chars) | ✅ ($20/1M chars) | ✅ ($20/1M chars) | ✅ ($20/1M chars) | ✅ ($20/1M chars) |
+| **Monthly Budgets** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Budget Alerts** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Usage Reports** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Persistent Storage** | ✅ (JSON) | ✅ (JSON) | ✅ (JSON) | ✅ (JSON) | ✅ (JSON) | ✅ (SQLite) | ✅ (JSON) |
+| **Implementation Tracking** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Security & Storage
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **API Key Storage** | ✅ (Keyring/Fallback) | ✅ (DPAPI) | ✅ (DPAPI) | ✅ (DPAPI) | ✅ (OS Keyring) | ✅ (Secure Storage) |
-| **Secure Encryption** | ✅ (Platform-specific) | ✅ (Per-user) | ✅ (Per-user) | ✅ (Per-user) | ✅ (Platform-specific) | ✅ (Platform-specific) |
-| **Persistent Settings** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Credential Protection** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Settings Storage** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **API Key Storage** | ✅ (Keyring/Fallback) | ✅ (DPAPI) | ✅ (DPAPI) | ✅ (DPAPI) | ✅ (OS Keyring) | ✅ (File-based) | ✅ (Secure Storage) |
+| **Secure Encryption** | ✅ (Platform-specific) | ✅ (Per-user) | ✅ (Per-user) | ✅ (Per-user) | ✅ (Platform-specific) | ✅ (Basic) | ✅ (Platform-specific) |
+| **Persistent Settings** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Credential Protection** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Settings Storage** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Logging & Debugging
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **File Logging** | ✅ (Enhanced) | ✅ (Advanced) | ✅ (Advanced) | ✅ (Advanced) | ✅ (Advanced) | ✅ (Advanced) |
-| **Thread Safety** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Error Tracking** | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive |
-| **Performance Logging** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Debug Mode** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
-| **Structured Logging** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **File Logging** | ✅ (Enhanced) | ✅ (Advanced) | ✅ (Advanced) | ✅ (Advanced) | ✅ (Advanced) | ✅ (Basic) | ✅ (Advanced) |
+| **Thread Safety** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Error Tracking** | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive |
+| **Performance Logging** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Debug Mode** | Advanced | Advanced | Advanced | Advanced | Advanced | Basic | Advanced |
+| **Structured Logging** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Code Quality
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Clean Code Principles** | Excellent | Good | ✅ Applied | Good | ✅ Applied | ✅ Applied |
-| **Type Safety** | Good | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Error Handling** | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive |
-| **Documentation** | Excellent | Good | Excellent | Good | Good | Excellent |
-| **Testing Support** | Good | Basic | Good | Basic | Good | Good |
-| **Maintainability** | Excellent | Good | Excellent | Good | Excellent | Excellent |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Clean Code Principles** | Excellent | Good | ✅ Applied | Good | ✅ Applied | ✅ Applied | ✅ Applied |
+| **Type Safety** | Good | ✅ | ✅ | ✅ | ✅ | Good | ✅ |
+| **Error Handling** | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive | Comprehensive |
+| **Documentation** | Excellent | Good | Excellent | Good | Good | Good | Excellent |
+| **Testing Support** | Good | Basic | Good | Basic | Good | Basic | Good |
+| **Maintainability** | Excellent | Good | Excellent | Good | Excellent | Excellent | Excellent |
 
 ## Technical Specifications
 
 ### Performance Metrics
 
-| Metric | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|--------|--------|-------------|----|---------|----|---------|
-| **Startup Time** | ~1s | ~1s | ~2s | ~3s | ~1s | ~2s |
-| **Memory Usage (typical)** | ~35MB | ~45MB | ~55MB | ~65MB | ~25MB | ~50MB |
-| **Memory Usage (peak)** | ~70MB | ~90MB | ~110MB | ~130MB | ~45MB | ~95MB |
-| **Translation Speed** | 2-5s | 2-4s | 2-8s | 2-6s | 1-3s | 2-6s |
-| **UI Responsiveness** | Good | Excellent | Excellent | Excellent | Excellent | Excellent |
-| **File Import (10MB)** | ~2s | ~1s | ~1s | ~1s | ~1s | ~1s |
+| Metric | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|--------|--------|-------------|----|---------|----|------|---------|
+| **Startup Time** | ~1s | ~1s | ~2s | ~3s | ~1s | ~2s | ~2s |
+| **Memory Usage (typical)** | ~35MB | ~45MB | ~55MB | ~65MB | ~25MB | ~40MB | ~50MB |
+| **Memory Usage (peak)** | ~70MB | ~90MB | ~110MB | ~130MB | ~45MB | ~80MB | ~95MB |
+| **Translation Speed** | 2-5s | 2-4s | 2-8s | 2-6s | 1-3s | 2-5s | 2-6s |
+| **UI Responsiveness** | Good | Excellent | Excellent | Excellent | Excellent | Good | Excellent |
+| **File Import (10MB)** | ~2s | ~1s | ~1s | ~1s | ~1s | ~2s | ~1s |
 
 ### Build & Deployment
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Single Executable** | ✅ (PyInstaller) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Self-Contained** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Framework-Dependent** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **MSIX Packaging** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| **Cross-Platform** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| **Build Time** | Fast | Fast | Medium | Slow | Fast | Medium |
-| **Distribution Size** | Small | Medium | Medium | Large | Small | Medium |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Single Executable** | ✅ (PyInstaller) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Self-Contained** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Framework-Dependent** | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| **MSIX Packaging** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Cross-Platform** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **Build Time** | Fast | Fast | Medium | Slow | Fast | Medium | Medium |
+| **Distribution Size** | Small | Medium | Medium | Large | Small | Medium | Medium |
 
 ### Development Experience
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Learning Curve** | Gentle | Gentle | Steep | Medium | Medium | Medium |
-| **IDE Support** | Excellent | Excellent | Good | Excellent | Excellent | Excellent |
-| **Hot Reload** | ❌ | ❌ | ❌ | ✅ (XAML) | ❌ | ✅ |
-| **Debugging** | Good | Excellent | Good | Excellent | Excellent | Excellent |
-| **IntelliSense** | Good | Excellent | Good | Excellent | Good | Excellent |
-| **Community Support** | Excellent | Excellent | Good | Good | Excellent | Excellent |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Learning Curve** | Gentle | Gentle | Steep | Medium | Medium | Gentle | Medium |
+| **IDE Support** | Excellent | Excellent | Good | Excellent | Excellent | Excellent | Excellent |
+| **Hot Reload** | ❌ | ❌ | ❌ | ✅ (XAML) | ❌ | ❌ | ✅ |
+| **Debugging** | Good | Excellent | Good | Excellent | Excellent | Good | Excellent |
+| **IntelliSense** | Good | Excellent | Good | Excellent | Good | Good | Excellent |
+| **Community Support** | Excellent | Excellent | Good | Good | Excellent | Excellent | Excellent |
 
 ## API Support Matrix
 
 ### Google Translate APIs
 
-| API Type | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|----------|--------|-------------|----|---------|----|---------|
-| **Unofficial Web Endpoint** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Official Cloud API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **API Key Management** | Secure | Secure | Secure | Secure | Secure | Secure |
-| **Quota Handling** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
-| **Cost Tracking** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Rate Limiting** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| API Type | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|----------|--------|-------------|----|---------|----|------|---------|
+| **Unofficial Web Endpoint** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Official Cloud API** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **API Key Management** | Secure | Secure | Secure | Secure | Secure | Secure | Secure |
+| **Quota Handling** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
+| **Cost Tracking** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Rate Limiting** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Network Features
 
-| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Connection Pooling** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Proxy Support** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **SSL/TLS** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Timeout Configuration** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Retry Strategies** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
+| Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Connection Pooling** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Proxy Support** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **SSL/TLS** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Timeout Configuration** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Retry Strategies** | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced | Advanced |
 
 ## Platform Compatibility
 
 ### Operating System Support
 
-| OS Version | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|------------|--------|-------------|----|---------|----|---------|
-| **Windows 10 (1809+)** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| **Windows 10 (1903+)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Windows 11** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Linux** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| **macOS** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| **WSL2** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| OS Version | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|------------|--------|-------------|----|---------|----|------|---------|
+| **Windows 10 (1809+)** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **Windows 10 (1903+)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Windows 11** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Linux** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **macOS** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **WSL2** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 
 ### Runtime Requirements
 
-| Runtime | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|---------|--------|-------------|----|---------|----|---------|
-| **Python 3.8+** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **.NET Framework 4.7.2+** | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **.NET Core 3.1+** | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **.NET 5+** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **.NET 7+** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **.NET 9** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Go 1.19+** | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| **Flutter SDK** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Dart 3.0+** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Runtime | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|---------|--------|-------------|----|---------|----|------|---------|
+| **Python 3.8+** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **.NET Framework 4.7.2+** | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **.NET Core 3.1+** | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **.NET 5+** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **.NET 7+** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **.NET 9** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Go 1.19+** | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Flutter SDK** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **Dart 3.0+** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **Ruby 3.2+** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 ## Feature Recommendations
 
@@ -340,22 +350,23 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 - **F#**: Cross-platform considerations for future development
 - **WinUI**: Advanced theming and accessibility features
 - **Go**: CLI and GUI implementations available
+- **Ruby**: Clean Architecture implementation, Sinatra web framework, experimental status
 - **Flutter**: Clean architecture with domain-driven design
 
 ## Implementation Quality Metrics
 
 ### Code Metrics
 
-| Metric | Python | C# WinForms | F# | WinUI 3 | Go | Flutter |
-|--------|--------|-------------|----|---------|----|---------|
-| **Lines of Code** | ~1200 | ~800 | ~900 | ~700 | ~1000 | ~850 |
-| **Cyclomatic Complexity** | Medium | Low | Low | Low | Low | Low |
-| **Code Coverage** | Basic | Basic | Basic | Basic | Basic | Basic |
-| **Documentation** | Excellent | Good | Excellent | Good | Good | Excellent |
-| **Testability** | Excellent | Good | Excellent | Good | Good | Excellent |
-| **Maintainability** | Excellent | Good | Excellent | Good | Good | Excellent |
-| **Security Features** | ✅ Advanced | ✅ Advanced | ✅ Advanced | ✅ Advanced | ✅ Advanced | ✅ Advanced |
-| **Error Handling** | ✅ Comprehensive | ✅ Comprehensive | ✅ Comprehensive | ✅ Comprehensive | ✅ Comprehensive | ✅ Comprehensive |
+| Metric | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
+|--------|--------|-------------|----|---------|----|------|---------|
+| **Lines of Code** | ~1200 | ~800 | ~900 | ~700 | ~1000 | ~950 | ~850 |
+| **Cyclomatic Complexity** | Medium | Low | Low | Low | Low | Medium | Low |
+| **Code Coverage** | Basic | Basic | Basic | Basic | Basic | Basic | Basic |
+| **Documentation** | Excellent | Good | Excellent | Good | Good | Good | Excellent |
+| **Testability** | Excellent | Good | Excellent | Good | Good | Good | Excellent |
+| **Maintainability** | Excellent | Good | Excellent | Good | Good | Excellent | Excellent |
+| **Security Features** | ✅ Advanced | ✅ Advanced | ✅ Advanced | ✅ Advanced | ✅ Advanced | ✅ Advanced | ✅ Advanced |
+| **Error Handling** | ✅ Comprehensive | ✅ Comprehensive | ✅ Comprehensive | ✅ Comprehensive | ✅ Comprehensive | ✅ Comprehensive | ✅ Comprehensive |
 
 ### Maintainability Index
 
@@ -366,6 +377,7 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 | **TranslationFiestaFSharp** | 90/100 | Excellent |
 | **TranslationFiesta.WinUI** | 85/100 | Very Good |
 | **TranslationFiestaGo** | 88/100 | Excellent |
+| **TranslationFiestaRuby** | 83/100 | Very Good |
 | **FlutterTranslate** | 87/100 | Excellent |
 
 ## Future Enhancement Roadmap
@@ -403,7 +415,7 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 - **Quality Assurance**: Include BLEU scoring and quality metrics for translations
 
 ### Code Standards
-- **Follow Language Conventions**: Python PEP 8, C# naming conventions, F# guidelines, Go standards, Dart Effective guidelines
+- **Follow Language Conventions**: Python PEP 8, C# naming conventions, F# guidelines, Go standards, Ruby style guide, Dart Effective guidelines
 - **Error Handling**: Comprehensive exception management with Result pattern where applicable
 - **Security**: Never log sensitive data like API keys; use secure storage
 - **Performance**: Optimize for both speed and memory usage
@@ -414,6 +426,7 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 - **Python**: Use type hints, follow PEP 8, implement comprehensive error handling
 - **C#/F#**: Follow .NET naming conventions, use async/await patterns, implement secure storage
 - **Go**: Follow Go conventions, use proper error handling, implement CLI and GUI versions
+- **Ruby**: Follow Ruby conventions, use Sinatra for web framework, implement Clean Architecture, use Bundler for dependency management
 - **Flutter**: Use Material Design, follow Clean Architecture, implement responsive layouts
 - **Cross-Platform**: Ensure consistent behavior across different operating systems
 

@@ -13,11 +13,11 @@ class SurrealistFileDropTarget extends StatefulWidget {
   });
 
   @override
-  _SurrealistFileDropTargetState createState() =>
-      _SurrealistFileDropTargetState();
+  SurrealistFileDropTargetState createState() =>
+      SurrealistFileDropTargetState();
 }
 
-class _SurrealistFileDropTargetState extends State<SurrealistFileDropTarget> {
+class SurrealistFileDropTargetState extends State<SurrealistFileDropTarget> {
   bool _dragging = false;
 
   @override
@@ -44,7 +44,7 @@ class _SurrealistFileDropTargetState extends State<SurrealistFileDropTarget> {
       },
       child: GestureDetector(
         onTap: () async {
-          FilePickerResult? result = await FilePicker.platform.pickFiles(
+          final result = await FilePicker.platform.pickFiles(
             type: FileType.custom,
             allowedExtensions: ['epub'],
           );
@@ -59,7 +59,9 @@ class _SurrealistFileDropTargetState extends State<SurrealistFileDropTarget> {
           height: 150,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: _dragging ? Colors.blue.withOpacity(0.4) : Colors.grey[200],
+            color: _dragging
+                ? Colors.blue.withValues(alpha: 0.4)
+                : Colors.grey[200],
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: _dragging ? Colors.blueAccent : Colors.grey,

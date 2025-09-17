@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>TranslationFiesta Web</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 2rem; }
+    textarea { width: 100%; height: 140px; }
+    .output { margin-top: 1rem; padding: 1rem; background:#f8f8f8; border-radius:6px; }
+    .metrics { font-size: 0.9rem; color:#444; margin-top:0.5rem; }
+    button { padding: 0.6rem 1rem; }
+  </style>
+</head>
+<body>
+  <h1>TranslationFiesta Web</h1>
+  <p>English ↔ Japanese Back-Translation</p>
+  <label for="api_type">API Type:</label>
+  <select id="api_type">
+    <option value="unofficial">Unofficial (Free)</option>
+    <option value="official">Official (Paid)</option>
+  </select>
+  <textarea id="text" placeholder="Enter text to translate..."></textarea>
+  <button id="go">Translate</button>
+  <div id="result" class="output" style="display:none"></div>
+  <script>
+    async function translate(){
+      const text = document.getElementById('text').value.trim();
+      const apiType = document.getElementById('api_type').value;
+      if(!text){ alert('Enter text'); return; }
+      const res = await fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text, api_type:apiType})});
+      const data = await res.json();
+      if(data.error){ alert(data.error); return; }
+      const r = data.result;
+      const box = document.getElementById('result');
+      box.style.display='block';
+      box.innerHTML = `<h2>Result</h2>` +
+        `<strong>Japanese:</strong><br>${r.first_translation}<br><br>`+
+        `<strong>Back Translation:</strong><br>${r.back_translation}<br>`+
+        `<div class='metrics'>BLEU: ${r.bleu_score ? (r.bleu_score*100).toFixed(2)+'%' : 'N/A'} | Quality: ${r.quality_rating} | Cost: $${r.cost.toFixed(4)}</div>`;
+    }
+    document.getElementById('go').addEventListener('click', translate);
+  </script>
+</body>
+</html>

@@ -8,8 +8,45 @@ import '../providers/translation_provider.dart';
 
 /// Input section widget for entering text to translate
 /// Single Responsibility: Handle text input with validation
-class InputSection extends StatelessWidget {
+class InputSection extends StatefulWidget {
   const InputSection({super.key});
+
+  @override
+  State<InputSection> createState() => _InputSectionState();
+}
+
+class _InputSectionState extends State<InputSection> {
+  late TextEditingController _controller;
+  bool _controllerInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_controllerInitialized) {
+      final provider = context.read<TranslationProvider>();
+      _controller = TextEditingController(text: provider.inputText);
+      _controllerInitialized = true;
+    }
+  }
+
+  @override
+  void didUpdateWidget(InputSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final provider = context.read<TranslationProvider>();
+    // Only update controller text if it differs to avoid cursor jumping
+    if (_controller.text != provider.inputText) {
+      _controller.text = provider.inputText;
+      _controller.selection = TextSelection.collapsed(
+        offset: provider.inputText.length,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,10 +96,7 @@ class InputSection extends StatelessWidget {
                   maxHeight: 400, // Maximum height to prevent excessive growth
                 ),
                 child: TextField(
-                  controller: TextEditingController(text: provider.inputText)
-                    ..selection = TextSelection.collapsed(
-                      offset: provider.inputText.length,
-                    ),
+                  controller: _controller,
                   onChanged: provider.updateInputText,
                   maxLines: null,
                   expands: true,

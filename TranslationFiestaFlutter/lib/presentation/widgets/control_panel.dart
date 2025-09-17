@@ -10,8 +10,34 @@ import '../providers/translation_provider.dart';
 
 /// Control panel widget for translation settings and actions
 /// Single Responsibility: Handle user controls and settings
-class ControlPanel extends StatelessWidget {
+class ControlPanel extends StatefulWidget {
   const ControlPanel({super.key});
+
+  @override
+  State<ControlPanel> createState() => _ControlPanelState();
+}
+
+class _ControlPanelState extends State<ControlPanel> {
+  late TextEditingController _apiKeyController;
+
+  @override
+  void initState() {
+    super.initState();
+    _apiKeyController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = context.read<TranslationProvider>();
+    _apiKeyController.text = provider.apiKey;
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +73,7 @@ class ControlPanel extends StatelessWidget {
                 // API Key Input
                 Expanded(
                   child: TextField(
-                    controller: TextEditingController(text: provider.apiKey)
-                      ..selection = TextSelection.collapsed(
-                        offset: provider.apiKey.length,
-                      ),
+                    controller: _apiKeyController,
                     onChanged: (value) => provider.updateApiConfiguration(
                       provider.useOfficialApi,
                       value,
@@ -161,7 +184,7 @@ class ControlPanel extends StatelessWidget {
 
                           const SizedBox(height: 4),
 
-                          // Second row: Import, Save, Theme
+                          // Second row: Import and Save buttons
                           Row(
                             children: [
                               Expanded(
@@ -183,18 +206,21 @@ class ControlPanel extends StatelessWidget {
                                   child: const Text('Save'),
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              IconButton(
-                                onPressed: () =>
-                                    provider.updateTheme(!provider.isDarkTheme),
-                                icon: Icon(
-                                  provider.isDarkTheme
-                                      ? Icons.light_mode
-                                      : Icons.dark_mode,
-                                ),
-                                tooltip: 'Toggle theme',
-                              ),
                             ],
+                          ),
+
+                          const SizedBox(height: 4),
+
+                          // Theme Toggle
+                          IconButton(
+                            onPressed: () =>
+                                provider.updateTheme(!provider.isDarkTheme),
+                            icon: Icon(
+                              provider.isDarkTheme
+                                  ? Icons.light_mode
+                                  : Icons.dark_mode,
+                            ),
+                            tooltip: 'Toggle theme',
                           ),
                         ],
                       );

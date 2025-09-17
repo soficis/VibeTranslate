@@ -14,10 +14,10 @@ class UncooperativeButton extends StatefulWidget {
   });
 
   @override
-  _UncooperativeButtonState createState() => _UncooperativeButtonState();
+  UncooperativeButtonState createState() => UncooperativeButtonState();
 }
 
-class _UncooperativeButtonState extends State<UncooperativeButton>
+class UncooperativeButtonState extends State<UncooperativeButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
@@ -34,11 +34,13 @@ class _UncooperativeButtonState extends State<UncooperativeButton>
     );
     _offsetAnimation = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(0.1, 0.0),
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticIn,
-    ));
+      end: const Offset(0.1, 0),
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.elasticIn,
+      ),
+    );
   }
 
   @override

@@ -2,8 +2,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:translation_fiesta_flutter/domain/entities/epub_book.dart';
 import 'package:translation_fiesta_flutter/presentation/providers/epub_provider.dart';
+import 'package:translation_fiesta_flutter/presentation/providers/translation_provider.dart';
 import 'package:translation_fiesta_flutter/presentation/widgets/surrealist_dialog.dart';
 import 'package:translation_fiesta_flutter/presentation/widgets/uncooperative_button.dart';
 
@@ -37,9 +37,40 @@ class EpubChapterSelectionDialog extends StatelessWidget {
                 final chapter = epubProvider.book!.chapters[index];
                 return ListTile(
                   title: Text(chapter.title),
-                  onTap: () {
-                    // TODO: Implement chapter selection and display
-                    Navigator.of(context).pop();
+                  onTap: () async {
+                    // Load chapter content and set it as input text
+                    final result = await epubProvider.getChapterContent(
+                      epubProvider.book!,
+                      chapter.id,
+                    );
+
+                    if (context.mounted) {
+                      result.fold(
+                        (failure) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Failed to load chapter: ${failure.message}',
+                              ),
+                            ),
+                          );
+                        },
+                        (content) {
+                          // Set the chapter content as input text for translation
+                          context
+                              .read<TranslationProvider>()
+                              .updateInputText(content);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Chapter "${chapter.title}" loaded for translation',
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                      Navigator.of(context).pop();
+                    }
                   },
                 );
               },

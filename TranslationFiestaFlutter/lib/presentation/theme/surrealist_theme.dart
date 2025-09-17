@@ -144,8 +144,8 @@ class SurrealistTheme {
         color: Color(0xFFE0E0E0),
       ),
     ),
-    buttonTheme: ButtonThemeData(
-      buttonColor: const Color(0xFFBB86FC),
+    buttonTheme: const ButtonThemeData(
+      buttonColor: Color(0xFFBB86FC),
       textTheme: ButtonTextTheme.primary,
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -155,14 +155,12 @@ class SurrealistTheme {
       primary: Color(0xFFBB86FC),
       secondary: Color(0xFF03DAC6),
       surface: Color(0xFF1E1E1E),
-      background: Color(0xFF121212),
       onPrimary: Color(0xFF000000),
       onSecondary: Color(0xFF000000),
       onSurface: Color(0xFFE0E0E0),
-      onBackground: Color(0xFFE0E0E0),
     ),
-    cardTheme: CardThemeData(
-      color: const Color(0xFF2D2D2D),
+    cardTheme: const CardThemeData(
+      color: Color(0xFF2D2D2D),
       elevation: 2,
     ),
     inputDecorationTheme: const InputDecorationTheme(

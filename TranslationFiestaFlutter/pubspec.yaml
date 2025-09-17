@@ -25,6 +25,7 @@ dependencies:
   flutter_html: ^3.0.0-beta.2
   desktop_drop: ^0.4.0
   flutter_markdown: ^0.7.7+1
+  html: ^0.15.4
 
 dev_dependencies:
   flutter_test:

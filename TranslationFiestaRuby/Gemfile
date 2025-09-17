@@ -1,0 +1,38 @@
+source 'https://rubygems.org'
+
+# Core dependencies
+gem 'easy_translate', '~> 0.5.1'
+gem 'google-cloud-translate-v2', '~> 0.4.0'
+gem 'nokogiri', '>= 1.15'
+gem 'rouge', '~> 4.1.0'
+gem 'prawn', '~> 2.4.0'
+gem 'prawn-table', '~> 0.2.2'
+gem 'epub-parser', '~> 0.4.0'
+gem 'keyring', '~> 0.3.0'
+gem 'sqlite3', '~> 1.6.0'
+gem 'fast_blank', '~> 1.0.0'
+gem 'concurrent-ruby', '~> 1.2.0'
+gem 'sinatra', '~> 3.1'
+
+# Skip docx gem which depends on nokogiri source compilation
+# gem 'docx', '~> 0.6.0'
+
+# (Former Tk GUI removed; Sinatra web UI now used cross-platform)
+
+group :development, :test do
+  gem 'rspec', '~> 3.12.0'
+  gem 'rspec-mocks', '~> 3.12.0'
+  gem 'factory_bot', '~> 6.2.0'
+  gem 'rack-test', '~> 2.2'
+  gem 'rubocop', '~> 1.56.0'
+  gem 'rubocop-rspec', '~> 2.24.0'
+end
+
+group :development do
+  gem 'pry', '~> 0.14.0'
+  gem 'pry-byebug', '~> 3.10.0'
+end
+
+ruby '~> 3.4.0'
+gem "rackup", "~> 1.0"
+gem "puma", "~> 7.0"

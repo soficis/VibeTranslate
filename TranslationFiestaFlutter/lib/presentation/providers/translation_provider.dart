@@ -4,8 +4,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../../core/constants/app_constants.dart';
-import '../../core/errors/either.dart';
 import '../../core/errors/failure.dart';
 import '../../core/utils/logger.dart';
 import '../../data/repositories/clipboard_repository_impl.dart';
@@ -26,12 +24,10 @@ class TranslationProvider extends ChangeNotifier {
   late final ClipboardRepositoryImpl _clipboardRepository;
 
   // Use cases
-  late final TranslateTextUseCase _translateTextUseCase;
   late final PerformBackTranslationUseCase _performBackTranslationUseCase;
   late final LoadTextFromFileUseCase _loadTextFromFileUseCase;
   late final SaveTextToFileUseCase _saveTextToFileUseCase;
   late final CopyTextToClipboardUseCase _copyTextToClipboardUseCase;
-  late final GetTextFromClipboardUseCase _getTextFromClipboardUseCase;
 
   // State
   String _inputText = '';
@@ -81,15 +77,12 @@ class TranslationProvider extends ChangeNotifier {
     _preferencesRepository = PreferencesRepositoryImpl();
     _clipboardRepository = ClipboardRepositoryImpl();
 
-    _translateTextUseCase = TranslateTextUseCase(_translationRepository);
     _performBackTranslationUseCase =
         PerformBackTranslationUseCase(_translationRepository);
     _loadTextFromFileUseCase = LoadTextFromFileUseCase(_fileRepository);
     _saveTextToFileUseCase = SaveTextToFileUseCase(_fileRepository);
     _copyTextToClipboardUseCase =
         CopyTextToClipboardUseCase(_clipboardRepository);
-    _getTextFromClipboardUseCase =
-        GetTextFromClipboardUseCase(_clipboardRepository);
   }
 
   /// Load user preferences
@@ -169,6 +162,13 @@ class TranslationProvider extends ChangeNotifier {
 
   /// Perform backtranslation
   Future<void> performBackTranslation() async {
+    Logger.instance.info('Starting performBackTranslation');
+    Logger.instance.info('Input text: "${_inputText}"');
+    Logger.instance.info(
+        'Source language: $_sourceLanguage, Target language: $_targetLanguage');
+    Logger.instance.info(
+        'API config: useOfficial=${_useOfficialApi}, hasApiKey=${_apiKey.isNotEmpty}');
+
     if (_inputText.trim().isEmpty) {
       _updateStatus('Please enter text to translate');
       return;
@@ -181,6 +181,7 @@ class TranslationProvider extends ChangeNotifier {
 
     _setLoading(true);
     _clearResults();
+    _updateStatus('Starting translation...');
 
     try {
       final result = await _performBackTranslationUseCase.execute(
@@ -190,11 +191,18 @@ class TranslationProvider extends ChangeNotifier {
         targetLanguage: _targetLanguage,
       );
 
+      Logger.instance.info(
+          'Translation result: ${result.isRight ? "Success" : "Failure"}');
+      if (result.isLeft) {
+        Logger.instance.error('Translation failure: $result.left.message');
+      }
+
       result.fold(
         _handleTranslationError,
         _handleTranslationSuccess,
       );
     } catch (e) {
+      Logger.instance.error('Unexpected error in performBackTranslation: $e');
       _handleTranslationError(AppFailure(message: 'Unexpected error: $e'));
     } finally {
       _setLoading(false);
@@ -258,7 +266,8 @@ class TranslationProvider extends ChangeNotifier {
         (content) {
           _inputText = content;
           _updateStatus(
-              'File loaded successfully (${content.length} characters)');
+            'File loaded successfully (${content.length} characters)',
+          );
           notifyListeners();
         },
       );
@@ -317,13 +326,16 @@ class TranslationProvider extends ChangeNotifier {
     _intermediateText = result.intermediateTranslation.translatedText;
     _finalText = result.finalTranslation.translatedText;
     _updateStatus('Backtranslation completed successfully');
+    Logger.instance.info(
+        'Translation success: intermediate=$_intermediateText, final=$_finalText');
     notifyListeners();
   }
 
   /// Handle translation error
   void _handleTranslationError(Failure failure) {
     _updateStatus('Translation failed: ${failure.message}');
-    Logger.instance.error('Translation error: ${failure.message}');
+    Logger.instance.error('Translation error: $failure.message');
+    Logger.instance.error('Error type: ${failure.runtimeType}');
   }
 
   /// Update status message

@@ -37,11 +37,11 @@ class FileRepositoryImpl implements FileRepository {
       final rawContent = await file.readAsString(encoding: utf8);
 
       logger.debug(
-          'Loaded raw content from $filePath: ${rawContent.length} chars');
+          'Loaded raw content from $filePath: ${rawContent.length} chars',);
 
       final processedContent = await _processFileContent(rawContent, extension);
       logger.info(
-          'Successfully loaded file: $filePath (${processedContent.length} chars)');
+          'Successfully loaded file: $filePath (${processedContent.length} chars)',);
 
       return Right(processedContent);
     } catch (e) {
@@ -87,9 +87,9 @@ class FileRepositoryImpl implements FileRepository {
     try {
       // Remove script, style, code, and pre blocks using regex
       final scriptPattern = RegExp(r'<script[^>]*>.*?</script>',
-          caseSensitive: false, dotAll: true);
+          caseSensitive: false, dotAll: true,);
       final stylePattern = RegExp(r'<style[^>]*>.*?</style>',
-          caseSensitive: false, dotAll: true);
+          caseSensitive: false, dotAll: true,);
       final codePattern =
           RegExp(r'<code[^>]*>.*?</code>', caseSensitive: false, dotAll: true);
       final prePattern =
@@ -120,13 +120,13 @@ class FileRepositoryImpl implements FileRepository {
       final errorMessage = 'HTML parsing failed: $e';
       logger.error(errorMessage);
       return Left(FileFailure.invalidFormat(
-          'HTML content', 'Failed to parse HTML: $e'));
+          'HTML content', 'Failed to parse HTML: $e',),);
     }
   }
 
   /// Process file content based on file type
   Future<String> _processFileContent(
-      String rawContent, String extension) async {
+      String rawContent, String extension,) async {
     switch (extension) {
       case '.html':
         final htmlResult = extractTextFromHtml(rawContent);
