@@ -14,8 +14,8 @@ gem 'fast_blank', '~> 1.0.0'
 gem 'concurrent-ruby', '~> 1.2.0'
 gem 'sinatra', '~> 3.1'
 
-# Skip docx gem which depends on nokogiri source compilation
-# gem 'docx', '~> 0.6.0'
+# DOCX export support - use older version for simpler API
+gem 'docx', '0.6.2'
 
 # (Former Tk GUI removed; Sinatra web UI now used cross-platform)
 

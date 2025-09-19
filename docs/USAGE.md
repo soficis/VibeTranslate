@@ -416,6 +416,19 @@ When reporting problems, include:
 - [Python Requests Library](https://requests.readthedocs.io/)
 - [Tkinter Documentation](https://docs.python.org/3/library/tkinter.html)
 
+## 🌐 Other Implementations
+
+TranslationFiesta is available in multiple languages and frameworks:
+
+- **Python**: Cross-platform with Tkinter GUI and comprehensive features
+- **Ruby**: Modern Sinatra web UI with dark mode, batch processing, and analytics
+- **C#**: Windows WinForms and WinUI 3 implementations
+- **F#**: Functional programming approach with clean architecture
+- **Go**: High-performance CLI and GUI versions
+- **Flutter**: Cross-platform mobile and desktop with modern UI
+
+Each implementation provides the same core back-translation functionality with platform-specific optimizations and UI approaches.
+
 ---
 
 <div align="center">
