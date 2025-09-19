@@ -1,0 +1,128 @@
+# Ruby specific files
+*.gem
+*.rbc
+/.config
+/coverage
+/InstalledFiles
+/pkg
+/spec/reports
+/spec/examples.txt
+/test/tmp
+/test/version_tmp
+/tmp
+
+# YARD artifacts
+.yardoc
+_yardoc
+doc/
+
+# Bundler
+.bundle
+.bundler
+vendor/bundle
+vendor/cache
+vendor/gems
+vendor/ruby
+
+# Sinatra specific
+config.ru
+
+# Build artifacts
+build/
+*.o
+*.so
+*.dylib
+*.bundle
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Personal files and credentials
+*.log
+*.tmp
+*.pid
+*.seed
+*.pid.lock
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+config/database.yml
+config/secrets.yml
+
+# Translation cache and temporary files
+*.cache
+*.tmp
+temp/
+tmp/
+
+# Build and distribution files
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+dist/
+build/
+bin/
+
+# Test and coverage files
+coverage/
+*.prof
+test/reports/
+spec/reports/
+
+# RubyMine
+.idea/
+
+# VS Code
+.vscode/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Ruby version management
+.ruby-version
+.ruby-gemset
+.rbenv-version
+
+# Gem lock files (optional - uncomment if you want to ignore)
+# Gemfile.lock
+
+# Application specific
+# Add any application-specific files you want to ignore
+translation_fiesta.log
+*.db
+*.sqlite3
+*.sqlite3-journal
