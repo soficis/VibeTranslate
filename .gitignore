@@ -91,6 +91,7 @@ coverage.html
 .packages
 .pub/
 flutter_*.log
+.flutter-plugins-dependencies
 android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 android/.gradle/
 android/app/build/
