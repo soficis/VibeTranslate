@@ -163,11 +163,13 @@ class TranslationProvider extends ChangeNotifier {
   /// Perform backtranslation
   Future<void> performBackTranslation() async {
     Logger.instance.info('Starting performBackTranslation');
-    Logger.instance.info('Input text: "${_inputText}"');
+    Logger.instance.info('Input text: "$_inputText"');
     Logger.instance.info(
-        'Source language: $_sourceLanguage, Target language: $_targetLanguage');
+      'Source language: $_sourceLanguage, Target language: $_targetLanguage',
+    );
     Logger.instance.info(
-        'API config: useOfficial=${_useOfficialApi}, hasApiKey=${_apiKey.isNotEmpty}');
+      'API config: useOfficial=$_useOfficialApi, hasApiKey=${_apiKey.isNotEmpty}',
+    );
 
     if (_inputText.trim().isEmpty) {
       _updateStatus('Please enter text to translate');
@@ -192,7 +194,8 @@ class TranslationProvider extends ChangeNotifier {
       );
 
       Logger.instance.info(
-          'Translation result: ${result.isRight ? "Success" : "Failure"}');
+        'Translation result: ${result.isRight ? "Success" : "Failure"}',
+      );
       if (result.isLeft) {
         Logger.instance.error('Translation failure: $result.left.message');
       }
@@ -327,7 +330,8 @@ class TranslationProvider extends ChangeNotifier {
     _finalText = result.finalTranslation.translatedText;
     _updateStatus('Backtranslation completed successfully');
     Logger.instance.info(
-        'Translation success: intermediate=$_intermediateText, final=$_finalText');
+      'Translation success: intermediate=$_intermediateText, final=$_finalText',
+    );
     notifyListeners();
   }
 

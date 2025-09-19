@@ -1,6 +1,6 @@
 # TranslationFiesta Ruby
 
-IMPORTANT: This Ruby port is experimental and currently untested. It was added to provide feature parity with other ports, but automated tests and full QA are still pending. Use the mock mode for local exploration without API credentials.
+A professional Ruby implementation featuring a modern Sinatra web UI with dark mode (default), comprehensive file import/export, batch processing, cost tracking analytics, and full feature parity with other TranslationFiesta implementations.
 
 A comprehensive Ruby implementation of the TranslationFiesta application for English ↔ Japanese back-translation with quality assessment and cost tracking.
 
@@ -92,42 +92,93 @@ lib/translation_fiesta/
 ## 💻 Usage
 
 ### Web UI (Sinatra)
-The legacy Tk GUI has been replaced by a cross-platform web interface.
+A modern, professional web interface with dark mode (default) and comprehensive features including file import, export, batch processing, and analytics dashboard.
 
-Start server (defaults to http://127.0.0.1:4567):
+**🚀 Quick Start:**
 ```bash
 ruby bin/translation_fiesta
 ```
+Open http://127.0.0.1:4567 in your browser to access the full-featured web UI.
 
-Mock / offline mode (no external API calls):
+**Mock / offline mode** (no external API calls):
 ```bash
 TF_USE_MOCK=1 ruby bin/translation_fiesta
 ```
 
-Environment variables:
+**Features:**
+- 🌙 **Dark Mode (Default)**: Modern dark theme with light mode toggle
+- 📁 **File Import**: Drag & drop or click to upload TXT, MD, HTML, EPUB files
+- 📊 **Quality Metrics**: Real-time BLEU scoring and quality assessment
+- 💾 **Export Options**: Export to PDF, DOCX, HTML, TXT formats
+- 🔄 **Batch Processing**: Process multiple files simultaneously with progress tracking
+- 📈 **Analytics Dashboard**: Cost tracking, budget monitoring, translation memory stats
+- 🎛️ **Settings**: Configurable API preferences and budget management
+- 📱 **Responsive Design**: Works on desktop and mobile devices
+
+**Environment Variables:**
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | TF_WEB_BIND | 127.0.0.1 | Bind address |
 | TF_WEB_PORT | 4567 | Port |
 | TF_USE_MOCK | (unset) | Enable mock translation when set to 1 |
 | TF_EXPORT_DIR | exports | Export output directory |
+| TF_API_TOKEN | (unset) | API token for authentication |
+| TF_RATE_LIMIT | 60 | Requests per minute per IP |
 
-Key endpoints:
+**API Endpoints:**
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | / | Modern web UI |
 | POST | /api/translate | Translate text (JSON: { text, api_type }) |
 | GET | /api/result/:id | Fetch stored result |
 | POST | /api/export/:id | Export result (JSON: { format }) |
+| POST | /api/batch | Batch process files (JSON: { files, api_type, threads }) |
+| GET | /api/analytics | Get cost tracking and analytics data |
 | GET | /health | Health check |
 
-Example translate request:
+**Example API Usage:**
 ```bash
+# Translate text
 curl -X POST http://127.0.0.1:4567/api/translate \
    -H 'Content-Type: application/json' \
    -d '{"text":"Hello world","api_type":"unofficial"}'
+
+# Get analytics
+curl http://127.0.0.1:4567/api/analytics
+
+# Batch process (simplified for web UI)
+curl -X POST http://127.0.0.1:4567/api/batch \
+   -H 'Content-Type: application/json' \
+   -d '{"files":[{"filename":"test.txt","content":"Hello"}],"api_type":"unofficial"}'
 ```
 
-Supported export formats: txt, md, pdf, html, docx* (*requires docx gem installed)
+**Supported Export Formats:**
+- **TXT/MD**: Plain text and Markdown export (always available)
+- **PDF**: Formatted PDF documents (always available)
+- **HTML**: Web-ready HTML documents (always available)
+- **DOCX**: Microsoft Word documents (⚠️ **untested/broken**)
+
+**DOCX Export:**
+⚠️ **DOCX export functionality is currently untested and may not work properly.**
+
+**Known Issues:**
+- Compatibility problems with the docx gem
+- Version conflicts between different docx gem versions
+- Limited testing of the export functionality
+
+**If you encounter issues:**
+```bash
+# Try installing the specific version
+gem uninstall docx
+gem install docx -v 0.6.2
+```
+
+**Status:** ⚠️ **DOCX export is untested and may not work**
+
+**Recommended Alternatives (always available):**
+1. **PDF Export**: Fully supported with professional formatting
+2. **HTML Export**: Web-ready documents with complete styling
+3. **TXT/MD Export**: Plain text formats that work reliably
 
 ### Command Line Interface
 

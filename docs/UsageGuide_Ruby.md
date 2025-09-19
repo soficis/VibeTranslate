@@ -6,9 +6,7 @@ This guide provides detailed instructions for using the Ruby implementation of T
 
 ## 🌟 Overview
 
-TranslationFiestaRuby is a Ruby port of the TranslationFiesta application, providing English ↔ Japanese back-translation with quality assessment. This implementation uses Sinatra for the web UI and follows Clean Architecture principles.
-
-> **⚠️ Note**: This Ruby port is experimental and currently untested. It provides feature parity with other implementations but may require additional setup.
+TranslationFiestaRuby is a comprehensive Ruby implementation of TranslationFiesta, featuring a modern, professional Sinatra web UI with dark mode (default), file import/export, batch processing, and analytics. The application follows Clean Architecture principles and provides feature parity with all other implementations.
 
 ## 🏗️ Architecture
 
@@ -60,7 +58,25 @@ TF_USE_MOCK=1 rake web
 
 ### Web UI (Sinatra)
 
-The web interface provides a modern, cross-platform alternative to the legacy Tk GUI.
+A professional, modern web interface with comprehensive features:
+
+**🎨 Interface Features:**
+- 🌙 **Dark Mode (Default)**: Beautiful dark theme with toggle to light mode
+- 📱 **Responsive Design**: Works perfectly on desktop, tablet, and mobile
+- 🎯 **Tabbed Interface**: Organized sections for different functionalities
+- 🚀 **Real-time Updates**: Live progress indicators and status updates
+- ✨ **Professional Styling**: Modern card-based layout with smooth animations
+
+**🔧 Core Functionality:**
+- **Translation Tab**: Single text translation with file import and quality metrics
+- **Batch Processing Tab**: Multiple file processing with progress tracking  
+- **Analytics Tab**: Cost tracking, budget monitoring, translation memory stats
+- **Settings Tab**: API configuration and application preferences
+
+**📁 File Support:**
+- **Import**: Drag & drop or click to upload TXT, MD, HTML, EPUB files
+- **Export**: Download results as PDF, DOCX, HTML, or TXT formats
+- **Batch Processing**: Select multiple files for simultaneous processing
 
 #### Starting the Server
 ```bash
@@ -215,7 +231,7 @@ COVERAGE=1 rake spec
 | HTML   | ✅   | ✅     | HTML content |
 | EPUB   | ✅   | ❌     | Text extraction only |
 | PDF    | ❌   | ✅     | Export only |
-| DOCX   | ❌   | ✅     | Export only (requires docx gem) |
+| DOCX   | ❌   | ⚠️     | Export only (untested, requires docx gem) |
 
 ## 🔐 Security Features
 

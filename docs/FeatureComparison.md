@@ -21,7 +21,7 @@ This document provides a comprehensive comparison of f| Feature | Python | C# Wi
 | **TranslationFiestaFSharp** | F# | WinForms | Windows | High | Production, clean functional code |
 | **TranslationFiesta.WinUI** | C# | WinUI 3 | Windows 11 | High | Modern Windows, enterprise deployment |
 | **TranslationFiestaGo** | Go | Fyne/Custom | Cross-platform | Medium | CLI tools, system integration |
-| **TranslationFiestaRuby** | Ruby | Sinatra/Custom | Cross-platform | Medium | Web-based, Clean Architecture |
+| **TranslationFiestaRuby** | Ruby | Sinatra Web UI | Cross-platform | Medium | Modern web UI, Clean Architecture |
 | **FlutterTranslate** | Dart | Flutter | Cross-platform | Medium | Mobile/desktop, modern UI frameworks |
 
 ## 🎉 Major Feature Enhancements
@@ -105,15 +105,15 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 
 | Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
 |---------|--------|-------------|----|---------|----|------|---------|
-| **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ (System) | ✅ | ✅ (Web) | ✅ (System) |
-| **Responsive Layout** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Dark/Light Theme** | ✅ | ✅ | ✅ | ✅ (System) | ✅ | ✅ (Default Dark) | ✅ (System) |
+| **Responsive Layout** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (Modern) | ✅ |
 | **Progress Indication** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Status Updates** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Keyboard Shortcuts** | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Keyboard Shortcuts** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ (Web) | ❌ |
 | **Window Management** | Basic | Basic | Good | Excellent | Good | N/A (Web) | Good |
-| **Accessibility** | Basic | Basic | Basic | Excellent | Basic | Good | Good |
+| **Accessibility** | Basic | Basic | Basic | Excellent | Basic | Excellent | Good |
 | **High DPI Support** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Theme Service** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
+| **Theme Service** | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ |
 
 ### File Operations
 
@@ -156,7 +156,7 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 | Feature | Python | C# WinForms | F# | WinUI 3 | Go | Ruby | Flutter |
 |---------|--------|-------------|----|---------|----|------|---------|
 | **PDF Export** | ✅ (ReportLab) | ✅ (PDFsharp) | ✅ (PDFsharp) | ✅ (PDFsharp) | ✅ | ✅ (Prawn) | ✅ |
-| **DOCX Export** | ✅ (python-docx) | ✅ (OpenXML) | ✅ (OpenXML) | ✅ (OpenXML) | ✅ | ✅ (Optional) | ✅ |
+| **DOCX Export** | ✅ (python-docx) | ✅ (OpenXML) | ✅ (OpenXML) | ✅ (OpenXML) | ✅ | ⚠️ (Untested) | ✅ |
 | **HTML Export** | ✅ (Templates) | ✅ (Custom) | ✅ (Custom) | ✅ (Custom) | ✅ | ✅ (Templates) | ✅ |
 | **Metadata Inclusion** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Quality Metrics** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -332,7 +332,7 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 #### Recently Implemented Features ✅
 - **Batch Processing**: All implementations now support directory-based batch processing
 - **Quality Metrics**: BLEU scores and confidence levels implemented across all platforms
-- **Export Formats**: PDF (not functional in WinUI), DOCX, and HTML export with metadata and quality metrics
+- **Export Formats**: PDF (not functional in WinUI), DOCX (untested in Ruby), and HTML export with metadata and quality metrics
 - **Cost Tracking**: Comprehensive budget management and usage tracking
 - **Secure Storage**: Platform-specific secure credential storage in all implementations
 
@@ -350,7 +350,7 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 - **F#**: Cross-platform considerations for future development
 - **WinUI**: Advanced theming and accessibility features
 - **Go**: CLI and GUI implementations available
-- **Ruby**: Clean Architecture implementation, Sinatra web framework, experimental status
+- **Ruby**: Professional Sinatra web UI with dark mode, comprehensive feature set, Clean Architecture
 - **Flutter**: Clean architecture with domain-driven design
 
 ## Implementation Quality Metrics
@@ -387,7 +387,7 @@ All TranslationFiesta implementations have been significantly enhanced with ente
 2. **Secure Storage**: Platform-specific secure storage in all apps
 3. **Batch Processing**: Directory-based batch processing with progress tracking
 4. **Quality Metrics**: BLEU scores, confidence levels, and detailed assessments
-5. **Export Formats**: PDF (not functional in WinUI), DOCX, HTML with metadata and quality metrics
+5. **Export Formats**: PDF (not functional in WinUI), DOCX (untested in Ruby), HTML with metadata and quality metrics
 6. **Cost Tracking**: Comprehensive budget management and usage reporting
 
 ### Medium Priority Features (Next Phase)

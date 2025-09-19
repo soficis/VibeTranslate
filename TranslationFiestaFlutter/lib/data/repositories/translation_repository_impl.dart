@@ -87,7 +87,8 @@ class TranslationRepositoryImpl implements TranslationRepository {
     // If unofficial API fails and we don't have an API key, use mock service
     if (result.isLeft && !config.useOfficialApi) {
       logger.info(
-          'Unofficial API failed and no API key available, using mock service for testing');
+        'Unofficial API failed and no API key available, using mock service for testing',
+      );
       return _mockService.translate(request, config);
     }
 
@@ -168,7 +169,8 @@ class TranslationRepositoryImpl implements TranslationRepository {
       },
     );
     logger.info(
-        'Repository: retry service result: ${result.isRight ? "Success" : "Failure"}');
+      'Repository: retry service result: ${result.isRight ? "Success" : "Failure"}',
+    );
     return result;
   }
 

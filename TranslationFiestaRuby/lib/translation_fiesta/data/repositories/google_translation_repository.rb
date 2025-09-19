@@ -2,6 +2,9 @@
 
 require 'easy_translate'
 require 'google/cloud/translate/v2'
+require 'net/http'
+require 'uri'
+require 'json'
 require_relative '../../domain/repositories/translation_repository'
 
 module TranslationFiesta
@@ -66,7 +69,30 @@ module TranslationFiesta
         end
 
         def translate_unofficial(text, from_language, to_language)
-          EasyTranslate.translate(text, from: from_language, to: to_language, key: @api_key)
+          return '' if text.nil? || text.strip.empty?
+
+          encoded_text = URI.encode_www_form_component(text)
+          url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=#{from_language}&tl=#{to_language}&dt=t&q=#{encoded_text}"
+
+          uri = URI.parse(url)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = true
+
+          request = Net::HTTP::Get.new(uri.request_uri)
+
+          response = http.request(request)
+
+          if response.code.to_i >= 400
+            raise TranslationError, "HTTP #{response.code}: #{response.body}"
+          end
+
+          begin
+            data = JSON.parse(response.body)
+          rescue JSON::ParserError => e
+            raise TranslationError, "Failed to parse response: #{e.message}"
+          end
+
+          extract_translated_text(data)
         rescue StandardError => e
           raise TranslationError, "Unofficial translation failed: #{e.message}"
         end
@@ -78,6 +104,20 @@ module TranslationFiesta
           result.text
         rescue StandardError => e
           raise TranslationError, "Official translation failed: #{e.message}"
+        end
+
+        def extract_translated_text(data)
+          return '' unless data.is_a?(Array) && data.length > 0
+          return '' unless data[0].is_a?(Array)
+
+          translated_parts = []
+          data[0].each do |sentence|
+            next unless sentence.is_a?(Array) && sentence.length > 0
+            part = sentence[0]
+            translated_parts << part if part.is_a?(String) && !part.empty?
+          end
+
+          translated_parts.join('')
         end
       end
     end

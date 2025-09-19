@@ -58,9 +58,11 @@ class UnofficialGoogleTranslateService extends BaseTranslationService {
 
       logger.debug('Unofficial API Response Status: ${response.statusCode}');
       logger.debug(
-          'Unofficial API Response Body Length: ${response.body.length}');
+        'Unofficial API Response Body Length: ${response.body.length}',
+      );
       logger.debug(
-          'Unofficial API Response Preview: ${response.body.substring(0, min(500, response.body.length))}');
+        'Unofficial API Response Preview: ${response.body.substring(0, min(500, response.body.length))}',
+      );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         final errorMessage = 'HTTP ${response.statusCode}: ${response.body}';
@@ -74,7 +76,8 @@ class UnofficialGoogleTranslateService extends BaseTranslationService {
       if (response.body.isEmpty) {
         logger.error('Empty response from translation API');
         return Left(
-            TranslationFailure.invalidResponse('Empty response from API'));
+          TranslationFailure.invalidResponse('Empty response from API'),
+        );
       }
 
       final result = _parseUnofficialResponse(response.body, request);
@@ -98,7 +101,8 @@ class UnofficialGoogleTranslateService extends BaseTranslationService {
   ) {
     try {
       logger.debug(
-          'Parsing response: ${responseBody.substring(0, min(200, responseBody.length))}...');
+        'Parsing response: ${responseBody.substring(0, min(200, responseBody.length))}...',
+      );
 
       final jsonResponse = json.decode(responseBody);
 
@@ -174,7 +178,8 @@ class MockTranslationService extends BaseTranslationService {
     await Future.delayed(const Duration(milliseconds: 500));
 
     logger.info(
-        'Mock translation: ${request.sourceLanguage} -> ${request.targetLanguage}');
+      'Mock translation: ${request.sourceLanguage} -> ${request.targetLanguage}',
+    );
     logger.info('Mock input text: "${request.text}"');
 
     // Simple mock translations
@@ -256,7 +261,8 @@ class OfficialGoogleTranslateService extends BaseTranslationService {
       if (response.body.isEmpty) {
         logger.error('Empty response from official translation API');
         return Left(
-            TranslationFailure.invalidResponse('Empty response from API'));
+          TranslationFailure.invalidResponse('Empty response from API'),
+        );
       }
 
       final result = _parseOfficialResponse(response.body, request);
@@ -280,7 +286,8 @@ class OfficialGoogleTranslateService extends BaseTranslationService {
   ) {
     try {
       logger.debug(
-          'Parsing official response: ${responseBody.substring(0, min(200, responseBody.length))}...');
+        'Parsing official response: ${responseBody.substring(0, min(200, responseBody.length))}...',
+      );
 
       final jsonResponse = json.decode(responseBody);
 

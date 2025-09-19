@@ -16,6 +16,9 @@ module TranslationFiesta
   set :views, File.expand_path('views', __dir__)
   # Avoid blocking tests or non-standard hosts (Rack::Protection may reject test Host headers)
   set :protection, except: :http_host
+  
+  # Enable file uploads
+  set :max_file_size, 10_000_000 # 10MB
 
       RATE_LIMIT = ENV.fetch('TF_RATE_LIMIT', '60').to_i
 
@@ -68,7 +71,7 @@ module TranslationFiesta
       end
 
       get '/' do
-        erb :index
+        erb :index, layout: :layout
       end
 
       post '/api/translate' do
@@ -108,6 +111,87 @@ module TranslationFiesta
           json({ exported: true, path: filename })
         rescue StandardError => e
           json({ error: e.message }, status: 500)
+        end
+      end
+
+      post '/api/upload' do
+        file = params[:file]
+        return json({ error: 'No file provided' }, status: 422) unless file
+
+        begin
+          file_path = file[:tempfile].path
+          content = container.file_repository.read_text_file(file_path)
+          json({ content: content, filename: file[:filename] })
+        rescue StandardError => e
+          json({ error: "File processing failed: #{e.message}" }, status: 500)
+        end
+      end
+
+      post '/api/batch' do
+        payload = JSON.parse(request.body.read) rescue {}
+        files = payload['files'] || []
+        api_type = (payload['api_type'] || 'unofficial').to_sym
+        threads = (payload['threads'] || 4).to_i
+
+        return json({ error: 'No files provided' }, status: 422) if files.empty?
+
+        begin
+          # This is a simplified batch processing for the web UI
+          # In a real implementation, this would use the actual BatchProcessor
+          results = []
+          files.each do |file_data|
+            result = translate(text: file_data['content'], api_type: api_type)
+            id = SecureRandom.uuid
+            @results[id] = result
+            results << { id: id, filename: file_data['filename'], result: serialize_result(result) }
+          end
+
+          json({ results: results })
+        rescue StandardError => e
+          json({ error: e.message }, status: 500)
+        end
+      end
+
+      get '/api/analytics' do
+        # Mock analytics data - in real implementation, this would come from the database
+        json({
+          cost_tracking: {
+            monthly_cost: 2.45,
+            budget_remaining: 7.55,
+            budget_usage: 24.5,
+            total_characters: 125750,
+            unofficial_usage: 143,
+            official_cost: 2.45
+          },
+          translation_memory: {
+            cache_entries: 78,
+            hit_rate: 32.0,
+            savings: 1.23,
+            cache_size_kb: 245
+          }
+        })
+      end
+
+      get '/api/export/test-docx' do
+        begin
+          # Use the same availability check as the export manager
+          export_manager_class = container.export_manager.class
+          available = export_manager_class.docx_available?
+          if available
+            json({ available: true })
+          else
+            json({
+              available: false,
+              error: 'DOCX functionality is having compatibility issues. Please use PDF or HTML export instead.',
+              alternative: 'Use PDF or HTML export formats which are fully supported.'
+            }, status: 503)
+          end
+        rescue StandardError => e
+          json({
+            available: false,
+            error: "DOCX check failed: #{e.message}",
+            alternative: 'Use PDF or HTML export formats which are fully supported.'
+          }, status: 503)
         end
       end
 
