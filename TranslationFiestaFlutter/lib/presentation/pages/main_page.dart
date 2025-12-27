@@ -1,5 +1,3 @@
-/// Clean Code main page with meaningful naming and Single Responsibility
-/// Following Material Design principles and Clean Architecture
 library;
 
 import 'package:flutter/material.dart';
@@ -29,10 +27,8 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
-    // Load preferences on app start
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TranslationProvider>().loadPreferences();
-      // Set dark mode as default if not already set
       final provider = context.read<TranslationProvider>();
       if (!provider.isDarkTheme) {
         provider.updateTheme(true);
@@ -44,7 +40,7 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Backtranslation (English → ja → English)'),
+        title: const Text('Backtranslation (English -> Japanese -> English)'),
         centerTitle: true,
         elevation: 2,
         actions: [
@@ -86,16 +82,13 @@ class _MainPageState extends State<MainPage> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // Responsive breakpoints
             final isWide = constraints.maxWidth > 900;
             final isMedium =
                 constraints.maxWidth > 600 && constraints.maxWidth <= 900;
 
             if (isWide) {
-              // Wide screen layout (> 900px)
               return const Column(
                 children: [
-                  // Main content area
                   Expanded(
                     child: Row(
                       children: [
@@ -111,66 +104,30 @@ class _MainPageState extends State<MainPage> {
                       ],
                     ),
                   ),
-                  // Control Panel at bottom for wide screens
                   ControlPanel(),
                 ],
               );
-            } else if (isMedium) {
-              // Medium screen layout (600-900px)
-              return Column(
-                children: [
-                  // Input section
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 300),
-                    child: const InputSection(),
-                  ),
-                  const SizedBox(height: 12),
-                  // Control Panel
-                  const ControlPanel(),
-                  const SizedBox(height: 12),
-                  // Output section
-                  const Expanded(
-                    child: OutputSection(),
-                  ),
-                  const SizedBox(height: 8),
-                  const StatusBar(),
-                ],
-              );
-            } else {
-              // Narrow screen layout
+            }
+
+            if (isMedium) {
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Consumer<EpubProvider>(
-                      builder: (context, epubProvider, child) {
-                        if (epubProvider.book != null) {
-                          return Container(
-                            constraints: const BoxConstraints(
-                              minHeight: 300,
-                              maxHeight: 400,
-                            ),
-                            child: const EpubPreviewPane(),
-                          );
-                        } else {
-                          return Container(
-                            constraints: const BoxConstraints(
-                              minHeight: 200,
-                              maxHeight: 300,
-                            ),
-                            child: const InputSection(),
-                          );
-                        }
-                      },
+                    Container(
+                      constraints: const BoxConstraints(
+                        minHeight: 200,
+                        maxHeight: 300,
+                      ),
+                      child: const InputSection(),
                     ),
                     const SizedBox(height: 12),
-                    // Control Panel with translate button - always visible
                     const ControlPanel(),
                     const SizedBox(height: 12),
                     Container(
                       constraints: const BoxConstraints(
-                        minHeight: 300,
+                        minHeight: 250,
                         maxHeight: 400,
                       ),
                       child: const OutputSection(),
@@ -181,6 +138,48 @@ class _MainPageState extends State<MainPage> {
                 ),
               );
             }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Consumer<EpubProvider>(
+                    builder: (context, epubProvider, child) {
+                      if (epubProvider.book != null) {
+                        return Container(
+                          constraints: const BoxConstraints(
+                            minHeight: 300,
+                            maxHeight: 400,
+                          ),
+                          child: const EpubPreviewPane(),
+                        );
+                      }
+
+                      return Container(
+                        constraints: const BoxConstraints(
+                          minHeight: 200,
+                          maxHeight: 300,
+                        ),
+                        child: const InputSection(),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  const ControlPanel(),
+                  const SizedBox(height: 12),
+                  Container(
+                    constraints: const BoxConstraints(
+                      minHeight: 300,
+                      maxHeight: 400,
+                    ),
+                    child: const OutputSection(),
+                  ),
+                  const SizedBox(height: 8),
+                  const StatusBar(),
+                ],
+              ),
+            );
           },
         ),
       ),

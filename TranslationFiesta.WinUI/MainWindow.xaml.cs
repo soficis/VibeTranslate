@@ -8,16 +8,25 @@ using Windows.Storage.Pickers;
 using Windows.UI.Core;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Automation.Provider;
+using System.Net.Http;
+using System.Threading;
 
 namespace TranslationFiesta.WinUI
 {
     public sealed partial class MainWindow : Window
     {
        private enum OutputFormat { Plain, Markdown, Html }
+        private sealed class ProviderOption
+        {
+            public string Id { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+        }
         private readonly TranslationClient _translator = new TranslationClient();
         private AppSettings _settings;
         private BatchProcessor? _currentBatchProcessor;
         private readonly TemplateManager _templateManager;
+        private readonly HttpClient _localHttp = new HttpClient();
+        private LocalServiceClient _modelsClient;
 
         public MainWindow()
         {
@@ -29,9 +38,18 @@ namespace TranslationFiesta.WinUI
 
             // Load settings
             _settings = SettingsService.Load();
+            ApplyLocalSettings(_settings);
 
-            // Apply settings to cost tracker
-            _translator.CostTracker.SetMonthlyBudget(_settings.MonthlyBudget);
+            CostTrackingPanel.Visibility = _settings.CostTrackingEnabled && _settings.ShowCostInUI
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            if (_settings.CostTrackingEnabled)
+            {
+                _translator.CostTracker.SetMonthlyBudget(_settings.MonthlyBudget);
+            }
+
+            InitializeProviderSelector();
 
             // Wire up event handlers
             TranslateButton.Click += TranslateButton_Click;
@@ -48,6 +66,7 @@ namespace TranslationFiesta.WinUI
             TargetSpeakButton.Click += TargetSpeakButton_Click;
             KeyboardShortcutsMenuItem.Click += KeyboardShortcutsMenuItem_Click;
             ManageTemplatesButton.Click += ManageTemplatesButton_Click;
+            LocalModelsButton.Click += LocalModelsButton_Click;
 
             // Update character count when text changes
             SourceTextBox.TextChanged += SourceTextBox_TextChanged;
@@ -68,6 +87,14 @@ namespace TranslationFiesta.WinUI
 
             Logger.Info("Translation Fiesta initialized");
 
+        }
+
+        private void ApplyLocalSettings(AppSettings settings)
+        {
+            LocalServiceClient.ApplyEnvironment(settings.LocalServiceUrl, settings.LocalModelDir, settings.LocalAutoStart);
+            _translator.ApplyLocalSettings(settings.LocalServiceUrl, settings.LocalModelDir, settings.LocalAutoStart);
+            Environment.SetEnvironmentVariable("TF_COST_TRACKING_ENABLED", settings.CostTrackingEnabled ? "1" : "0");
+            _modelsClient = new LocalServiceClient(_localHttp);
         }
 
         private void Window_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
@@ -209,6 +236,197 @@ namespace TranslationFiesta.WinUI
             TargetLanguageCombo.SelectedIndex = 7; // Japanese (common for back-translation)
         }
 
+        private void InitializeProviderSelector()
+        {
+            var providers = new List<ProviderOption>
+            {
+                new ProviderOption { Id = ProviderIds.Local, Name = "Local (Offline)" },
+                new ProviderOption { Id = ProviderIds.GoogleUnofficial, Name = "Google Translate (Unofficial / Free)" },
+                new ProviderOption { Id = ProviderIds.GoogleOfficial, Name = "Google Cloud Translate (Official)" }
+            };
+
+            ProviderCombo.ItemsSource = providers;
+            ProviderCombo.DisplayMemberPath = "Name";
+            ProviderCombo.SelectedValuePath = "Id";
+
+            var providerId = ProviderIds.Normalize(_settings.ProviderId);
+            _settings.ProviderId = providerId;
+            _settings.UseOfficialApi = ProviderIds.IsOfficial(providerId);
+            ProviderCombo.SelectedValue = providerId;
+
+            ProviderCombo.SelectionChanged += ProviderCombo_SelectionChanged;
+            ApiKeySaveButton.Click += ApiKeySaveButton_Click;
+            ApiKeyClearButton.Click += ApiKeyClearButton_Click;
+
+            var savedKey = SecureStore.GetApiKey();
+            if (!string.IsNullOrWhiteSpace(savedKey))
+            {
+                ApiKeyBox.PlaceholderText = "API key stored";
+            }
+
+            ApplyProviderSelection();
+            UpdateProviderUi();
+        }
+
+        private void ProviderCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var providerId = ProviderIds.Normalize(ProviderCombo.SelectedValue?.ToString());
+            _settings.ProviderId = providerId;
+            _settings.UseOfficialApi = ProviderIds.IsOfficial(providerId);
+            SettingsService.Save(_settings);
+            ApplyProviderSelection();
+            UpdateProviderUi();
+        }
+
+        private async void LocalModelsButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ShowLocalModelsDialogAsync();
+        }
+
+        private async Task ShowLocalModelsDialogAsync()
+        {
+            var serviceUrlBox = new TextBox
+            {
+                Text = _settings.LocalServiceUrl ?? string.Empty,
+                PlaceholderText = "http://127.0.0.1:5055"
+            };
+            var modelDirBox = new TextBox
+            {
+                Text = _settings.LocalModelDir ?? string.Empty,
+                PlaceholderText = "Override model directory (optional)"
+            };
+            var autoStartToggle = new ToggleSwitch
+            {
+                Header = "Auto-start local service",
+                IsOn = _settings.LocalAutoStart
+            };
+            var statusBox = new TextBox
+            {
+                IsReadOnly = true,
+                TextWrapping = TextWrapping.Wrap,
+                AcceptsReturn = true,
+                MinHeight = 120
+            };
+
+            var refreshButton = new Button { Content = "Refresh" };
+            var verifyButton = new Button { Content = "Verify" };
+            var removeButton = new Button { Content = "Remove" };
+
+            async Task UpdateStatusAsync(Func<CancellationToken, Task<string>> action)
+            {
+                try
+                {
+                    statusBox.Text = "Working...";
+                    var body = await action(CancellationToken.None);
+                    statusBox.Text = body;
+                }
+                catch (Exception ex)
+                {
+                    statusBox.Text = ex.Message;
+                }
+            }
+
+            refreshButton.Click += async (_, __) => await UpdateStatusAsync(_modelsClient.GetModelsStatusAsync);
+            verifyButton.Click += async (_, __) => await UpdateStatusAsync(_modelsClient.VerifyModelsAsync);
+            removeButton.Click += async (_, __) => await UpdateStatusAsync(_modelsClient.RemoveModelsAsync);
+            var installButton = new Button { Content = "Install Default" };
+            installButton.Click += async (_, __) => await UpdateStatusAsync(_modelsClient.InstallDefaultModelsAsync);
+
+            var actionsRow = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                Children = { refreshButton, verifyButton, removeButton, installButton }
+            };
+
+            var panel = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock { Text = "Service URL" },
+                    serviceUrlBox,
+                    new TextBlock { Text = "Model Directory" },
+                    modelDirBox,
+                    autoStartToggle,
+                    new TextBlock { Text = "Model Status" },
+                    statusBox,
+                    actionsRow
+                }
+            };
+
+            var dialog = new ContentDialog
+            {
+                Title = "Local Model Manager",
+                Content = panel,
+                PrimaryButtonText = "Save",
+                CloseButtonText = "Close",
+                XamlRoot = Content.XamlRoot
+            };
+
+            dialog.PrimaryButtonClick += (_, __) =>
+            {
+                _settings.LocalServiceUrl = serviceUrlBox.Text.Trim();
+                _settings.LocalModelDir = modelDirBox.Text.Trim();
+                _settings.LocalAutoStart = autoStartToggle.IsOn;
+                SettingsService.Save(_settings);
+                ApplyLocalSettings(_settings);
+            };
+
+            await dialog.ShowAsync();
+            await UpdateStatusAsync(_modelsClient.GetModelsStatusAsync);
+        }
+
+        private void ApiKeySaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            var apiKey = ApiKeyBox.Password ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                return;
+            }
+
+            SecureStore.SaveApiKey(apiKey);
+            ApiKeyBox.Password = string.Empty;
+            ApiKeyBox.PlaceholderText = "API key stored";
+            ApplyProviderSelection();
+        }
+
+        private void ApiKeyClearButton_Click(object sender, RoutedEventArgs e)
+        {
+            SecureStore.ClearApiKey();
+            ApiKeyBox.Password = string.Empty;
+            ApiKeyBox.PlaceholderText = "API key (official only)";
+            ApplyProviderSelection();
+        }
+
+        private void ApplyProviderSelection()
+        {
+            var providerId = ProviderIds.Normalize(ProviderCombo.SelectedValue?.ToString());
+            _translator.ProviderId = providerId;
+            if (ProviderIds.IsOfficial(providerId))
+            {
+                var key = ApiKeyBox.Password;
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    key = SecureStore.GetApiKey();
+                }
+                _translator.OfficialApiKey = string.IsNullOrWhiteSpace(key) ? null : key;
+            }
+            else
+            {
+                _translator.OfficialApiKey = null;
+            }
+        }
+
+        private void UpdateProviderUi()
+        {
+            var providerId = ProviderIds.Normalize(ProviderCombo.SelectedValue?.ToString());
+            var isOfficial = ProviderIds.IsOfficial(providerId);
+            ApiKeyBox.IsEnabled = isOfficial;
+            ApiKeySaveButton.IsEnabled = isOfficial;
+            ApiKeyClearButton.IsEnabled = isOfficial;
+        }
+
        private void InitializeFormatSelector()
        {
            FormatComboBox.ItemsSource = Enum.GetValues(typeof(OutputFormat));
@@ -235,6 +453,8 @@ namespace TranslationFiesta.WinUI
                     Logger.Error("UI elements not initialized in TranslateButton_Click");
                     return;
                 }
+
+                ApplyProviderSelection();
 
                 var sourceText = SourceTextBox.Text?.Trim();
                 if (string.IsNullOrWhiteSpace(sourceText))
@@ -546,6 +766,7 @@ namespace TranslationFiesta.WinUI
         {
             try
             {
+                ApplyProviderSelection();
                 var openPicker = new Windows.Storage.Pickers.FolderPicker();
                 var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
                 WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hwnd);
@@ -731,6 +952,11 @@ namespace TranslationFiesta.WinUI
         {
             try
             {
+                if (!_settings.CostTrackingEnabled || !_settings.ShowCostInUI)
+                {
+                    return;
+                }
+
                 var monthlyStats = _translator.CostTracker.GetCurrentMonthStats();
                 var budget = _translator.CostTracker.GetMonthlyBudget();
                 var remaining = budget - monthlyStats.TotalCost;

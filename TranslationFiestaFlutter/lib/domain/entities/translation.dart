@@ -1,5 +1,3 @@
-/// Clean Code domain entities with meaningful names and immutability
-/// Following Domain-Driven Design principles
 library;
 
 import '../../core/utils/bleu_scorer.dart';
@@ -170,18 +168,68 @@ class BackTranslationResult {
   }
 }
 
+enum TranslationProviderId {
+  local,
+  googleUnofficial,
+  googleOfficial,
+}
+
+extension TranslationProviderIdX on TranslationProviderId {
+  String get storageValue {
+    switch (this) {
+      case TranslationProviderId.local:
+        return 'local';
+      case TranslationProviderId.googleUnofficial:
+        return 'google_unofficial';
+      case TranslationProviderId.googleOfficial:
+        return 'google_official';
+    }
+  }
+
+  String get displayName {
+    switch (this) {
+      case TranslationProviderId.local:
+        return 'Local (Offline)';
+      case TranslationProviderId.googleUnofficial:
+        return 'Google Translate (Unofficial / Free)';
+      case TranslationProviderId.googleOfficial:
+        return 'Google Cloud Translate (Official)';
+    }
+  }
+
+  bool get isOfficial => this == TranslationProviderId.googleOfficial;
+
+  static TranslationProviderId fromStorage(String? value) {
+    switch (value) {
+      case 'local':
+        return TranslationProviderId.local;
+      case 'google_official':
+        return TranslationProviderId.googleOfficial;
+      case 'google_unofficial':
+      default:
+        return TranslationProviderId.googleUnofficial;
+    }
+  }
+}
+
 /// Represents API configuration with meaningful naming
 class ApiConfiguration {
-  final bool useOfficialApi;
+  final TranslationProviderId providerId;
   final String? apiKey;
   final int maxRetries;
   final Duration timeout;
+  final String? localServiceUrl;
+  final String? localModelDir;
+  final bool localAutoStart;
 
   ApiConfiguration({
-    required this.useOfficialApi,
+    required this.providerId,
     this.apiKey,
     this.maxRetries = 4,
     this.timeout = const Duration(seconds: 30),
+    this.localServiceUrl,
+    this.localModelDir,
+    this.localAutoStart = true,
   });
 
   /// Validate the configuration
@@ -192,18 +240,28 @@ class ApiConfiguration {
     return true;
   }
 
+  bool get useOfficialApi => providerId.isOfficial;
+
+  bool get isLocal => providerId == TranslationProviderId.local;
+
   /// Create a copy with modified fields
   ApiConfiguration copyWith({
-    bool? useOfficialApi,
+    TranslationProviderId? providerId,
     String? apiKey,
     int? maxRetries,
     Duration? timeout,
+    String? localServiceUrl,
+    String? localModelDir,
+    bool? localAutoStart,
   }) {
     return ApiConfiguration(
-      useOfficialApi: useOfficialApi ?? this.useOfficialApi,
+      providerId: providerId ?? this.providerId,
       apiKey: apiKey ?? this.apiKey,
       maxRetries: maxRetries ?? this.maxRetries,
       timeout: timeout ?? this.timeout,
+      localServiceUrl: localServiceUrl ?? this.localServiceUrl,
+      localModelDir: localModelDir ?? this.localModelDir,
+      localAutoStart: localAutoStart ?? this.localAutoStart,
     );
   }
 
@@ -212,21 +270,27 @@ class ApiConfiguration {
       identical(this, other) ||
       other is ApiConfiguration &&
           runtimeType == other.runtimeType &&
-          useOfficialApi == other.useOfficialApi &&
+          providerId == other.providerId &&
           apiKey == other.apiKey &&
           maxRetries == other.maxRetries &&
-          timeout == other.timeout;
+          timeout == other.timeout &&
+          localServiceUrl == other.localServiceUrl &&
+          localModelDir == other.localModelDir &&
+          localAutoStart == other.localAutoStart;
 
   @override
   int get hashCode =>
-      useOfficialApi.hashCode ^
+      providerId.hashCode ^
       apiKey.hashCode ^
       maxRetries.hashCode ^
-      timeout.hashCode;
+      timeout.hashCode ^
+      localServiceUrl.hashCode ^
+      localModelDir.hashCode ^
+      localAutoStart.hashCode;
 
   @override
   String toString() {
-    return 'ApiConfiguration(useOfficial: $useOfficialApi, hasApiKey: ${apiKey != null}, '
-        'maxRetries: $maxRetries, timeout: ${timeout.inSeconds}s)';
+    return 'ApiConfiguration(providerId: ${providerId.storageValue}, hasApiKey: ${apiKey != null}, '
+        'maxRetries: $maxRetries, timeout: ${timeout.inSeconds}s, localServiceUrl: ${localServiceUrl ?? "default"})';
   }
 }

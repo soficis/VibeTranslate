@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"testing"
 	"translationfiestago/internal/data/repositories"
+	"translationfiestago/internal/domain/entities"
 	"translationfiestago/internal/domain/usecases"
 	"translationfiestago/internal/utils"
 )
@@ -23,6 +26,14 @@ func TestTranslation(t *testing.T) {
 	// Initialize repositories
 	settingsRepo := repositories.NewSettingsRepository("")
 	translationRepo := repositories.NewTranslationRepository()
+
+	_ = settingsRepo.SetProviderID(entities.ProviderLocal)
+	_ = os.Setenv("TF_LOCAL_FIXTURE", "1")
+	_ = os.Setenv("TF_LOCAL_AUTOSTART", "1")
+	if cwd, err := os.Getwd(); err == nil {
+		scriptPath := filepath.Clean(filepath.Join(cwd, "..", "..", "TranslationFiestaLocal", "local_service.py"))
+		_ = os.Setenv("TF_LOCAL_SCRIPT", scriptPath)
+	}
 
 	// Initialize use cases
 	translationUseCases := usecases.NewTranslationUseCases(translationRepo, settingsRepo)

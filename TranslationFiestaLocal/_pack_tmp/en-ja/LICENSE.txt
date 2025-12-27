@@ -1,0 +1,15 @@
+﻿This model artifact is derived from ElanMT and is licensed under CC BY-SA 4.0.
+
+Source models:
+- Mitsua/elan-mt-tiny-en-ja
+- Mitsua/elan-mt-tiny-ja-en
+
+License:
+- https://creativecommons.org/licenses/by-sa/4.0/
+
+Attribution:
+- ELAN MITSUA Project / Abstract Engine
+
+Notes:
+- This repository may be under a different license; the model artifacts remain under CC BY-SA 4.0.
+- CC BY-SA 4.0 is declared compatible with GPLv3 for adaptations (one-way compatibility).

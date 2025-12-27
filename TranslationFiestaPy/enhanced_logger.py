@@ -3,7 +3,6 @@
 enhanced_logger.py
 
 Enhanced logging system with structured data, levels, and file output.
-Following Clean Code principles and similar to Flutter's logging implementation.
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ from enum import Enum
 
 
 class LogLevel(Enum):
-    """Log levels following Clean Code naming conventions"""
+    """Log levels"""
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARN"
@@ -157,7 +156,8 @@ class StructuredLogger:
         use_official: bool,
         attempt: int,
         success: bool,
-        error: Optional[str] = None
+        error: Optional[str] = None,
+        provider_id: Optional[str] = None,
     ) -> None:
         """Log translation attempt with structured data"""
         extra = {
@@ -169,6 +169,8 @@ class StructuredLogger:
             "attempt": attempt,
             "success": success,
         }
+        if provider_id:
+            extra["provider_id"] = provider_id
 
         if error:
             extra["error"] = error

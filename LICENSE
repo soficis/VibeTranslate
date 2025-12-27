@@ -1,4 +1,4 @@
-# MIT License
+MIT License
 
 Copyright (c) 2025 VibeTranslate Project
 
@@ -19,40 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-## About This License
-
-This project, **VibeTranslate**, is released under the MIT License. This means:
-
-### What You Can Do
-- ✅ **Use** the software for any purpose, including commercial applications
-- ✅ **Modify** the source code to suit your needs
-- ✅ **Distribute** the software to others
-- ✅ **Sell** copies of the software or derivatives
-- ✅ **Sublicense** the software under different terms
-
-### What You Must Do
-- 📋 **Include** the original copyright notice and license text in all copies
-- 📋 **Include** the license text in any substantial portions of the software
-
-### What We Don't Provide
-- ❌ **No Warranty** - The software is provided "as is" without any guarantees
-- ❌ **No Support** - While we welcome contributions and bug reports, we don't guarantee support
-- ❌ **No Liability** - We are not responsible for any damages or issues caused by using this software
-
-### Additional Notes
-- This license applies to all implementations within the VibeTranslate project, including:
-  - TranslationFiesta.WinUI (Windows UI implementation)
-  - TranslationFiestaCSharp (C# implementation)
-  - TranslationFiestaFlutter (Flutter mobile app)
-  - TranslationFiestaFSharp (F# implementation)
-  - TranslationFiestaGo (Go implementation)
-  - TranslationFiestaPy (Python implementation)
-
-- The MIT License is one of the most permissive open-source licenses available
-- It allows for maximum freedom in how the software can be used and distributed
-- We chose this license to encourage widespread adoption and contribution to the project
-
-For more information about the MIT License, visit: https://opensource.org/licenses/MIT

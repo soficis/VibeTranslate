@@ -1,5 +1,3 @@
-/// Clean Code preferences repository implementation
-/// Following Single Responsibility and meaningful naming
 library;
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -133,6 +131,38 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   Future<Result<void>> setUseOfficialApiPreference(bool useOfficial) async {
     return setBoolPreference(
         AppConstants.useOfficialApiPreferenceKey, useOfficial,);
+  }
+
+  Future<Result<String?>> getProviderIdPreference() async {
+    return getStringPreference(AppConstants.providerIdPreferenceKey);
+  }
+
+  Future<Result<void>> setProviderIdPreference(String providerId) async {
+    return setStringPreference(AppConstants.providerIdPreferenceKey, providerId);
+  }
+
+  Future<Result<String?>> getLocalServiceUrlPreference() async {
+    return getStringPreference(AppConstants.localServiceUrlPreferenceKey);
+  }
+
+  Future<Result<void>> setLocalServiceUrlPreference(String url) async {
+    return setStringPreference(AppConstants.localServiceUrlPreferenceKey, url);
+  }
+
+  Future<Result<String?>> getLocalModelDirPreference() async {
+    return getStringPreference(AppConstants.localModelDirPreferenceKey);
+  }
+
+  Future<Result<void>> setLocalModelDirPreference(String path) async {
+    return setStringPreference(AppConstants.localModelDirPreferenceKey, path);
+  }
+
+  Future<Result<bool>> getLocalAutoStartPreference() async {
+    return getBoolPreference(AppConstants.localAutoStartPreferenceKey, defaultValue: true);
+  }
+
+  Future<Result<void>> setLocalAutoStartPreference(bool enabled) async {
+    return setBoolPreference(AppConstants.localAutoStartPreferenceKey, enabled);
   }
 }
 

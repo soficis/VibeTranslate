@@ -1,7 +1,6 @@
 import Foundation
 
 /// Represents the result of a translation operation
-/// Following Clean Code: meaningful names, immutable data structures
 public struct TranslationResult: Equatable, Codable {
     public let originalText: String
     public let translatedText: String
@@ -89,20 +88,54 @@ public enum Language: String, CaseIterable, Codable, Identifiable, Sendable {
 
 /// API providers for translation services
 public enum APIProvider: String, CaseIterable, Codable, Identifiable, Sendable {
+    case localOffline = "local"
     case googleUnofficialAPI = "google_unofficial"
-    case googleCloudAPI = "google_cloud"
+    case googleCloudAPI = "google_official"
     
     public var id: Self { self }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        switch raw {
+        case "local":
+            self = .localOffline
+        case "google_unofficial":
+            self = .googleUnofficialAPI
+        case "google_cloud", "google_official":
+            self = .googleCloudAPI
+        default:
+            self = .googleUnofficialAPI
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+
+    public var storageKey: String { rawValue }
+
+    public var legacyStorageKeys: [String] {
+        switch self {
+        case .googleCloudAPI:
+            return ["google_cloud"]
+        default:
+            return []
+        }
+    }
     
     public var displayName: String {
         switch self {
-        case .googleUnofficialAPI: return "Google Translate (Unofficial)"
-        case .googleCloudAPI: return "Google Cloud Translation API"
+        case .localOffline: return "Local (Offline)"
+        case .googleUnofficialAPI: return "Google Translate (Unofficial / Free)"
+        case .googleCloudAPI: return "Google Cloud Translate (Official)"
         }
     }
     
     public var requiresAPIKey: Bool {
         switch self {
+        case .localOffline: return false
         case .googleUnofficialAPI: return false
         case .googleCloudAPI: return true
         }
@@ -110,6 +143,7 @@ public enum APIProvider: String, CaseIterable, Codable, Identifiable, Sendable {
     
     public var hasCostTracking: Bool {
         switch self {
+        case .localOffline: return false
         case .googleUnofficialAPI: return false
         case .googleCloudAPI: return true
         }

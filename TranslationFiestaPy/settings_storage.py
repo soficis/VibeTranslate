@@ -21,6 +21,11 @@ from exceptions import (
 )
 from result import Result, Success, Failure
 from enhanced_logger import get_logger
+from provider_ids import (
+    PROVIDER_GOOGLE_OFFICIAL,
+    PROVIDER_GOOGLE_UNOFFICIAL,
+    normalize_provider_id,
+)
 
 
 class SettingsStorage:
@@ -51,6 +56,11 @@ class SettingsStorage:
             "theme": "light",
             "window_geometry": "820x640",
             "use_official_api": False,
+            "provider_id": PROVIDER_GOOGLE_UNOFFICIAL,
+            "cost_tracking_enabled": False,
+            "local_service_url": "",
+            "local_model_dir": "",
+            "local_autostart": True,
             "max_retries": 4,
             "timeout_seconds": 15,
             "auto_save_results": False,
@@ -317,11 +327,30 @@ class SettingsStorage:
 
     def get_use_official_api(self) -> bool:
         """Get official API usage setting."""
+        provider_id = self.get("provider_id", None)
+        if provider_id:
+            return normalize_provider_id(provider_id) == PROVIDER_GOOGLE_OFFICIAL
         return self.get("use_official_api", False)
 
     def set_use_official_api(self, use_official: bool) -> bool:
         """Set official API usage setting."""
+        provider_id = PROVIDER_GOOGLE_OFFICIAL if use_official else PROVIDER_GOOGLE_UNOFFICIAL
+        self._settings["provider_id"] = provider_id
         return self.set("use_official_api", use_official)
+
+    def get_provider_id(self) -> str:
+        """Get provider selection in canonical form."""
+        provider_id = self.get("provider_id", None)
+        if provider_id:
+            return normalize_provider_id(provider_id)
+        return PROVIDER_GOOGLE_OFFICIAL if self.get_use_official_api() else PROVIDER_GOOGLE_UNOFFICIAL
+
+    def set_provider_id(self, provider_id: str) -> bool:
+        """Set provider selection and keep legacy flag in sync."""
+        normalized = normalize_provider_id(provider_id)
+        self._settings["provider_id"] = normalized
+        self._settings["use_official_api"] = normalized == PROVIDER_GOOGLE_OFFICIAL
+        return self._save_settings()
 
     def add_recent_file(self, file_path: str, max_recent: int = 10) -> bool:
         """Add a file to recent files list."""
@@ -339,6 +368,30 @@ class SettingsStorage:
     def clear_recent_files(self) -> bool:
         """Clear the recent files list."""
         return self.set("recent_files", [])
+
+    def get_local_service_url(self) -> str:
+        return self.get("local_service_url", "")
+
+    def set_local_service_url(self, url: str) -> bool:
+        return self.set("local_service_url", url)
+
+    def get_local_model_dir(self) -> str:
+        return self.get("local_model_dir", "")
+
+    def set_local_model_dir(self, path: str) -> bool:
+        return self.set("local_model_dir", path)
+
+    def get_local_autostart(self) -> bool:
+        return bool(self.get("local_autostart", True))
+
+    def set_local_autostart(self, enabled: bool) -> bool:
+        return self.set("local_autostart", bool(enabled))
+
+    def get_cost_tracking_enabled(self) -> bool:
+        return bool(self.get("cost_tracking_enabled", False))
+
+    def set_cost_tracking_enabled(self, enabled: bool) -> bool:
+        return self.set("cost_tracking_enabled", bool(enabled))
 
 
 # Global instance for easy access

@@ -1,13 +1,12 @@
-/// Clean Code logging system with thread-safe operations
-/// Following Single Responsibility principle and meaningful naming
 library;
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 
-/// Log levels following Clean Code naming conventions
+/// Log levels.
 enum LogLevel {
   debug('DEBUG'),
   info('INFO'),
@@ -83,9 +82,17 @@ class Logger {
     _logController.add(logEntry);
 
     if (!_isInitialized) {
-      // Fallback to console if not initialized
-      // ignore: avoid_print
-      print(logEntry.trim());
+      // Fallback to console if not initialized (tests). Avoid crashing on non-ASCII output on Windows.
+      try {
+        // ignore: avoid_print
+        print(logEntry.trim());
+      } catch (_) {
+        try {
+          stdout.add(utf8.encode(logEntry));
+        } catch (_) {
+          // Swallow logging failures (never crash app/tests).
+        }
+      }
       return;
     }
 

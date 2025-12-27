@@ -1,7 +1,6 @@
 import Foundation
 
 /// Use case for performing back-translations
-/// Following Clean Code: single responsibility principle
 public final class BackTranslationUseCase {
     private let translationRepository: TranslationRepository
     private let costTrackingRepository: CostTrackingRepository
@@ -364,6 +363,9 @@ public enum TranslationError: LocalizedError {
     case invalidAPIKey(APIProvider)
     case networkError(String)
     case quotaExceeded
+    case rateLimited
+    case blocked
+    case invalidResponse(String)
     case invalidInput(String)
     case notImplemented(String)
     case fileNotSupported(String)
@@ -377,6 +379,12 @@ public enum TranslationError: LocalizedError {
             return "Network error: \(message)"
         case .quotaExceeded:
             return "API quota exceeded"
+        case .rateLimited:
+            return "Provider rate limited"
+        case .blocked:
+            return "Provider blocked or captcha detected"
+        case .invalidResponse(let message):
+            return "Invalid response: \(message)"
         case .invalidInput(let message):
             return "Invalid input: \(message)"
         case .notImplemented(let feature):

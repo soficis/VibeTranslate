@@ -43,5 +43,19 @@ namespace TranslationFiesta.WinUI
                 return null;
             }
         }
+
+        public static void ClearApiKey()
+        {
+            try
+            {
+                if (File.Exists(StorePath))
+                {
+                    File.Delete(StorePath);
+                }
+            }
+            catch
+            {
+            }
+        }
     }
 }

@@ -3,15 +3,16 @@ import Crypto
 import Logging
 
 /// Translation service implementation
-/// Following Clean Code: meaningful names, single responsibility
 public final class TranslationService: TranslationRepository {
     private let logger = Logger(label: "TranslationService")
     private let networkService: NetworkService
     private let secureStorage: SecureStorageRepository
+    private let localSettingsStore: LocalModelSettingsStore
     
     public init(networkService: NetworkService, secureStorage: SecureStorageRepository) {
         self.networkService = networkService
         self.secureStorage = secureStorage
+        self.localSettingsStore = LocalModelSettingsStore()
     }
     
     public func translate(
@@ -31,6 +32,14 @@ public final class TranslationService: TranslationRepository {
         let cost: TranslationCost?
         
         switch apiProvider {
+        case .localOffline:
+            translatedText = try await makeLocalClient().translate(
+                text: text,
+                source: sourceLanguage.rawValue,
+                target: targetLanguage.rawValue
+            )
+            cost = nil
+
         case .googleUnofficialAPI:
             translatedText = try await translateWithUnofficialAPI(
                 text: text,
@@ -64,6 +73,12 @@ public final class TranslationService: TranslationRepository {
             apiProvider: apiProvider,
             cost: cost
         )
+    }
+
+    private func makeLocalClient() -> LocalServiceClient {
+        let settings = localSettingsStore.load()
+        let config = LocalServiceConfiguration.fromSettings(settings)
+        return LocalServiceClient(session: URLSession.shared, configuration: config)
     }
     
     public func backTranslate(
@@ -138,18 +153,88 @@ public final class TranslationService: TranslationRepository {
         guard let requestURL = components.url else {
             throw TranslationError.invalidInput("Failed to create request URL")
         }
-        
-        let response = try await networkService.performRequest(url: requestURL)
-        
-        // Parse the unofficial API response
-        guard let jsonArray = try JSONSerialization.jsonObject(with: response) as? [Any],
-              let translationsArray = jsonArray.first as? [Any],
-              let firstTranslation = translationsArray.first as? [Any],
-              let translatedText = firstTranslation.first as? String else {
-            throw TranslationError.invalidInput("Failed to parse translation response")
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "GET"
+        request.setValue("application/json,text/plain,*/*", forHTTPHeaderField: "Accept")
+        if let userAgent = ProcessInfo.processInfo.environment["TF_UNOFFICIAL_USER_AGENT"],
+           !userAgent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         }
-        
-        return translatedText
+
+        let maxAttempts = 3
+        var lastError: Error = TranslationError.networkError("Unknown error")
+
+        for attempt in 1...maxAttempts {
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse else {
+                    throw TranslationError.networkError("Invalid response type")
+                }
+
+                if http.statusCode == 429 {
+                    if attempt < maxAttempts {
+                        let delay = backoffDelay(attempt: attempt)
+                        try await Task.sleep(nanoseconds: delay)
+                        continue
+                    }
+                    throw TranslationError.rateLimited
+                }
+
+                if http.statusCode == 403 {
+                    throw TranslationError.blocked
+                }
+
+                guard 200...299 ~= http.statusCode else {
+                    throw TranslationError.invalidResponse("HTTP \(http.statusCode)")
+                }
+
+                guard let bodyString = String(data: data, encoding: .utf8), !bodyString.isEmpty else {
+                    throw TranslationError.invalidResponse("Empty response body")
+                }
+
+                let lowered = bodyString.lowercased()
+                if lowered.contains("<html") || lowered.contains("captcha") {
+                    throw TranslationError.blocked
+                }
+
+                // Parse the unofficial API response
+                guard let jsonArray = try JSONSerialization.jsonObject(with: data) as? [Any],
+                      let translationsArray = jsonArray.first as? [Any] else {
+                    throw TranslationError.invalidResponse("Unexpected JSON root")
+                }
+
+                var output = ""
+                for item in translationsArray {
+                    if let segment = item as? [Any],
+                       let part = segment.first as? String {
+                        output.append(part)
+                    }
+                }
+
+                if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    throw TranslationError.invalidResponse("No translation segments")
+                }
+
+                return output
+            } catch {
+                lastError = error
+                if attempt < maxAttempts, (error is TranslationError) {
+                    let delay = backoffDelay(attempt: attempt)
+                    try await Task.sleep(nanoseconds: delay)
+                    continue
+                }
+                throw error
+            }
+        }
+
+        throw lastError
+    }
+
+    private func backoffDelay(attempt: Int) -> UInt64 {
+        let baseMs = min(2000.0, 200.0 * pow(2.0, Double(attempt - 1)))
+        let jitter = Double.random(in: 0...200)
+        return UInt64((baseMs + jitter) * 1_000_000)
     }
     
     private func translateWithOfficialAPI(

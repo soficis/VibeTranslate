@@ -1,11 +1,10 @@
-/// Clean Code control panel widget
-/// Following Single Responsibility and meaningful naming
 library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../domain/entities/output_format.dart';
+import '../../domain/entities/translation.dart';
 import '../providers/translation_provider.dart';
 
 /// Control panel widget for translation settings and actions
@@ -19,11 +18,15 @@ class ControlPanel extends StatefulWidget {
 
 class _ControlPanelState extends State<ControlPanel> {
   late TextEditingController _apiKeyController;
+  late TextEditingController _localUrlController;
+  late TextEditingController _localDirController;
 
   @override
   void initState() {
     super.initState();
     _apiKeyController = TextEditingController();
+    _localUrlController = TextEditingController();
+    _localDirController = TextEditingController();
   }
 
   @override
@@ -31,11 +34,15 @@ class _ControlPanelState extends State<ControlPanel> {
     super.didChangeDependencies();
     final provider = context.read<TranslationProvider>();
     _apiKeyController.text = provider.apiKey;
+    _localUrlController.text = provider.localServiceUrl;
+    _localDirController.text = provider.localModelDir;
   }
 
   @override
   void dispose() {
     _apiKeyController.dispose();
+    _localUrlController.dispose();
+    _localDirController.dispose();
     super.dispose();
   }
 
@@ -52,19 +59,34 @@ class _ControlPanelState extends State<ControlPanel> {
             // API Settings Row
             Row(
               children: [
-                // Official API Toggle
+                // Provider selector
                 Expanded(
-                  child: CheckboxListTile(
-                    title: const Text('Use Official API'),
-                    subtitle: const Text('Requires Google Cloud API key'),
-                    value: provider.useOfficialApi,
+                  child: DropdownButtonFormField<TranslationProviderId>(
+                    initialValue: provider.providerId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Provider',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: TranslationProviderId.values.map((providerId) {
+                      return DropdownMenuItem(
+                        value: providerId,
+                        child: Text(
+                          providerId.displayName,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
                     onChanged: provider.isLoading
                         ? null
-                        : (value) => provider.updateApiConfiguration(
-                              value ?? false,
-                              provider.apiKey,
-                            ),
-                    dense: true,
+                        : (value) {
+                            if (value != null) {
+                              provider.updateApiConfiguration(
+                                value,
+                                provider.apiKey,
+                              );
+                            }
+                          },
                   ),
                 ),
 
@@ -75,11 +97,10 @@ class _ControlPanelState extends State<ControlPanel> {
                   child: TextField(
                     controller: _apiKeyController,
                     onChanged: (value) => provider.updateApiConfiguration(
-                      provider.useOfficialApi,
-                      value,
-                    ),
+                        provider.providerId, value),
                     obscureText: true,
-                    enabled: provider.useOfficialApi && !provider.isLoading,
+                    enabled:
+                        provider.providerId.isOfficial && !provider.isLoading,
                     decoration: const InputDecoration(
                       labelText: 'API Key',
                       hintText: 'Enter Google Cloud API key',
@@ -91,6 +112,102 @@ class _ControlPanelState extends State<ControlPanel> {
             ),
 
             const SizedBox(height: 16),
+
+            if (provider.providerId == TranslationProviderId.local) ...[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Local Model Manager',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _localUrlController,
+                    decoration: const InputDecoration(
+                      labelText: 'Service URL',
+                      hintText: 'http://127.0.0.1:5055',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _localDirController,
+                    decoration: const InputDecoration(
+                      labelText: 'Model Directory',
+                      hintText: 'Optional override path',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  SwitchListTile.adaptive(
+                    title: const Text('Auto-start local service'),
+                    value: provider.localAutoStart,
+                    onChanged: provider.isLoading
+                        ? null
+                        : (value) async {
+                            await provider.updateLocalSettings(
+                              serviceUrl: _localUrlController.text,
+                              modelDir: _localDirController.text,
+                              autoStart: value,
+                            );
+                          },
+                  ),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: provider.isLoading
+                            ? null
+                            : () async {
+                                await provider.updateLocalSettings(
+                                  serviceUrl: _localUrlController.text,
+                                  modelDir: _localDirController.text,
+                                  autoStart: provider.localAutoStart,
+                                );
+                                await provider.refreshLocalModels();
+                              },
+                        child: const Text('Save'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: provider.isLoading
+                            ? null
+                            : provider.installDefaultLocalModels,
+                        child: const Text('Install Default'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: provider.isLoading
+                            ? null
+                            : provider.refreshLocalModels,
+                        child: const Text('Refresh'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: provider.isLoading
+                            ? null
+                            : provider.verifyLocalModels,
+                        child: const Text('Verify'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: provider.isLoading
+                            ? null
+                            : provider.removeLocalModels,
+                        child: const Text('Remove'),
+                      ),
+                    ],
+                  ),
+                  if (provider.localModelStatus.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      provider.localModelStatus,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Format Selection
             Row(

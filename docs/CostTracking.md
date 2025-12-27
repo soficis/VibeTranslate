@@ -32,7 +32,10 @@ The Cost Dashboard provides a detailed view of your spending, including:
 
 ### Enabling Cost Tracking
 
-Cost tracking is enabled by default when you use the official Google Cloud Translation API. To use this feature, you will need to provide your Google Cloud API key in the application's settings.
+Cost tracking is **opt-in** and only applies to the **official** Google Cloud provider.
+
+By default, cost tracking is disabled and cost UI is hidden. Enable it in the app Settings (where available) or set:
+- `TF_COST_TRACKING_ENABLED=1`
 
 ### Setting a Budget
 

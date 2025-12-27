@@ -1,10 +1,9 @@
-/// Clean Code status bar widget
-/// Following Single Responsibility and meaningful naming
 library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/translation_provider.dart';
+import '../../domain/entities/translation.dart';
 
 /// Status bar widget for displaying application status
 /// Single Responsibility: Display current application status and progress
@@ -49,7 +48,7 @@ class StatusBar extends StatelessWidget {
           // API status indicator
           const SizedBox(width: 12),
           _ApiStatusIndicator(
-            useOfficial: provider.useOfficialApi,
+            providerId: provider.providerId,
             hasApiKey: provider.apiKey.isNotEmpty,
           ),
         ],
@@ -60,11 +59,11 @@ class StatusBar extends StatelessWidget {
 
 /// API status indicator widget
 class _ApiStatusIndicator extends StatelessWidget {
-  final bool useOfficial;
+  final TranslationProviderId providerId;
   final bool hasApiKey;
 
   const _ApiStatusIndicator({
-    required this.useOfficial,
+    required this.providerId,
     required this.hasApiKey,
   });
 
@@ -94,20 +93,26 @@ class _ApiStatusIndicator extends StatelessWidget {
   }
 
   Color _getStatusColor() {
-    if (!useOfficial) return Colors.green;
-    if (hasApiKey) return Colors.green;
-    return Colors.orange;
+    if (providerId == TranslationProviderId.googleOfficial && !hasApiKey) {
+      return Colors.orange;
+    }
+    return Colors.green;
   }
 
   IconData _getStatusIcon() {
-    if (!useOfficial) return Icons.check_circle;
-    if (hasApiKey) return Icons.check_circle;
-    return Icons.warning;
+    if (providerId == TranslationProviderId.googleOfficial && !hasApiKey) {
+      return Icons.warning;
+    }
+    return Icons.check_circle;
   }
 
   String _getStatusText() {
-    if (!useOfficial) return 'Unofficial API';
-    if (hasApiKey) return 'Official API';
-    return 'API Key Required';
+    if (providerId == TranslationProviderId.local) {
+      return 'Local (Offline)';
+    }
+    if (providerId == TranslationProviderId.googleOfficial) {
+      return hasApiKey ? 'Official API' : 'API Key Required';
+    }
+    return 'Unofficial API';
   }
 }

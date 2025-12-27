@@ -3,7 +3,10 @@
 require 'sinatra/base'
 require 'json'
 require 'securerandom'
+require 'net/http'
+require 'uri'
 require_relative '../infrastructure/dependency_container'
+require_relative '../infrastructure/settings_store'
 
 module TranslationFiesta
   module Web
@@ -28,6 +31,9 @@ module TranslationFiesta
         super(app)
         @container = container
         @results = {}
+        @settings_store = Infrastructure::SettingsStore.new
+        stored = @settings_store.load
+        @settings_store.apply_to_env(stored)
       end
 
       # Simple auth and rate limiting for /api/* endpoints
@@ -67,6 +73,35 @@ module TranslationFiesta
 
         def translate(text:, api_type: :unofficial)
           container.translate_use_case.execute(text, api_type)
+        end
+
+        def local_settings_store
+          @settings_store
+        end
+
+        def local_settings_payload
+          local_settings_store.load
+        end
+
+        def apply_local_settings(settings)
+          local_settings_store.apply_to_env(settings)
+        end
+
+        def local_service_request(method, path)
+          base = ENV.fetch('TF_LOCAL_URL', 'http://127.0.0.1:5055')
+          uri = URI.join(base, path)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = uri.scheme == 'https'
+          request = case method
+                    when :get then Net::HTTP::Get.new(uri.request_uri)
+                    else
+                      req = Net::HTTP::Post.new(uri.request_uri)
+                      req['Content-Type'] = 'application/json'
+                      req.body = JSON.generate({})
+                      req
+                    end
+          response = http.request(request)
+          [response.code.to_i, response.body]
         end
       end
 
@@ -154,22 +189,61 @@ module TranslationFiesta
 
       get '/api/analytics' do
         # Mock analytics data - in real implementation, this would come from the database
-        json({
-          cost_tracking: {
-            monthly_cost: 2.45,
-            budget_remaining: 7.55,
-            budget_usage: 24.5,
-            total_characters: 125750,
-            unofficial_usage: 143,
-            official_cost: 2.45
-          },
+        payload = {
           translation_memory: {
             cache_entries: 78,
             hit_rate: 32.0,
             savings: 1.23,
             cache_size_kb: 245
           }
-        })
+        }
+        if ENV['TF_COST_TRACKING_ENABLED'] == '1'
+          payload[:cost_tracking] = {
+            monthly_cost: 2.45,
+            budget_remaining: 7.55,
+            budget_usage: 24.5,
+            total_characters: 125750,
+            unofficial_usage: 143,
+            official_cost: 2.45
+          }
+        end
+        json(payload)
+      end
+
+      get '/api/local/settings' do
+        json(local_settings_payload)
+      end
+
+      post '/api/local/settings' do
+        payload = JSON.parse(request.body.read) rescue {}
+        saved = local_settings_store.save(
+          'local_service_url' => payload['local_service_url'].to_s,
+          'local_model_dir' => payload['local_model_dir'].to_s,
+          'local_auto_start' => payload.fetch('local_auto_start', true),
+          'cost_tracking_enabled' => payload.fetch('cost_tracking_enabled', false)
+        )
+        apply_local_settings(saved)
+        json(saved)
+      end
+
+      get '/api/local/models' do
+        status, body = local_service_request(:get, '/models')
+        json({ status: status, body: body }, status: status == 200 ? 200 : 502)
+      end
+
+      post '/api/local/models/verify' do
+        status, body = local_service_request(:post, '/models/verify')
+        json({ status: status, body: body }, status: status == 200 ? 200 : 502)
+      end
+
+      post '/api/local/models/remove' do
+        status, body = local_service_request(:post, '/models/remove')
+        json({ status: status, body: body }, status: status == 200 ? 200 : 502)
+      end
+
+      post '/api/local/models/install' do
+        status, body = local_service_request(:post, '/models/install', {})
+        json({ status: status, body: body }, status: status == 200 ? 200 : 502)
       end
 
       get '/api/export/test-docx' do
@@ -209,7 +283,7 @@ module TranslationFiesta
           bleu_score: r.bleu_score,
           quality_rating: r.quality_rating,
           api_type: r.api_type,
-          cost: r.cost,
+          cost: ENV['TF_COST_TRACKING_ENABLED'] == '1' ? r.cost : nil,
           timestamp: r.timestamp
         }
       end

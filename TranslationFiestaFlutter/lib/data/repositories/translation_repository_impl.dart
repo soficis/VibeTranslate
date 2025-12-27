@@ -1,5 +1,3 @@
-/// Clean Code repository implementations with Dependency Inversion
-/// Following Single Responsibility and meaningful naming
 library;
 
 import 'dart:convert';
@@ -18,6 +16,7 @@ import '../services/retry_service.dart';
 class TranslationRepositoryImpl implements TranslationRepository {
   final UnofficialGoogleTranslateService _unofficialService;
   final OfficialGoogleTranslateService _officialService;
+  final LocalTranslationService _localService;
   final MockTranslationService _mockService;
   final RetryService _retryService;
   final http.Client _httpClient;
@@ -26,6 +25,7 @@ class TranslationRepositoryImpl implements TranslationRepository {
   TranslationRepositoryImpl(this._httpClient)
       : _unofficialService = UnofficialGoogleTranslateService(_httpClient),
         _officialService = OfficialGoogleTranslateService(_httpClient),
+        _localService = LocalTranslationService(_httpClient),
         _mockService = MockTranslationService(_httpClient),
         _retryService = RetryService();
 
@@ -55,8 +55,7 @@ class TranslationRepositoryImpl implements TranslationRepository {
     ApiConfiguration config,
   ) async {
     logger.info('Starting translation with config: $config');
-    final service =
-        config.useOfficialApi ? _officialService : _unofficialService;
+    final service = _selectService(config.providerId);
     logger.info('Using service: ${service.serviceName}');
 
     final result = await service.translate(request, config);
@@ -68,11 +67,12 @@ class TranslationRepositoryImpl implements TranslationRepository {
 
     // If unofficial API fails and we have an API key, try official API as fallback
     if (result.isLeft &&
-        !config.useOfficialApi &&
+        config.providerId == TranslationProviderId.googleUnofficial &&
         config.apiKey != null &&
         config.apiKey!.isNotEmpty) {
       logger.info('Unofficial API failed, trying official API as fallback');
-      final fallbackConfig = config.copyWith(useOfficialApi: true);
+      final fallbackConfig =
+          config.copyWith(providerId: TranslationProviderId.googleOfficial);
       final officialResult =
           await _officialService.translate(request, fallbackConfig);
 
@@ -85,19 +85,33 @@ class TranslationRepositoryImpl implements TranslationRepository {
     }
 
     // If unofficial API fails and we don't have an API key, use mock service
-    if (result.isLeft && !config.useOfficialApi) {
+    if (result.isLeft &&
+        config.providerId == TranslationProviderId.googleUnofficial) {
       logger.info(
-          'Unofficial API failed and no API key available, using mock service for testing');
+        'Unofficial API failed and no API key available, using mock service for testing',
+      );
       return _mockService.translate(request, config);
     }
 
     // If we're already using official API and it fails, try mock service
-    if (result.isLeft && config.useOfficialApi) {
+    if (result.isLeft &&
+        config.providerId == TranslationProviderId.googleOfficial) {
       logger.info('Official API failed, using mock service for testing');
       return _mockService.translate(request, config);
     }
 
     return result;
+  }
+
+  BaseTranslationService _selectService(TranslationProviderId providerId) {
+    switch (providerId) {
+      case TranslationProviderId.local:
+        return _localService;
+      case TranslationProviderId.googleOfficial:
+        return _officialService;
+      case TranslationProviderId.googleUnofficial:
+        return _unofficialService;
+    }
   }
 
   @override
@@ -168,7 +182,8 @@ class TranslationRepositoryImpl implements TranslationRepository {
       },
     );
     logger.info(
-        'Repository: retry service result: ${result.isRight ? "Success" : "Failure"}');
+      'Repository: retry service result: ${result.isRight ? "Success" : "Failure"}',
+    );
     return result;
   }
 
@@ -181,7 +196,7 @@ class TranslationRepositoryImpl implements TranslationRepository {
       return Left(AppFailure(message: 'Text is empty'));
     }
 
-    if (!config.useOfficialApi ||
+    if (config.providerId != TranslationProviderId.googleOfficial ||
         config.apiKey == null ||
         config.apiKey!.isEmpty) {
       return Left(
@@ -232,6 +247,22 @@ class TranslationRepositoryImpl implements TranslationRepository {
     } catch (e) {
       return Left(NetworkFailure(message: 'Detection error: $e'));
     }
+  }
+
+  Future<Result<String>> getLocalModelsStatus(ApiConfiguration config) async {
+    return _localService.getModelsStatus(config);
+  }
+
+  Future<Result<String>> verifyLocalModels(ApiConfiguration config) async {
+    return _localService.verifyModels(config);
+  }
+
+  Future<Result<String>> removeLocalModels(ApiConfiguration config) async {
+    return _localService.removeModels(config);
+  }
+
+  Future<Result<String>> installDefaultLocalModels(ApiConfiguration config) async {
+    return _localService.installDefaultModels(config);
   }
 }
 

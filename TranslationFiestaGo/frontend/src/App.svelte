@@ -2,71 +2,369 @@
   import { onMount } from 'svelte';
   import { BackTranslate } from '../wailsjs/go/main/App.js';
 
+  const providers = [
+    { id: 'local', label: 'Local (Offline)' },
+    { id: 'google_unofficial', label: 'Google Translate (Unofficial / Free)' },
+    { id: 'google_official', label: 'Google Cloud Translate (Official)' }
+  ];
+
   let inputText = '';
   let resultText = '';
   let intermediateText = '';
-  function translate() {
-    BackTranslate(inputText).then(result => {
+  let providerId = 'google_unofficial';
+  let apiKey = '';
+  let apiKeySaved = false;
+  let status = '';
+  let localServiceUrl = '';
+  let localModelDir = '';
+  let localAutoStart = true;
+  let localStatus = '';
+
+  onMount(async () => {
+    if (window?.go?.main?.App?.GetProviderID) {
+      providerId = await window.go.main.App.GetProviderID();
+    }
+    if (window?.go?.main?.App?.GetHasAPIKey) {
+      apiKeySaved = await window.go.main.App.GetHasAPIKey();
+    }
+    if (window?.go?.main?.App?.GetLocalServiceURL) {
+      localServiceUrl = await window.go.main.App.GetLocalServiceURL();
+    }
+    if (window?.go?.main?.App?.GetLocalModelDir) {
+      localModelDir = await window.go.main.App.GetLocalModelDir();
+    }
+    if (window?.go?.main?.App?.GetLocalAutoStart) {
+      localAutoStart = await window.go.main.App.GetLocalAutoStart();
+    }
+  });
+
+  async function updateProvider(event) {
+    providerId = event.target.value;
+    status = '';
+    if (window?.go?.main?.App?.SetProviderID) {
+      await window.go.main.App.SetProviderID(providerId);
+    }
+  }
+
+  async function saveApiKey() {
+    if (!window?.go?.main?.App?.SetAPIKey) {
+      return;
+    }
+    await window.go.main.App.SetAPIKey(apiKey);
+    apiKey = '';
+    if (window?.go?.main?.App?.GetHasAPIKey) {
+      apiKeySaved = await window.go.main.App.GetHasAPIKey();
+    }
+  }
+
+  async function clearApiKey() {
+    if (!window?.go?.main?.App?.SetAPIKey) {
+      return;
+    }
+    await window.go.main.App.SetAPIKey('');
+    apiKey = '';
+    apiKeySaved = false;
+  }
+
+  async function translate() {
+    status = '';
+    try {
+      const result = await BackTranslate(inputText);
       resultText = result.result;
       intermediateText = result.intermediate;
-    });
+    } catch (err) {
+      status = err?.message || 'Translation failed';
+    }
+  }
+
+  async function saveLocalSettings() {
+    if (window?.go?.main?.App?.SetLocalServiceURL) {
+      await window.go.main.App.SetLocalServiceURL(localServiceUrl);
+    }
+    if (window?.go?.main?.App?.SetLocalModelDir) {
+      await window.go.main.App.SetLocalModelDir(localModelDir);
+    }
+    if (window?.go?.main?.App?.SetLocalAutoStart) {
+      await window.go.main.App.SetLocalAutoStart(localAutoStart);
+    }
+    localStatus = 'Settings saved.';
+  }
+
+  async function refreshLocalStatus() {
+    localStatus = '';
+    try {
+      localStatus = await window.go.main.App.GetLocalModelsStatus();
+    } catch (err) {
+      localStatus = err?.message || 'Failed to fetch status';
+    }
+  }
+
+  async function verifyLocalModels() {
+    localStatus = '';
+    try {
+      localStatus = await window.go.main.App.VerifyLocalModels();
+    } catch (err) {
+      localStatus = err?.message || 'Verification failed';
+    }
+  }
+
+  async function removeLocalModels() {
+    localStatus = '';
+    try {
+      localStatus = await window.go.main.App.RemoveLocalModels();
+    } catch (err) {
+      localStatus = err?.message || 'Remove failed';
+    }
+  }
+
+  async function installDefaultLocalModels() {
+    localStatus = '';
+    try {
+      localStatus = await window.go.main.App.InstallDefaultLocalModels();
+    } catch (err) {
+      localStatus = err?.message || 'Install failed';
+    }
   }
 </script>
 
 <main>
-  <h1>TranslationFiestaGo</h1>
-  <div class="input-box">
-    <textarea bind:value={inputText} placeholder="Enter English text to translate..."></textarea>
-    <button class="btn" on:click={translate}>Backtranslate</button>
-  </div>
-  <div class="result-box">
-    <h2>Intermediate (Japanese)</h2>
-    <p>{intermediateText}</p>
-  </div>
-  <div class="result-box">
-    <h2>Result (English)</h2>
-    <p>{resultText}</p>
-  </div>
+  <header class="header">
+    <div>
+      <h1>TranslationFiestaGo</h1>
+      <p class="subtitle">Backtranslation EN->JA->EN</p>
+    </div>
+    <div class="controls">
+      <label for="provider">Provider</label>
+      <select id="provider" bind:value={providerId} on:change={updateProvider}>
+        {#each providers as provider}
+          <option value={provider.id}>{provider.label}</option>
+        {/each}
+      </select>
+    </div>
+  </header>
+
+  {#if providerId === 'google_official'}
+    <section class="panel">
+      <div class="panel-row">
+        <div>
+          <label for="api-key">API key</label>
+          <input
+            id="api-key"
+            type="password"
+            bind:value={apiKey}
+            placeholder={apiKeySaved ? 'API key stored' : 'Enter API key'}
+          />
+          <p class="hint">Saved: {apiKeySaved ? 'yes' : 'no'}</p>
+        </div>
+        <div class="actions">
+          <button class="btn secondary" on:click={saveApiKey}>Save</button>
+          <button class="btn ghost" on:click={clearApiKey}>Clear</button>
+        </div>
+      </div>
+    </section>
+  {/if}
+
+  {#if providerId === 'local'}
+    <section class="panel">
+      <h2>Local Model Manager</h2>
+      <div class="panel-row">
+        <div class="stack">
+          <label for="local-url">Service URL</label>
+          <input id="local-url" type="text" bind:value={localServiceUrl} placeholder="http://127.0.0.1:5055" />
+          <label for="local-dir">Model Directory</label>
+          <input id="local-dir" type="text" bind:value={localModelDir} placeholder="Optional override path" />
+          <label class="inline">
+            <input type="checkbox" bind:checked={localAutoStart} />
+            Auto-start local service
+          </label>
+        </div>
+        <div class="actions vertical">
+          <button class="btn secondary" on:click={saveLocalSettings}>Save</button>
+          <button class="btn secondary" on:click={installDefaultLocalModels}>Install Default</button>
+          <button class="btn ghost" on:click={refreshLocalStatus}>Refresh</button>
+          <button class="btn ghost" on:click={verifyLocalModels}>Verify</button>
+          <button class="btn ghost" on:click={removeLocalModels}>Remove</button>
+        </div>
+      </div>
+      {#if localStatus}
+        <pre class="status-block">{localStatus}</pre>
+      {/if}
+    </section>
+  {/if}
+
+  <section class="panel">
+    <label for="input-text">Input</label>
+    <textarea id="input-text" bind:value={inputText} placeholder="Enter text to backtranslate..."></textarea>
+    <div class="actions">
+      <button class="btn primary" on:click={translate}>Backtranslate</button>
+      {#if status}
+        <span class="status">{status}</span>
+      {/if}
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="panel">
+      <h2>Intermediate (JA)</h2>
+      <p class="output">{intermediateText}</p>
+    </div>
+    <div class="panel">
+      <h2>Result (EN)</h2>
+      <p class="output">{resultText}</p>
+    </div>
+  </section>
 </main>
 
 <style>
   main {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    gap: 1.5rem;
+    max-width: 960px;
+    margin: 0 auto;
     padding: 2rem;
   }
 
-  .input-box {
+  h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+  }
+
+  h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+  }
+
+  .subtitle {
+    margin: 0.25rem 0 0;
+    opacity: 0.7;
+  }
+
+  .header {
     display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 600px;
-    margin-bottom: 2rem;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  select,
+  input,
+  textarea {
+    background-color: #111826;
+    color: #f8fafc;
+    border: 1px solid #2b3546;
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.95rem;
   }
 
   textarea {
     width: 100%;
-    height: 150px;
-    padding: 0.5rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    margin-bottom: 1rem;
+    min-height: 160px;
+    resize: vertical;
+  }
+
+  .panel {
+    background: rgba(17, 24, 38, 0.7);
+    border: 1px solid #2b3546;
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+
+  .panel-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  .actions.vertical {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-width: 260px;
+  }
+
+  .inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #cbd5f5;
+  }
+
+  .status-block {
+    margin-top: 0.75rem;
+    white-space: pre-wrap;
+    background: #0f172a;
+    border: 1px solid #1f2a44;
+    border-radius: 8px;
+    padding: 0.75rem;
   }
 
   .btn {
-    padding: 0.5rem 1rem;
     border: none;
-    border-radius: 4px;
-    background-color: #007bff;
-    color: white;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-weight: 600;
     cursor: pointer;
   }
 
-  .result-box {
-    width: 100%;
-    max-width: 600px;
-    margin-bottom: 2rem;
+  .btn.primary {
+    background: #3b82f6;
+    color: #0b1120;
   }
 
+  .btn.secondary {
+    background: #1e293b;
+    color: #f8fafc;
+  }
+
+  .btn.ghost {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #2b3546;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .output {
+    min-height: 80px;
+    white-space: pre-wrap;
+    margin: 0;
+  }
+
+  .status {
+    color: #fbbf24;
+  }
+
+  .hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    color: #94a3b8;
+  }
 </style>

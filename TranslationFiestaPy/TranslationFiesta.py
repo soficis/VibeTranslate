@@ -17,6 +17,7 @@ import tkinter as tk
 from tkinter import messagebox, scrolledtext, filedialog
 from tkinter import ttk
 import requests
+import json
 import threading
 import sys
 import os
@@ -35,10 +36,18 @@ from enhanced_logger import get_logger
 from file_utils import load_text_from_path
 from epub_processor import EpubProcessor
 from translation_services import TranslationService, translate_text
+from local_service_client import LocalServiceClient, LocalServiceConfig
 from secure_storage import get_secure_storage, store_api_key, get_api_key, delete_api_key
 from settings_storage import get_settings_storage, get_theme, set_theme
 from batch_processor import BatchProcessor
 from bleu_scorer import get_bleu_scorer
+from provider_ids import (
+    PROVIDER_GOOGLE_OFFICIAL,
+    PROVIDER_GOOGLE_UNOFFICIAL,
+    PROVIDER_LABELS,
+    PROVIDER_LOCAL,
+    normalize_provider_id,
+)
 
 
 class TranslationFiesta:
@@ -53,6 +62,7 @@ class TranslationFiesta:
         # Initialize storage modules
         self.settings = get_settings_storage()
         self.secure_storage = get_secure_storage()
+        self._apply_cost_tracking_settings()
 
         # Load window geometry from settings
         geometry = self.settings.get_window_geometry()
@@ -100,8 +110,18 @@ class TranslationFiesta:
         })
 
         # Translation settings - load from storage
-        use_official = self.settings.get_use_official_api()
-        self.use_official_var = tk.BooleanVar(value=use_official)
+        provider_id = self.settings.get_provider_id()
+        provider_label = PROVIDER_LABELS.get(
+            normalize_provider_id(provider_id),
+            PROVIDER_LABELS[PROVIDER_GOOGLE_UNOFFICIAL],
+        )
+        self.provider_labels = [
+            PROVIDER_LABELS[PROVIDER_LOCAL],
+            PROVIDER_LABELS[PROVIDER_GOOGLE_UNOFFICIAL],
+            PROVIDER_LABELS[PROVIDER_GOOGLE_OFFICIAL],
+        ]
+        self.provider_label_to_id = {label: pid for pid, label in PROVIDER_LABELS.items()}
+        self.provider_var = tk.StringVar(value=provider_label)
 
         # Load API key from secure storage
         api_key = get_api_key("google_translate") or ""
@@ -113,7 +133,8 @@ class TranslationFiesta:
         self.progress_bar = None
 
         # Translation service with enhanced error handling
-        self.translation_service = TranslationService()
+        self._apply_local_settings()
+        self.translation_service = TranslationService(session=self.session, local_client=self.local_client)
 
         # BLEU scorer for quality assessment
         self.bleu_scorer = get_bleu_scorer()
@@ -161,7 +182,7 @@ class TranslationFiesta:
         # Toolbar section
         toolbar_frame = tk.Frame(self.root, bg=theme['bg'])
         toolbar_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
-        toolbar_frame.grid_columnconfigure(2, weight=1)
+        toolbar_frame.grid_columnconfigure(3, weight=1)
 
         # Theme toggle button
         self.btn_theme = tk.Button(
@@ -197,21 +218,45 @@ class TranslationFiesta:
         )
         self.lbl_file_info.grid(row=0, column=4, sticky="ew")
 
-        # Official API toggle and key
-        self.chk_official = tk.Checkbutton(
-            toolbar_frame, text="Use Official API", variable=self.use_official_var,
-            command=self.on_toggle_official, bg=theme['bg'], fg=theme['fg'],
-            selectcolor=theme['button_bg'], font=("Arial", self.scale_font(9))
-        )
-        self.chk_official.grid(row=1, column=0, sticky="w", pady=(6, 0))
+        # Provider selection and API key
+        tk.Label(
+            toolbar_frame,
+            text="Provider:",
+            bg=theme['bg'],
+            fg=theme['fg'],
+            font=("Arial", self.scale_font(9)),
+        ).grid(row=1, column=0, sticky="w", pady=(6, 0))
 
-        tk.Label(toolbar_frame, text="API Key:", bg=theme['bg'], fg=theme['fg'], font=("Arial", self.scale_font(9))).grid(row=1, column=1, sticky="e", pady=(6, 0))
-        self.entry_api_key = tk.Entry(
-            toolbar_frame, textvariable=self.api_key_var, show='*', width=40,
-            bg=theme['text_bg'], fg=theme['text_fg'], insertbackground=theme['text_fg']
+        self.cmb_provider = ttk.Combobox(
+            toolbar_frame,
+            textvariable=self.provider_var,
+            values=self.provider_labels,
+            state="readonly",
+            width=36,
         )
-        self.entry_api_key.grid(row=1, column=2, sticky="ew", pady=(6, 0))
+        self.cmb_provider.grid(row=1, column=1, sticky="w", pady=(6, 0))
+        self.cmb_provider.bind("<<ComboboxSelected>>", lambda _event: self.on_provider_changed())
+
+        tk.Label(
+            toolbar_frame,
+            text="API Key:",
+            bg=theme['bg'],
+            fg=theme['fg'],
+            font=("Arial", self.scale_font(9)),
+        ).grid(row=1, column=2, sticky="e", pady=(6, 0))
+
+        self.entry_api_key = tk.Entry(
+            toolbar_frame,
+            textvariable=self.api_key_var,
+            show='*',
+            width=40,
+            bg=theme['text_bg'],
+            fg=theme['text_fg'],
+            insertbackground=theme['text_fg'],
+        )
+        self.entry_api_key.grid(row=1, column=3, columnspan=2, sticky="ew", pady=(6, 0))
         self.entry_api_key.config(state="disabled")
+        self.on_provider_changed()
 
         # Input section
         self.lbl_input = tk.Label(self.root, text=self.lbl_input_text, anchor="w",
@@ -329,7 +374,7 @@ class TranslationFiesta:
 
         # Update button text
         self.btn_theme.config(
-            text="☀️ Light" if self.current_theme == 'dark' else "🌙 Dark",
+            text=\"Light\" if self.current_theme == 'dark' else \"Dark\",
             bg=theme['button_bg'], fg=theme['button_fg']
         )
 
@@ -429,13 +474,16 @@ class TranslationFiesta:
         if not text or text.isspace():
             return ""
 
+        provider_id = self.get_selected_provider_id()
+        api_key = self.api_key_var.get() if provider_id == PROVIDER_GOOGLE_OFFICIAL else None
+
         result = self.translation_service.translate_text(
             session=self.session,
             text=text,
             source_lang=source_lang,
             target_lang=target_lang,
-            use_official_api=self.use_official_var.get(),
-            api_key=(self.api_key_var.get() or None),
+            provider_id=provider_id,
+            api_key=(api_key or None),
         )
 
         if result.is_success():
@@ -556,17 +604,24 @@ class TranslationFiesta:
         self.translation_thread.daemon = True
         self.translation_thread.start()
 
-    def on_toggle_official(self):
-        """Enable/disable API key entry based on official API toggle."""
-        if self.use_official_var.get():
+    def get_selected_provider_id(self) -> str:
+        """Return the canonical provider id for the selected label."""
+        label = self.provider_var.get()
+        return self.provider_label_to_id.get(label, PROVIDER_GOOGLE_UNOFFICIAL)
+
+    def on_provider_changed(self) -> None:
+        """Enable/disable API key entry based on provider selection."""
+        provider_id = self.get_selected_provider_id()
+        self.settings.set_provider_id(provider_id)
+        if provider_id == PROVIDER_GOOGLE_OFFICIAL:
             self.entry_api_key.config(state="normal")
             self.set_status("Official API enabled. Provide API key.", "orange")
         else:
             self.entry_api_key.config(state="disabled")
-            self.set_status("Using unofficial API.", "blue")
-
-        # Save the setting
-        self.settings.set_use_official_api(self.use_official_var.get())
+            if provider_id == PROVIDER_LOCAL:
+                self.set_status("Using local offline provider.", "blue")
+            else:
+                self.set_status("Using unofficial provider.", "blue")
 
     def set_status(self, text: str, color: str = "blue"):
         self.lbl_status.config(text=text, fg=color)
@@ -676,10 +731,131 @@ class TranslationFiesta:
         menubar.add_cascade(label="View", menu=view_menu)
 
         settings_menu = tk.Menu(menubar, tearoff=0)
-        settings_menu.add_command(label="Toggle API (Ctrl+P)", command=self.toggle_api_shortcut)
+        settings_menu.add_command(label="Toggle Provider (Ctrl+P)", command=self.toggle_api_shortcut)
+        settings_menu.add_command(label="Local Models...", command=self.show_model_manager)
+        settings_menu.add_separator()
+        self._cost_tracking_var = tk.BooleanVar(value=self.settings.get_cost_tracking_enabled())
+        settings_menu.add_checkbutton(
+            label="Enable Cost Tracking (Official Only)",
+            variable=self._cost_tracking_var,
+            command=self.toggle_cost_tracking,
+        )
         menubar.add_cascade(label="Settings", menu=settings_menu)
 
         self.root.config(menu=menubar)
+
+    def _apply_local_settings(self):
+        service_url = (self.settings.get_local_service_url() or "").strip()
+        model_dir = (self.settings.get_local_model_dir() or "").strip()
+        autostart = self.settings.get_local_autostart()
+
+        if service_url:
+            os.environ["TF_LOCAL_URL"] = service_url
+        else:
+            os.environ.pop("TF_LOCAL_URL", None)
+
+        if model_dir:
+            os.environ["TF_LOCAL_MODEL_DIR"] = model_dir
+        else:
+            os.environ.pop("TF_LOCAL_MODEL_DIR", None)
+
+        os.environ["TF_LOCAL_AUTOSTART"] = "1" if autostart else "0"
+
+        self.local_client = LocalServiceClient(
+            session=self.session,
+            config=LocalServiceConfig(
+                base_url=service_url or "http://127.0.0.1:5055",
+                auto_start=autostart,
+                model_dir=model_dir or None,
+            ),
+        )
+
+    def _apply_cost_tracking_settings(self):
+        enabled = self.settings.get_cost_tracking_enabled()
+        os.environ["TF_COST_TRACKING_ENABLED"] = "1" if enabled else "0"
+
+    def toggle_cost_tracking(self):
+        enabled = bool(self._cost_tracking_var.get())
+        self.settings.set_cost_tracking_enabled(enabled)
+        self._apply_cost_tracking_settings()
+
+    def _refresh_local_client(self):
+        self._apply_local_settings()
+        self.translation_service = TranslationService(session=self.session, local_client=self.local_client)
+
+    def show_model_manager(self):
+        window = tk.Toplevel(self.root)
+        window.title("Local Model Manager")
+        window.geometry("520x360")
+        window.resizable(False, False)
+
+        status_var = tk.StringVar(value="Loading...")
+
+        tk.Label(window, text="Local Service URL:").pack(anchor="w", padx=12, pady=(10, 0))
+        url_var = tk.StringVar(value=self.settings.get_local_service_url())
+        url_entry = tk.Entry(window, textvariable=url_var, width=60)
+        url_entry.pack(anchor="w", padx=12)
+
+        tk.Label(window, text="Model Directory:").pack(anchor="w", padx=12, pady=(10, 0))
+        model_dir_var = tk.StringVar(value=self.settings.get_local_model_dir())
+        model_entry = tk.Entry(window, textvariable=model_dir_var, width=60)
+        model_entry.pack(anchor="w", padx=12)
+
+        autostart_var = tk.BooleanVar(value=self.settings.get_local_autostart())
+        tk.Checkbutton(window, text="Auto-start local service", variable=autostart_var).pack(anchor="w", padx=12, pady=(6, 0))
+
+        status_frame = tk.LabelFrame(window, text="Status")
+        status_frame.pack(fill="both", expand=False, padx=12, pady=(10, 0))
+        status_label = tk.Label(status_frame, textvariable=status_var, anchor="w", justify="left")
+        status_label.pack(fill="x", padx=8, pady=6)
+
+        action_frame = tk.Frame(window)
+        action_frame.pack(fill="x", padx=12, pady=(10, 0))
+
+        def save_settings():
+            self.settings.set_local_service_url(url_var.get().strip())
+            self.settings.set_local_model_dir(model_dir_var.get().strip())
+            self.settings.set_local_autostart(bool(autostart_var.get()))
+            self._refresh_local_client()
+            status_var.set("Settings saved.")
+
+        def refresh_status():
+            result = self.local_client.models_status()
+            if result.is_failure():
+                status_var.set(str(result.error))
+                return
+            status_var.set(json.dumps(result.value, indent=2))
+
+        def verify_models():
+            result = self.local_client.models_verify()
+            if result.is_failure():
+                status_var.set(str(result.error))
+                return
+            status_var.set(json.dumps(result.value, indent=2))
+
+        def remove_models():
+            if not messagebox.askyesno("Remove Models", "Remove local models from disk?"):
+                return
+            result = self.local_client.models_remove()
+            if result.is_failure():
+                status_var.set(str(result.error))
+                return
+            status_var.set(json.dumps(result.value, indent=2))
+
+        def install_default_models():
+            result = self.local_client.models_install_default()
+            if result.is_failure():
+                status_var.set(str(result.error))
+                return
+            status_var.set(json.dumps(result.value, indent=2))
+
+        tk.Button(action_frame, text="Save Settings", command=save_settings).pack(side=tk.LEFT, padx=(0, 8))
+        tk.Button(action_frame, text="Install Default", command=install_default_models).pack(side=tk.LEFT, padx=(0, 8))
+        tk.Button(action_frame, text="Refresh", command=refresh_status).pack(side=tk.LEFT, padx=(0, 8))
+        tk.Button(action_frame, text="Verify", command=verify_models).pack(side=tk.LEFT, padx=(0, 8))
+        tk.Button(action_frame, text="Remove", command=remove_models).pack(side=tk.LEFT)
+
+        refresh_status()
 
     def bind_shortcuts(self):
         """Bind keyboard shortcuts to application functions."""
@@ -757,11 +933,16 @@ class TranslationFiesta:
             self.webview.config(state="disabled")
 
     def toggle_api_shortcut(self):
-        """Toggle the API and provide user feedback."""
-        self.use_official_var.set(not self.use_official_var.get())
-        self.on_toggle_official()
-        status = "Official API" if self.use_official_var.get() else "Unofficial API"
-        self.show_status_message(f"Switched to {status}", "green")
+        """Cycle through providers and provide user feedback."""
+        current_label = self.provider_var.get()
+        try:
+            idx = self.provider_labels.index(current_label)
+        except ValueError:
+            idx = 0
+        next_label = self.provider_labels[(idx + 1) % len(self.provider_labels)]
+        self.provider_var.set(next_label)
+        self.on_provider_changed()
+        self.show_status_message(f"Switched to {next_label}", "green")
 
     def show_status_message(self, message, color="green", duration=3000):
         """Display a message in the status bar for a short duration."""
@@ -789,7 +970,7 @@ class TranslationFiesta:
         self.batch_processor = BatchProcessor(self.translation_service, self.update_batch_progress)
         thread = threading.Thread(
             target=self.batch_processor.process_directory,
-            args=(directory, self.use_official_var.get(), self.api_key_var.get())
+            args=(directory, self.get_selected_provider_id(), self.api_key_var.get())
         )
         thread.daemon = True
         thread.start()

@@ -55,7 +55,9 @@ module TranslationFiesta
         # Tools menu
         tools_menu = TkMenu.new(menubar, tearoff: false)
         menubar.add('cascade', label: 'Tools', menu: tools_menu)
-        tools_menu.add('command', label: 'Cost Tracker...', command: method(:show_cost_tracker))
+        if container.cost_tracker
+          tools_menu.add('command', label: 'Cost Tracker...', command: method(:show_cost_tracker))
+        end
         tools_menu.add('command', label: 'Settings...', command: method(:show_settings))
         tools_menu.add('command', label: 'Clear Translation Memory', command: method(:clear_memory))
 

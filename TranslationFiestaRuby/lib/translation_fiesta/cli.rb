@@ -34,8 +34,8 @@ module TranslationFiesta
         opts.separator ""
         opts.separator "Options:"
 
-        opts.on('-a', '--api API_TYPE', ['unofficial', 'official'], 
-                'API type to use (unofficial, official)') do |api|
+        opts.on('-a', '--api API_TYPE', ['unofficial', 'official', 'local'],
+                'API type to use (unofficial, official, local)') do |api|
           @options[:api_type] = api.to_sym
         end
 

@@ -29,6 +29,7 @@ type TMEntry struct {
 	Source      string    `json:"source"`
 	Translation string    `json:"translation"`
 	TargetLang  string    `json:"target_lang"`
+	ProviderID  string    `json:"provider_id"`
 	AccessTime  time.Time `json:"access_time"`
 }
 
@@ -53,12 +54,12 @@ func NewTranslationMemory(cacheSize int, persistencePath string, threshold float
 	return tm
 }
 
-func (tm *TranslationMemory) getKey(source, targetLang string) string {
-	return source + ":" + targetLang
+func (tm *TranslationMemory) getKey(source, targetLang, providerID string) string {
+	return source + ":" + targetLang + ":" + providerID
 }
 
-func (tm *TranslationMemory) Lookup(source, targetLang string) (string, bool) {
-	key := tm.getKey(source, targetLang)
+func (tm *TranslationMemory) Lookup(source, targetLang, providerID string) (string, bool) {
+	key := tm.getKey(source, targetLang, providerID)
 	if elem, exists := tm.cache[key]; exists {
 		tm.lruList.MoveToFront(elem)
 		tm.metrics.Hits++
@@ -100,14 +101,14 @@ func levenshtein(s1, s2 string) int {
 	return d[m][n]
 }
 
-func (tm *TranslationMemory) FuzzyLookup(source, targetLang string) (string, float64, bool) {
+func (tm *TranslationMemory) FuzzyLookup(source, targetLang, providerID string) (string, float64, bool) {
 	var bestScore float64
 	var bestTranslation string
 	matched := false
 
 	for elem := tm.lruList.Front(); elem != nil; elem = elem.Next() {
 		entry := elem.Value.(*TMEntry)
-		if entry.TargetLang == targetLang {
+		if entry.TargetLang == targetLang && entry.ProviderID == providerID {
 			distance := levenshtein(source, entry.Source)
 			maxLen := max(len(source), len(entry.Source))
 			score := 1.0 - float64(distance)/float64(maxLen)
@@ -129,12 +130,13 @@ func (tm *TranslationMemory) FuzzyLookup(source, targetLang string) (string, flo
 	return "", 0, false
 }
 
-func (tm *TranslationMemory) Store(source, targetLang, translation string) {
-	key := tm.getKey(source, targetLang)
+func (tm *TranslationMemory) Store(source, targetLang, providerID, translation string) {
+	key := tm.getKey(source, targetLang, providerID)
 	entry := &TMEntry{
 		Source:      source,
 		Translation: translation,
 		TargetLang:  targetLang,
+		ProviderID:  providerID,
 		AccessTime:  time.Now(),
 	}
 
@@ -147,7 +149,7 @@ func (tm *TranslationMemory) Store(source, targetLang, translation string) {
 		if tm.lruList.Len() > tm.cacheSize {
 			last := tm.lruList.Back()
 			if last != nil {
-				delete(tm.cache, last.Value.(*TMEntry).Source+":"+last.Value.(*TMEntry).TargetLang)
+				delete(tm.cache, tm.getKey(last.Value.(*TMEntry).Source, last.Value.(*TMEntry).TargetLang, last.Value.(*TMEntry).ProviderID))
 				tm.lruList.Remove(last)
 			}
 		}
@@ -256,7 +258,9 @@ func (tm *TranslationMemory) loadCache() {
 			TargetLang:  entryMap["target_lang"].(string),
 			AccessTime:  t,
 		}
-		key := tm.getKey(entry.Source, entry.TargetLang)
+		entry.ProviderID, _ = entryMap["provider_id"].(string)
+		entry.ProviderID = entities.NormalizeProviderID(entry.ProviderID)
+		key := tm.getKey(entry.Source, entry.TargetLang, entry.ProviderID)
 		elem := tm.lruList.PushFront(entry)
 		tm.cache[key] = elem
 	}
@@ -282,19 +286,36 @@ func max(a, b int) int {
 	return b
 }
 
+func previewText(text string) string {
+	const maxLen = 50
+	if len(text) <= maxLen {
+		return text
+	}
+	return text[:maxLen]
+}
+
 type TranslationService struct {
 	httpClient *utils.HTTPClient
 	logger     *utils.Logger
 	tm         *TranslationMemory
+	local      *LocalServiceClient
 }
 
 // NewTranslationService creates a new translation service
 func NewTranslationService() *TranslationService {
+	httpClient := utils.NewHTTPClient()
 	return &TranslationService{
-		httpClient: utils.NewHTTPClient(),
+		httpClient: httpClient,
 		logger:     utils.GetLogger(),
 		tm:         NewTranslationMemory(1000, "tm_cache.json", 0.8),
+		local:      NewLocalServiceClient(httpClient),
 	}
+}
+
+// TranslateLocal performs translation using the local offline service
+func (ts *TranslationService) TranslateLocal(ctx context.Context, text, sourceLang, targetLang string) (*entities.TranslationResult, error) {
+	ts.logger.Debug("Local translation: %s -> %s -> %s", sourceLang, targetLang, text)
+	return ts.local.Translate(ctx, text, sourceLang, targetLang)
 }
 
 // TranslateUnofficial performs translation using the unofficial Google Translate API
@@ -310,19 +331,39 @@ func (ts *TranslationService) TranslateUnofficial(ctx context.Context, text, sou
 	resp, err := ts.httpClient.Get(ctx, requestURL)
 	if err != nil {
 		ts.logger.Error("Unofficial translation HTTP error: %v", err)
-		return nil, fmt.Errorf("HTTP request failed: %w", err)
+		return nil, entities.ProviderError{Code: "network_error", Message: "HTTP request failed"}
 	}
 
+	if resp.StatusCode() == 429 {
+		ts.logger.Error("Unofficial translation API rate limited: HTTP 429")
+		return nil, entities.ProviderError{Code: "rate_limited", Message: "Provider rate limited"}
+	}
+	if resp.StatusCode() == 403 {
+		ts.logger.Error("Unofficial translation API blocked: HTTP 403")
+		return nil, entities.ProviderError{Code: "blocked", Message: "Provider blocked or captcha detected"}
+	}
 	if resp.StatusCode() != 200 {
 		ts.logger.Error("Unofficial translation API error: HTTP %d - %s", resp.StatusCode(), resp.String())
-		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode(), resp.String())
+		code := "invalid_response"
+		if resp.StatusCode() >= 500 {
+			code = "network_error"
+		}
+		return nil, entities.ProviderError{Code: code, Message: fmt.Sprintf("HTTP %d", resp.StatusCode())}
+	}
+
+	bodyLower := strings.ToLower(resp.String())
+	if strings.TrimSpace(bodyLower) == "" {
+		return nil, entities.ProviderError{Code: "invalid_response", Message: "Empty response body"}
+	}
+	if strings.Contains(bodyLower, "<html") || strings.Contains(bodyLower, "captcha") {
+		return nil, entities.ProviderError{Code: "blocked", Message: "Provider blocked or captcha detected"}
 	}
 
 	// Parse the response
 	result, err := ts.parseUnofficialResponse(resp.String())
 	if err != nil {
 		ts.logger.Error("Failed to parse unofficial translation response: %v", err)
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+		return nil, entities.ProviderError{Code: "invalid_response", Message: "Failed to parse response"}
 	}
 
 	ts.logger.Info("Unofficial translation successful: %d chars", len(result.TranslatedText))
@@ -373,20 +414,22 @@ func (ts *TranslationService) TranslateOfficial(ctx context.Context, text, sourc
 	ts.logger.Info("Official translation successful: %d chars", len(result.TranslatedText))
 
 	// Track cost for successful official API translation
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				ts.logger.Error("Failed to track translation cost: %v", r)
-			}
+	if os.Getenv("TF_COST_TRACKING_ENABLED") == "1" {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					ts.logger.Error("Failed to track translation cost: %v", r)
+				}
+			}()
+			costtracker.TrackTranslationCost(
+				len(result.TranslatedText),
+				sourceLang,
+				targetLang,
+				"go",
+				"v2",
+			)
 		}()
-		costtracker.TrackTranslationCost(
-			len(result.TranslatedText),
-			sourceLang,
-			targetLang,
-			"go",
-			"v2",
-		)
-	}()
+	}
 
 	return result, nil
 }
@@ -510,14 +553,15 @@ func (ts *TranslationService) retryTranslate(ctx context.Context, translateFunc 
 
 // Translate implements the TranslationRepository interface
 func (ts *TranslationService) Translate(ctx context.Context, request entities.TranslationRequest) (*entities.TranslationResult, error) {
-	if request.UseOfficial && request.APIKey == "" {
+	providerID := entities.NormalizeProviderID(request.ProviderID)
+	if entities.IsOfficialProvider(providerID) && request.APIKey == "" {
 		return nil, fmt.Errorf("API key required for official translation")
 	}
 
 	// Check cache
-	translation, found := ts.tm.Lookup(request.Text, request.TargetLang)
+	translation, found := ts.tm.Lookup(request.Text, request.TargetLang, providerID)
 	if found {
-		ts.logger.Info("Cache hit for %s", request.Text[:50])
+		ts.logger.Info("Cache hit for %s", previewText(request.Text))
 		return &entities.TranslationResult{
 			OriginalText:   request.Text,
 			TranslatedText: translation,
@@ -529,9 +573,9 @@ func (ts *TranslationService) Translate(ctx context.Context, request entities.Tr
 	}
 
 	// Check fuzzy cache
-	fuzzyTrans, score, fuzzyFound := ts.tm.FuzzyLookup(request.Text, request.TargetLang)
+	fuzzyTrans, score, fuzzyFound := ts.tm.FuzzyLookup(request.Text, request.TargetLang, providerID)
 	if fuzzyFound {
-		ts.logger.Info("Fuzzy cache hit (score: %.2f) for %s", score, request.Text[:50])
+		ts.logger.Info("Fuzzy cache hit (score: %.2f) for %s", score, previewText(request.Text))
 		return &entities.TranslationResult{
 			OriginalText:   request.Text,
 			TranslatedText: fuzzyTrans,
@@ -546,9 +590,12 @@ func (ts *TranslationService) Translate(ctx context.Context, request entities.Tr
 	translateFunc := func() (*entities.TranslationResult, error) {
 		var result *entities.TranslationResult
 		var err error
-		if request.UseOfficial {
+		switch providerID {
+		case entities.ProviderLocal:
+			result, err = ts.TranslateLocal(ctx, request.Text, request.SourceLang, request.TargetLang)
+		case entities.ProviderGoogleOfficial:
 			result, err = ts.TranslateOfficial(ctx, request.Text, request.SourceLang, request.TargetLang, request.APIKey)
-		} else {
+		default:
 			result, err = ts.TranslateUnofficial(ctx, request.Text, request.SourceLang, request.TargetLang)
 		}
 		if err != nil {
@@ -567,20 +614,20 @@ func (ts *TranslationService) Translate(ctx context.Context, request entities.Tr
 	result.TargetLang = request.TargetLang
 
 	// Store in cache
-	ts.tm.Store(request.Text, request.TargetLang, result.TranslatedText)
+	ts.tm.Store(request.Text, request.TargetLang, providerID, result.TranslatedText)
 
 	return result, nil
 }
 
 // BackTranslate implements the BackTranslate method
-func (ts *TranslationService) BackTranslate(ctx context.Context, text, sourceLang, intermediateLang string, useOfficial bool, apiKey string) (*entities.BackTranslation, error) {
+func (ts *TranslationService) BackTranslate(ctx context.Context, text, sourceLang, intermediateLang, providerID, apiKey string) (*entities.BackTranslation, error) {
 	// First translation: source -> intermediate
 	firstResult, err := ts.Translate(ctx, entities.TranslationRequest{
-		Text:        text,
-		SourceLang:  sourceLang,
-		TargetLang:  intermediateLang,
-		UseOfficial: useOfficial,
-		APIKey:      apiKey,
+		Text:       text,
+		SourceLang: sourceLang,
+		TargetLang: intermediateLang,
+		ProviderID: providerID,
+		APIKey:     apiKey,
 	})
 	if err != nil {
 		return nil, err
@@ -588,40 +635,42 @@ func (ts *TranslationService) BackTranslate(ctx context.Context, text, sourceLan
 
 	// Second translation: intermediate -> source
 	secondResult, err := ts.Translate(ctx, entities.TranslationRequest{
-		Text:        firstResult.TranslatedText,
-		SourceLang:  intermediateLang,
-		TargetLang:  sourceLang,
-		UseOfficial: useOfficial,
-		APIKey:      apiKey,
+		Text:       firstResult.TranslatedText,
+		SourceLang: intermediateLang,
+		TargetLang: sourceLang,
+		ProviderID: providerID,
+		APIKey:     apiKey,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	// Track costs for backtranslation (two API calls)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				ts.logger.Error("Failed to track backtranslation costs: %v", r)
-			}
+	if entities.IsOfficialProvider(providerID) && os.Getenv("TF_COST_TRACKING_ENABLED") == "1" {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					ts.logger.Error("Failed to track backtranslation costs: %v", r)
+				}
+			}()
+			// Track cost for first translation (source -> intermediate)
+			costtracker.TrackTranslationCost(
+				len(firstResult.TranslatedText),
+				sourceLang,
+				intermediateLang,
+				"go",
+				"v2",
+			)
+			// Track cost for second translation (intermediate -> source)
+			costtracker.TrackTranslationCost(
+				len(secondResult.TranslatedText),
+				intermediateLang,
+				sourceLang,
+				"go",
+				"v2",
+			)
 		}()
-		// Track cost for first translation (source -> intermediate)
-		costtracker.TrackTranslationCost(
-			len(firstResult.TranslatedText),
-			sourceLang,
-			intermediateLang,
-			"go",
-			"v2",
-		)
-		// Track cost for second translation (intermediate -> source)
-		costtracker.TrackTranslationCost(
-			len(secondResult.TranslatedText),
-			intermediateLang,
-			sourceLang,
-			"go",
-			"v2",
-		)
-	}()
+	}
 
 	return &entities.BackTranslation{
 		Intermediate: firstResult.TranslatedText,

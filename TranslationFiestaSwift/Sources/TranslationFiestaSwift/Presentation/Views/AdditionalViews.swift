@@ -184,11 +184,6 @@ struct TranslationMemoryStatsCard: View {
         .padding()
         .background(Color(.windowBackgroundColor))
         .cornerRadius(8)
-        .onAppear {
-            // Debug: log stats to console to verify values
-            print("[Debug] TranslationMemoryStatsCard stats=\(stats)")
-            try? "TranslationMemoryStatsCard stats: \(stats.totalEntries)".write(to: URL(fileURLWithPath: "/tmp/TranslationFiesta_TMStats_marker.txt"), atomically: true, encoding: .utf8)
-        }
     }
 }
 
@@ -378,6 +373,11 @@ struct SettingsView: View {
     @State private var googleCloudAPIKey = ""
     @State private var showAPIKeyAlert = false
     @State private var apiKeyMessage = ""
+    @State private var localServiceUrl = ""
+    @State private var localModelDir = ""
+    @State private var localAutoStart = true
+    @State private var localStatus = ""
+    private let localSettingsStore = LocalModelSettingsStore()
     
     var body: some View {
         VStack(spacing: 20) {
@@ -421,6 +421,79 @@ struct SettingsView: View {
             .padding()
             .background(Color.blue.opacity(0.1))
             .cornerRadius(12)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Optional Features")
+                    .font(.headline)
+
+                Toggle(
+                    "Enable cost tracking (official only)",
+                    isOn: Binding(
+                        get: { appContainer.costTrackingEnabled },
+                        set: { appContainer.setCostTrackingEnabled($0) }
+                    )
+                )
+
+                Text("Cost tracking is opt-in and only applies to the official provider.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+            .background(Color.purple.opacity(0.1))
+            .cornerRadius(12)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Local Model Manager")
+                    .font(.headline)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("Service URL", text: $localServiceUrl)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+
+                    TextField("Model Directory (optional)", text: $localModelDir)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+
+                    Toggle("Auto-start local service", isOn: $localAutoStart)
+                }
+
+                HStack(spacing: 12) {
+                    Button("Save") {
+                        saveLocalSettings()
+                        localStatus = "Settings saved."
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button("Install Default") {
+                        Task { await installDefaultLocalModels() }
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button("Refresh") {
+                        Task { await loadLocalStatus() }
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Verify") {
+                        Task { await verifyLocalModels() }
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Remove") {
+                        Task { await removeLocalModels() }
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                if !localStatus.isEmpty {
+                    Text(localStatus)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding()
+            .background(Color.orange.opacity(0.1))
+            .cornerRadius(12)
             
             // Application Information
             VStack(alignment: .leading, spacing: 12) {
@@ -447,7 +520,7 @@ struct SettingsView: View {
                     FeatureRow(feature: "English ↔ Japanese Back-translation", implemented: true)
                     FeatureRow(feature: "Batch Processing", implemented: true)
                     FeatureRow(feature: "BLEU Quality Scoring", implemented: true)
-                    FeatureRow(feature: "Cost Tracking & Budget Management", implemented: true)
+                    FeatureRow(feature: "Cost Tracking & Budget Management (opt-in)", implemented: true)
                     FeatureRow(feature: "Translation Memory with Fuzzy Matching", implemented: true)
                     FeatureRow(feature: "Secure API Key Storage", implemented: true)
                     FeatureRow(feature: "Multiple Export Formats", implemented: true)
@@ -468,6 +541,7 @@ struct SettingsView: View {
         }
         .onAppear {
             loadAPIKey()
+            loadLocalSettings()
         }
     }
     
@@ -493,6 +567,63 @@ struct SettingsView: View {
             } catch {
                 // Key doesn't exist or couldn't be loaded
             }
+        }
+    }
+
+    private func loadLocalSettings() {
+        let settings = localSettingsStore.load()
+        localServiceUrl = settings.serviceUrl
+        localModelDir = settings.modelDir
+        localAutoStart = settings.autoStart
+    }
+
+    private func saveLocalSettings() {
+        let settings = LocalModelSettings(
+            serviceUrl: localServiceUrl,
+            modelDir: localModelDir,
+            autoStart: localAutoStart
+        )
+        localSettingsStore.save(settings)
+    }
+
+    private func makeLocalClient() -> LocalServiceClient {
+        let settings = LocalModelSettings(
+            serviceUrl: localServiceUrl,
+            modelDir: localModelDir,
+            autoStart: localAutoStart
+        )
+        return LocalServiceClient(session: URLSession.shared, configuration: .fromSettings(settings))
+    }
+
+    private func loadLocalStatus() async {
+        do {
+            localStatus = try await makeLocalClient().modelsStatus()
+        } catch {
+            localStatus = error.localizedDescription
+        }
+    }
+
+    private func verifyLocalModels() async {
+        do {
+            localStatus = try await makeLocalClient().verifyModels()
+        } catch {
+            localStatus = error.localizedDescription
+        }
+    }
+
+    private func installDefaultLocalModels() async {
+        do {
+            localStatus = try await makeLocalClient().installDefaultModels()
+        } catch {
+            localStatus = error.localizedDescription
+        }
+    }
+
+    private func removeLocalModels() async {
+        do {
+            localStatus = try await makeLocalClient().removeModels()
+        } catch {
+            localStatus = error.localizedDescription
         }
     }
 }

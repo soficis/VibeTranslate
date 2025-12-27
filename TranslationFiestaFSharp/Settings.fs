@@ -6,6 +6,7 @@ module Settings =
     open System
     open System.IO
     open System.Text.Json
+    open TranslationFiestaFSharp
 
     type Result<'T> =
         | Success of 'T
@@ -13,7 +14,12 @@ module Settings =
 
     type AppSettings = {
         IsDarkTheme: bool
+        ProviderId: string
         UseOfficialApi: bool
+        CostTrackingEnabled: bool
+        LocalServiceUrl: string
+        LocalModelDir: string
+        LocalAutoStart: bool
         WindowWidth: int
         WindowHeight: int
         WindowX: int
@@ -38,12 +44,35 @@ module Settings =
                 let json = File.ReadAllText settingsFilePath
                 match JsonSerializer.Deserialize<AppSettings>(json) with
                 | null -> Error "Failed to deserialize settings: invalid JSON format"
-                | settings -> Success settings
+                | settings ->
+                    let normalized =
+                        if String.IsNullOrWhiteSpace settings.ProviderId then
+                            if settings.UseOfficialApi then ProviderIds.GoogleOfficial else ProviderIds.GoogleUnofficial
+                        else
+                            ProviderIds.normalize settings.ProviderId
+                    let serviceUrl =
+                        if String.IsNullOrWhiteSpace settings.LocalServiceUrl then ""
+                        else settings.LocalServiceUrl
+                    let modelDir =
+                        if String.IsNullOrWhiteSpace settings.LocalModelDir then ""
+                        else settings.LocalModelDir
+                    Success {
+                        settings with
+                            ProviderId = normalized
+                            UseOfficialApi = ProviderIds.isOfficial normalized
+                            LocalServiceUrl = serviceUrl
+                            LocalModelDir = modelDir
+                    }
             else
                 // Default settings
                 Success {
                     IsDarkTheme = false
+                    ProviderId = ProviderIds.GoogleUnofficial
                     UseOfficialApi = false
+                    CostTrackingEnabled = false
+                    LocalServiceUrl = ""
+                    LocalModelDir = ""
+                    LocalAutoStart = true
                     WindowWidth = 900
                     WindowHeight = 650
                     WindowX = -1

@@ -41,9 +41,17 @@ public final class TranslationViewModel: ObservableObject {
     }
     
     public func performBackTranslation() async {
-        guard !inputText.isEmpty,
-              let useCase = backTranslationUseCase else {
+        if backTranslationUseCase == nil, let container = appContainer, container.isInitialized {
+            backTranslationUseCase = container.backTranslationUseCase
+        }
+
+        guard !inputText.isEmpty else {
             await showErrorMessage("Please enter text to translate")
+            return
+        }
+
+        guard let useCase = backTranslationUseCase else {
+            await showErrorMessage("Services are still initializing. Please try again shortly.")
             return
         }
         
