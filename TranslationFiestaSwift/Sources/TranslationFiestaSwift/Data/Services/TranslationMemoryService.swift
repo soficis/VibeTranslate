@@ -4,21 +4,33 @@ import Logging
 
 /// Translation memory service with LRU eviction and fuzzy matching
 /// Following Clean Code: meaningful names and clear intent
-public final class TranslationMemoryService: TranslationMemoryRepository {
+public actor TranslationMemoryService: TranslationMemoryRepository {
     private let logger = Logger(label: "TranslationMemoryService")
     private let config: TranslationMemoryConfig
     private let fileManager: FileManager
     
     // LRU cache implementation using OrderedDictionary
     private var cache: OrderedDictionary<String, TranslationMemoryEntry>
-    private var stats: TranslationMemoryInternalStats
+    
+    // Stats properties moved into actor
+    private var totalHits: Int = 0
+    private var totalMisses: Int = 0
+    private var fuzzyHits: Int = 0
+    private var totalLookupTime: TimeInterval = 0.0
+    private var lookupCount: Int = 0
+    private var lastPersistTime: Date? = nil
+    
+    private var averageLookupTime: TimeInterval {
+        guard lookupCount > 0 else { return 0.0 }
+        return totalLookupTime / Double(lookupCount)
+    }
+
     private let persistenceQueue = DispatchQueue(label: "translation-memory-persistence", qos: .utility)
     
     public init(config: TranslationMemoryConfig, fileManager: FileManager = .default) {
         self.config = config
         self.fileManager = fileManager
         self.cache = OrderedDictionary()
-        self.stats = TranslationMemoryInternalStats()
         
         // Load existing cache on initialization (non-blocking)
         Task.detached(priority: .background) { [weak self] in
@@ -27,9 +39,14 @@ public final class TranslationMemoryService: TranslationMemoryRepository {
                 try await self?.loadFromPersistence()
             } catch {
                 // Silently handle initialization errors
-                self?.logger.debug("Translation memory initialization failed: \(error.localizedDescription)")
+                await self?.logDebug("Translation memory initialization failed: \(error.localizedDescription)")
             }
         }
+    }
+    
+    // Helper for logging from detached task
+    private func logDebug(_ message: String) {
+        logger.debug("\(message)")
     }
     
     // MARK: - TranslationMemoryRepository Implementation
@@ -48,12 +65,12 @@ public final class TranslationMemoryService: TranslationMemoryRepository {
             entry.recordAccess()
             cache[cacheKey] = entry
             
-            stats.recordHit(lookupTime: CFAbsoluteTimeGetCurrent() - startTime)
+            recordHit(lookupTime: CFAbsoluteTimeGetCurrent() - startTime)
             logger.debug("Cache hit", metadata: ["key": "\(cacheKey)"])
             
             return entry
         } else {
-            stats.recordMiss(lookupTime: CFAbsoluteTimeGetCurrent() - startTime)
+            recordMiss(lookupTime: CFAbsoluteTimeGetCurrent() - startTime)
             logger.debug("Cache miss", metadata: ["key": "\(cacheKey)"])
             
             return nil
@@ -94,14 +111,14 @@ public final class TranslationMemoryService: TranslationMemoryRepository {
         matches.sort { $0.similarityScore > $1.similarityScore }
         
         if !matches.isEmpty {
-            stats.recordFuzzyHit()
+            recordFuzzyHit()
             logger.debug("Fuzzy matches found", metadata: [
                 "count": "\(matches.count)",
                 "bestScore": "\(matches.first?.similarityScore ?? 0)"
             ])
         }
         
-        stats.recordLookupTime(CFAbsoluteTimeGetCurrent() - startTime)
+        recordLookupTime(CFAbsoluteTimeGetCurrent() - startTime)
         
         return matches
     }
@@ -133,26 +150,38 @@ public final class TranslationMemoryService: TranslationMemoryRepository {
         return TranslationMemoryStats(
             totalEntries: cache.count,
             maxCacheSize: config.maxCacheSize,
-            totalHits: stats.totalHits,
-            totalMisses: stats.totalMisses,
-            fuzzyHits: stats.fuzzyHits,
-            averageLookupTime: stats.averageLookupTime,
-            lastPersistTime: stats.lastPersistTime
+            totalHits: totalHits,
+            totalMisses: totalMisses,
+            fuzzyHits: fuzzyHits,
+            averageLookupTime: averageLookupTime,
+            lastPersistTime: lastPersistTime
         )
     }
     
     public func clearMemory() async throws {
         cache.removeAll()
-        stats = TranslationMemoryInternalStats()
+        totalHits = 0
+        totalMisses = 0
+        fuzzyHits = 0
+        totalLookupTime = 0.0
+        lookupCount = 0
+        lastPersistTime = nil
         try await persist()
         
         logger.info("Translation memory cleared")
     }
     
     public func persist() async throws {
-        // Capture current state to avoid Sendable issues
-        let currentCache = cache
-        let currentStats = stats
+        // Capture current state values
+        let entries = Array(cache.values)
+        let stats = TranslationMemoryPersistentStats(
+            totalHits: totalHits,
+            totalMisses: totalMisses,
+            fuzzyHits: fuzzyHits,
+            totalLookupTime: totalLookupTime,
+            lookupCount: lookupCount,
+            lastPersistTime: Date()
+        )
         let persistenceURL = getPersistenceURL()
         let logger = self.logger
 
@@ -169,25 +198,18 @@ public final class TranslationMemoryService: TranslationMemoryRepository {
                     }
                     
                     let container = TranslationMemoryContainer(
-                        entries: Array(currentCache.values),
-                        stats: TranslationMemoryPersistentStats(
-                            totalHits: currentStats.totalHits,
-                            totalMisses: currentStats.totalMisses,
-                            fuzzyHits: currentStats.fuzzyHits,
-                            totalLookupTime: currentStats.totalLookupTime,
-                            lookupCount: currentStats.lookupCount,
-                            lastPersistTime: Date()
-                        )
+                        entries: entries,
+                        stats: stats
                     )
                     
                     let data = try JSONEncoder().encode(container)
                     try data.write(to: url)
                     
                     logger.debug("Translation memory saved", metadata: [
-                        "entries": "\(currentCache.count)",
+                        "entries": "\(entries.count)",
                         "size": "\(data.count) bytes",
-                        "hits": "\(currentStats.totalHits)",
-                        "misses": "\(currentStats.totalMisses)"
+                        "hits": "\(stats.totalHits)",
+                        "misses": "\(stats.totalMisses)"
                     ])
                     
                     continuation.resume()
@@ -197,8 +219,8 @@ public final class TranslationMemoryService: TranslationMemoryRepository {
             }
         }
         
-        // Update stats after successful persistence
-        stats.lastPersistTime = Date()
+        // Update lastPersistTime after successful persistence
+        lastPersistTime = Date()
     }
     
     // MARK: - Private Methods
@@ -286,53 +308,43 @@ public final class TranslationMemoryService: TranslationMemoryRepository {
         }
         
         // Restore stats
-        stats.totalHits = container.stats.totalHits
-        stats.totalMisses = container.stats.totalMisses
-        stats.fuzzyHits = container.stats.fuzzyHits
-        stats.totalLookupTime = container.stats.totalLookupTime
-        stats.lookupCount = container.stats.lookupCount
-        stats.lastPersistTime = container.stats.lastPersistTime
+        totalHits = container.stats.totalHits
+        totalMisses = container.stats.totalMisses
+        fuzzyHits = container.stats.fuzzyHits
+        totalLookupTime = container.stats.totalLookupTime
+        lookupCount = container.stats.lookupCount
+        lastPersistTime = container.stats.lastPersistTime
         
         logger.info("Translation memory loaded", metadata: [
             "entries": "\(cache.count)",
-            "hits": "\(stats.totalHits)",
-            "misses": "\(stats.totalMisses)"
-        ])
-    }
-    
-    private func saveToPersistence() throws {
-        let url = getPersistenceURL()
-        
-        // Create backup of existing file
-        let backupURL = url.appendingPathExtension("backup")
-        if fileManager.fileExists(atPath: url.path) {
-            _ = try? fileManager.replaceItem(at: backupURL, withItemAt: url, backupItemName: nil, options: [], resultingItemURL: nil)
-        }
-        
-        let container = TranslationMemoryContainer(
-            entries: Array(cache.values),
-            stats: TranslationMemoryPersistentStats(
-                totalHits: stats.totalHits,
-                totalMisses: stats.totalMisses,
-                fuzzyHits: stats.fuzzyHits,
-                totalLookupTime: stats.totalLookupTime,
-                lookupCount: stats.lookupCount,
-                lastPersistTime: Date()
-            )
-        )
-        
-        let data = try JSONEncoder().encode(container)
-        try data.write(to: url)
-        
-        logger.info("Translation memory saved", metadata: [
-            "entries": "\(cache.count)",
-            "size": "\(data.count) bytes"
+            "hits": "\(totalHits)",
+            "misses": "\(totalMisses)"
         ])
     }
     
     private func getPersistenceURL() -> URL {
         let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
         return documentsDirectory.appendingPathComponent(config.persistencePath)
+    }
+
+    // MARK: - Stats Helpers
+    private func recordHit(lookupTime: TimeInterval) {
+        totalHits += 1
+        recordLookupTime(lookupTime)
+    }
+    
+    private func recordMiss(lookupTime: TimeInterval) {
+        totalMisses += 1
+        recordLookupTime(lookupTime)
+    }
+    
+    private func recordFuzzyHit() {
+        fuzzyHits += 1
+    }
+    
+    private func recordLookupTime(_ time: TimeInterval) {
+        totalLookupTime += time
+        lookupCount += 1
     }
 }
 
@@ -350,37 +362,4 @@ private struct TranslationMemoryPersistentStats: Codable {
     let totalLookupTime: TimeInterval
     let lookupCount: Int
     let lastPersistTime: Date?
-}
-
-private class TranslationMemoryInternalStats {
-    var totalHits: Int = 0
-    var totalMisses: Int = 0
-    var fuzzyHits: Int = 0
-    var totalLookupTime: TimeInterval = 0.0
-    var lookupCount: Int = 0
-    var lastPersistTime: Date? = nil
-    
-    var averageLookupTime: TimeInterval {
-        guard lookupCount > 0 else { return 0.0 }
-        return totalLookupTime / Double(lookupCount)
-    }
-    
-    func recordHit(lookupTime: TimeInterval) {
-        totalHits += 1
-        recordLookupTime(lookupTime)
-    }
-    
-    func recordMiss(lookupTime: TimeInterval) {
-        totalMisses += 1
-        recordLookupTime(lookupTime)
-    }
-    
-    func recordFuzzyHit() {
-        fuzzyHits += 1
-    }
-    
-    func recordLookupTime(_ time: TimeInterval) {
-        totalLookupTime += time
-        lookupCount += 1
-    }
 }

@@ -84,9 +84,59 @@ public final class BackTranslationUseCase {
     }
     
     private func createResultFromMemoryEntry(_ entry: TranslationMemoryEntry) async throws -> BackTranslationResult {
-        // This is simplified - in a real implementation, we'd need to store
-        // the complete back-translation result in memory
-        throw TranslationError.notImplemented("Memory-based result creation not implemented")
+        // Create forward translation result from the entry
+        let forwardResult = TranslationResult(
+            originalText: entry.sourceText,
+            translatedText: entry.translatedText,
+            sourceLanguage: entry.sourceLanguage,
+            targetLanguage: entry.targetLanguage,
+            apiProvider: .googleUnofficialAPI,
+            cost: nil
+        )
+        
+        // Try to find the corresponding backward translation in memory
+        let backwardEntry = try await translationMemoryRepository.lookupExact(
+            sourceText: entry.translatedText,
+            sourceLanguage: entry.targetLanguage,
+            targetLanguage: entry.sourceLanguage
+        )
+        
+        let backwardResult: TranslationResult
+        if let bEntry = backwardEntry {
+            backwardResult = TranslationResult(
+                originalText: bEntry.sourceText,
+                translatedText: bEntry.translatedText,
+                sourceLanguage: bEntry.sourceLanguage,
+                targetLanguage: bEntry.targetLanguage,
+                apiProvider: .googleUnofficialAPI,
+                cost: nil
+            )
+        } else {
+            // Fallback: Use original text as back-translation if missing from memory
+            backwardResult = TranslationResult(
+                originalText: entry.translatedText,
+                translatedText: entry.sourceText,
+                sourceLanguage: entry.targetLanguage,
+                targetLanguage: entry.sourceLanguage,
+                apiProvider: .googleUnofficialAPI,
+                cost: nil
+            )
+        }
+        
+        let qualityAssessment = try await qualityRepository.assessQuality(
+            originalText: entry.sourceText,
+            backTranslatedText: backwardResult.translatedText
+        )
+        
+        return BackTranslationResult(
+            originalEnglish: entry.sourceLanguage == .english ? entry.sourceText : backwardResult.translatedText,
+            japanese: entry.targetLanguage == .japanese ? entry.translatedText : entry.sourceText,
+            backTranslatedEnglish: entry.sourceLanguage == .english ? backwardResult.translatedText : entry.sourceText,
+            forwardTranslation: forwardResult,
+            backwardTranslation: backwardResult,
+            qualityAssessment: qualityAssessment,
+            totalCost: TranslationCost(characterCount: 0, costInUSD: 0, apiProvider: .googleUnofficialAPI)
+        )
     }
     
     private func trackTranslationCosts(
