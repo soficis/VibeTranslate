@@ -41,25 +41,20 @@ public final class TranslationViewModel: ObservableObject {
     }
     
     public func performBackTranslation() async {
-        if backTranslationUseCase == nil, let container = appContainer, container.isInitialized {
-            backTranslationUseCase = container.backTranslationUseCase
-        }
+        guard let container = appContainer else { return }
+        if !container.isInitialized { await container.initialize() }
 
         guard !inputText.isEmpty else {
-            await showErrorMessage("Please enter text to translate")
+            showErrorMessage("Please enter text to translate")
             return
         }
 
-        guard let useCase = backTranslationUseCase else {
-            await showErrorMessage("Services are still initializing. Please try again shortly.")
-            return
-        }
-        
         isTranslating = true
         translationResult = nil
+        defer { isTranslating = false }
         
         do {
-            let result = try await useCase.execute(
+            let result = try await container.backTranslationUseCase.execute(
                 text: inputText,
                 sourceLanguage: .english,
                 targetLanguage: .japanese,
@@ -68,10 +63,8 @@ public final class TranslationViewModel: ObservableObject {
             
             translationResult = result
         } catch {
-            await showErrorMessage(error.localizedDescription)
+            handleError(error)
         }
-        
-        isTranslating = false
     }
     
     public func handleFileImport(_ result: Result<[URL], Error>) {
@@ -88,21 +81,26 @@ public final class TranslationViewModel: ObservableObject {
                     }
                 } catch {
                     await MainActor.run {
-                        Task { await self.showErrorMessage("Failed to load file") }
+                        self.showErrorMessage("Failed to load file")
                     }
                 }
             }
             
         case .failure(_):
-            Task {
-                await showErrorMessage("File selection failed")
-            }
+            showErrorMessage("File selection failed")
         }
     }
     
-    private func showErrorMessage(_ message: String) async {
+    func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
+    }
+    private func handleError(_ error: Error) {
+        if let translationError = error as? TranslationError {
+            showErrorMessage(translationError.errorDescription ?? translationError.localizedDescription)
+        } else {
+            showErrorMessage(error.localizedDescription)
+        }
     }
 }
 
@@ -135,7 +133,7 @@ public final class BatchProcessingViewModel: ObservableObject {
     public func startBatchProcessing() async {
         guard !selectedFiles.isEmpty,
               let useCase = batchProcessingUseCase else {
-            await showErrorMessage("Please select files to process")
+            showErrorMessage("Please select files to process")
             return
         }
         // Kick off processing on a background task so we don't block the main actor
@@ -167,7 +165,10 @@ public final class BatchProcessingViewModel: ObservableObject {
                 await MainActor.run {
                     self.isProcessing = false
                 }
-                await self.showErrorMessage(error.localizedDescription)
+                await MainActor.run {
+                    self.isProcessing = false
+                    self.handleError(error)
+                }
             }
         }
     }
@@ -184,9 +185,7 @@ public final class BatchProcessingViewModel: ObservableObject {
             selectedFiles = urls
             
         case .failure(_):
-            Task {
-                await showErrorMessage("File selection failed")
-            }
+            showErrorMessage("File selection failed")
         }
     }
 
@@ -195,9 +194,17 @@ public final class BatchProcessingViewModel: ObservableObject {
         return try await processor.extractText(from: url)
     }
     
-    public func showErrorMessage(_ message: String) async {
+    func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
+    }
+
+    private func handleError(_ error: Error) {
+        if let translationError = error as? TranslationError {
+            showErrorMessage(translationError.errorDescription ?? translationError.localizedDescription)
+        } else {
+            showErrorMessage(error.localizedDescription)
+        }
     }
 }
 
@@ -232,7 +239,7 @@ public final class CostTrackingViewModel: ObservableObject {
             monthlyBudgetLimit = analysis.budgetStatus.monthlyLimitUSD
             alertThreshold = analysis.budgetStatus.alertThresholdPercent
         } catch {
-            await showErrorMessage(error.localizedDescription)
+            handleError(error)
         }
         
         isLoading = false
@@ -248,13 +255,21 @@ public final class CostTrackingViewModel: ObservableObject {
             )
             budgetStatus = newStatus
         } catch {
-            await showErrorMessage(error.localizedDescription)
+            handleError(error)
         }
     }
     
-    private func showErrorMessage(_ message: String) async {
+    func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
+    }
+
+    private func handleError(_ error: Error) {
+        if let translationError = error as? TranslationError {
+            showErrorMessage(translationError.errorDescription ?? translationError.localizedDescription)
+        } else {
+            showErrorMessage(error.localizedDescription)
+        }
     }
 }
 
@@ -269,52 +284,37 @@ public final class TranslationMemoryViewModel: ObservableObject {
     @Published var errorMessage = ""
     
     private var appContainer: AppContainer?
-    private var translationMemoryRepository: TranslationMemoryRepository?
     
     public func configure(with container: AppContainer) {
         self.appContainer = container
-        // Wait for container to be initialized before setting up repository
-        if container.isInitialized {
-            self.translationMemoryRepository = container.translationMemoryRepository
-        }
     }
     
     public func loadStats() async {
-        // Wait for app container to be initialized if needed
-        if let container = appContainer, !container.isInitialized {
-            // Wait for initialization to complete
-            while !container.isInitialized {
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
-            }
-            // Now set up the repository
-            self.translationMemoryRepository = container.translationMemoryRepository
+        guard let container = appContainer else { return }
+        
+        // Ensure initialization is complete without blocking loops
+        if !container.isInitialized {
+            await container.initialize()
         }
         
-        guard let repository = translationMemoryRepository else { return }
-        
         do {
-            stats = try await repository.getStats()
+            stats = try await container.translationMemoryRepository.getStats()
         } catch {
-            await showErrorMessage(error.localizedDescription)
+            showErrorMessage(error.localizedDescription)
         }
     }
     
     public func searchMemory() async {
-        // Wait for app container to be initialized if needed
-        if let container = appContainer, !container.isInitialized {
-            while !container.isInitialized {
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
-            }
-            self.translationMemoryRepository = container.translationMemoryRepository
-        }
+        guard let container = appContainer else { return }
+        if !container.isInitialized { await container.initialize() }
         
-        guard !searchText.isEmpty,
-              let repository = translationMemoryRepository else { return }
+        guard !searchText.isEmpty else { return }
         
         isSearching = true
+        defer { isSearching = false }
         
         do {
-            let matches = try await repository.lookupFuzzy(
+            let matches = try await container.translationMemoryRepository.lookupFuzzy(
                 sourceText: searchText,
                 sourceLanguage: .english,
                 targetLanguage: .japanese,
@@ -322,33 +322,24 @@ public final class TranslationMemoryViewModel: ObservableObject {
             )
             searchResults = matches
         } catch {
-            await showErrorMessage(error.localizedDescription)
+            showErrorMessage(error.localizedDescription)
         }
-        
-        isSearching = false
     }
     
     public func clearMemory() async {
-        // Wait for app container to be initialized if needed
-        if let container = appContainer, !container.isInitialized {
-            while !container.isInitialized {
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
-            }
-            self.translationMemoryRepository = container.translationMemoryRepository
-        }
-        
-        guard let repository = translationMemoryRepository else { return }
+        guard let container = appContainer else { return }
+        if !container.isInitialized { await container.initialize() }
         
         do {
-            try await repository.clearMemory()
+            try await container.translationMemoryRepository.clearMemory()
             await loadStats()
             searchResults = []
         } catch {
-            await showErrorMessage(error.localizedDescription)
+            showErrorMessage(error.localizedDescription)
         }
     }
     
-    private func showErrorMessage(_ message: String) async {
+    func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
     }
@@ -381,7 +372,7 @@ public final class ExportViewModel: ObservableObject {
         
         let resultsToExport = availableResults.filter { selectedResults.contains($0.id) }
         guard !resultsToExport.isEmpty else {
-            await showErrorMessage("Please select results to export")
+            showErrorMessage("Please select results to export")
             return
         }
         
@@ -391,7 +382,7 @@ public final class ExportViewModel: ObservableObject {
                 format: selectedFormat
             )
         } catch {
-            await showErrorMessage(error.localizedDescription)
+            handleError(error)
         }
     }
     
@@ -400,7 +391,7 @@ public final class ExportViewModel: ObservableObject {
         
         let resultsToExport = availableResults.filter { selectedResults.contains($0.id) }
         guard !resultsToExport.isEmpty else {
-            await showErrorMessage("Please select results to export")
+            showErrorMessage("Please select results to export")
             return
         }
         
@@ -415,14 +406,22 @@ public final class ExportViewModel: ObservableObject {
                 includeQualityMetrics: includeQualityMetrics
             )
         } catch {
-            await showErrorMessage(error.localizedDescription)
+            handleError(error)
         }
         
         isExporting = false
     }
     
-    private func showErrorMessage(_ message: String) async {
+    func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
+    }
+
+    private func handleError(_ error: Error) {
+        if let translationError = error as? TranslationError {
+            showErrorMessage(translationError.errorDescription ?? translationError.localizedDescription)
+        } else {
+            showErrorMessage(error.localizedDescription)
+        }
     }
 }

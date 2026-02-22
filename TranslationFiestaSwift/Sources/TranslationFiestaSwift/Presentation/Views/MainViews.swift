@@ -10,6 +10,9 @@ struct TranslationFiestaSwiftApp: App {
             ContentView()
                 .environmentObject(appContainer)
                 .frame(minWidth: 900, minHeight: 650)
+                .task {
+                    await appContainer.initialize()
+                }
         }
         .windowStyle(.automatic)
         .windowToolbarStyle(.unifiedCompact)

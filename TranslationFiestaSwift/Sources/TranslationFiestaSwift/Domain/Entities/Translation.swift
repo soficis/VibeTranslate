@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents the result of a translation operation
-public struct TranslationResult: Equatable, Codable {
+public struct TranslationResult: Equatable, Codable, Sendable {
     public let originalText: String
     public let translatedText: String
     public let sourceLanguage: Language
@@ -33,7 +33,7 @@ public struct TranslationResult: Equatable, Codable {
 }
 
 /// Represents a back-translation result (English -> Japanese -> English)
-public struct BackTranslationResult: Equatable, Codable, Identifiable {
+public struct BackTranslationResult: Equatable, Codable, Identifiable, Sendable {
     public let id: UUID
     public let originalEnglish: String
     public let japanese: String
@@ -139,7 +139,7 @@ public enum APIProvider: String, CaseIterable, Codable, Identifiable, Sendable {
 }
 
 /// Cost information for translation
-public struct TranslationCost: Equatable, Codable {
+public struct TranslationCost: Equatable, Codable, Sendable {
     public let characterCount: Int
     public let costInUSD: Double
     public let apiProvider: APIProvider
@@ -159,7 +159,7 @@ public struct TranslationCost: Equatable, Codable {
 }
 
 /// Quality assessment for translations
-public struct QualityAssessment: Equatable, Codable {
+public struct QualityAssessment: Equatable, Codable, Sendable {
     public let bleuScore: Double
     public let confidenceLevel: ConfidenceLevel
     public let starRating: StarRating
@@ -174,7 +174,7 @@ public struct QualityAssessment: Equatable, Codable {
 }
 
 /// Quality score for individual translations
-public struct QualityScore: Equatable, Codable {
+public struct QualityScore: Equatable, Codable, Sendable {
     public let score: Double
     public let confidenceLevel: ConfidenceLevel
     
@@ -185,7 +185,7 @@ public struct QualityScore: Equatable, Codable {
 }
 
 /// Five-tier confidence level system
-public enum ConfidenceLevel: String, CaseIterable, Codable {
+public enum ConfidenceLevel: String, CaseIterable, Codable, Sendable {
     case high = "high"
     case mediumHigh = "medium_high"
     case medium = "medium"
@@ -214,7 +214,7 @@ public enum ConfidenceLevel: String, CaseIterable, Codable {
 }
 
 /// Star rating system (1-5 stars)
-public enum StarRating: Int, CaseIterable, Codable {
+public enum StarRating: Int, CaseIterable, Codable, Sendable {
     case oneStar = 1
     case twoStars = 2
     case threeStars = 3
