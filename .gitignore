@@ -32,8 +32,14 @@ dist-electron/**
 .eslintcache
 
 # Documentation and reference files
-cleancode.md
-docs/CleanCodeSwift.md
+docs/
+*.md
+*.pdf
+*.docx
+*.txt
+!CMakeLists.txt
+!requirements.txt
+!*README.md
 docs/cleancodeJS.md
 docs/CleanCodeDotNet.md
 docs/_site/
