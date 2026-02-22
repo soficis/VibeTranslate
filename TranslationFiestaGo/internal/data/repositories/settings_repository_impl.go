@@ -100,23 +100,6 @@ func (r *SettingsRepositoryImpl) loadSettings() {
 	r.settings = &loadedSettings
 	r.applyLocalEnvironment()
 
-	// Check for legacy API key in settings file and migrate to secure storage
-	var legacyData map[string]interface{}
-	if err := json.Unmarshal(data, &legacyData); err == nil {
-		if apiKey, exists := legacyData["api_key"]; exists {
-			if apiKeyStr, ok := apiKey.(string); ok && apiKeyStr != "" {
-				r.logger.Info("Migrating legacy API key to secure storage")
-				if err := r.secureStorage.StoreAPIKey("main_api_key", apiKeyStr); err != nil {
-					r.logger.Error("Failed to migrate API key to secure storage: %v", err)
-				} else {
-					r.logger.Info("API key migrated to secure storage successfully")
-					// Remove the API key from the settings file after successful migration
-					r.saveSettings()
-				}
-			}
-		}
-	}
-
 	r.logger.Info("Settings loaded from %s", r.settingsFile)
 }
 

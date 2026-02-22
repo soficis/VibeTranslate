@@ -174,8 +174,24 @@ namespace TranslationFiesta.WinUI
                 var health = JsonSerializer.Deserialize<LocalHealthResponse>(body, JsonOptions);
                 return string.Equals(health?.Status, "ok", StringComparison.OrdinalIgnoreCase);
             }
-            catch
+            catch (TaskCanceledException ex)
             {
+                Logger.Warning($"LocalServiceClient health check timed out: {ex.Message}");
+                return false;
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.Warning($"LocalServiceClient health check request failed: {ex.Message}");
+                return false;
+            }
+            catch (JsonException ex)
+            {
+                Logger.Warning($"LocalServiceClient health response parse failed: {ex.Message}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("LocalServiceClient health check failed unexpectedly.", ex);
                 return false;
             }
         }
@@ -227,9 +243,9 @@ namespace TranslationFiesta.WinUI
                     throw new HttpRequestException($"Local service error ({payload.Error.Code}): {payload.Error.Message}");
                 }
             }
-            catch
+            catch (JsonException ex)
             {
-                // ignore parse failures
+                Logger.Warning($"Failed to parse local service error payload: {ex.Message}");
             }
             throw new HttpRequestException($"Local service HTTP {statusCode}.");
         }

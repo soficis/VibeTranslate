@@ -22,23 +22,12 @@ public final class SecureStorageService: SecureStorageRepository {
     
     public func getAPIKey(for provider: APIProvider) async throws -> String? {
         let account = "api_key_\(provider.storageKey)"
-        if let value = try await getFromKeychain(account: account) {
-            return value
-        }
-        for legacyKey in provider.legacyStorageKeys {
-            if let value = try await getFromKeychain(account: "api_key_\(legacyKey)") {
-                return value
-            }
-        }
-        return nil
+        return try await getFromKeychain(account: account)
     }
     
     public func removeAPIKey(for provider: APIProvider) async throws {
         let account = "api_key_\(provider.storageKey)"
         try await removeFromKeychain(account: account)
-        for legacyKey in provider.legacyStorageKeys {
-            try await removeFromKeychain(account: "api_key_\(legacyKey)")
-        }
         logger.info("API key removed", metadata: ["provider": "\(provider.storageKey)"])
     }
     

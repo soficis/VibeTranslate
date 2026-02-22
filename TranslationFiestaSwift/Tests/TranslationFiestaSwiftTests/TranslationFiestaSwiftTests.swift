@@ -10,7 +10,11 @@ final class TranslationFiestaSwiftTests: XCTestCase {
 
     func testOfficialProviderIdentifiers() throws {
         XCTAssertEqual(APIProvider.googleCloudAPI.rawValue, "google_official")
-        XCTAssertTrue(APIProvider.googleCloudAPI.legacyStorageKeys.contains("google_cloud"))
+    }
+
+    func testProviderDecodeRejectsUnknownValue() throws {
+        let json = "\"google_cloud\"".data(using: .utf8)!
+        XCTAssertThrowsError(try JSONDecoder().decode(APIProvider.self, from: json))
     }
 
     func testTranslationErrorDescriptions() throws {

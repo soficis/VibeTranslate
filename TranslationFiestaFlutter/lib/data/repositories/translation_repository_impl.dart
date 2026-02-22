@@ -17,7 +17,6 @@ class TranslationRepositoryImpl implements TranslationRepository {
   final UnofficialGoogleTranslateService _unofficialService;
   final OfficialGoogleTranslateService _officialService;
   final LocalTranslationService _localService;
-  final MockTranslationService _mockService;
   final RetryService _retryService;
   final http.Client _httpClient;
   final Logger logger = Logger.instance;
@@ -26,7 +25,6 @@ class TranslationRepositoryImpl implements TranslationRepository {
       : _unofficialService = UnofficialGoogleTranslateService(_httpClient),
         _officialService = OfficialGoogleTranslateService(_httpClient),
         _localService = LocalTranslationService(_httpClient),
-        _mockService = MockTranslationService(_httpClient),
         _retryService = RetryService();
 
   @override
@@ -34,7 +32,7 @@ class TranslationRepositoryImpl implements TranslationRepository {
 
   @override
   bool get isConfigured =>
-      true; // Always configured as it has fallback services
+      true;
 
   @override
   Future<Result<TranslationResult>> translateText(
@@ -63,41 +61,6 @@ class TranslationRepositoryImpl implements TranslationRepository {
     logger.info('Service result: ${result.isRight ? "Success" : "Failure"}');
     if (result.isLeft) {
       logger.error('Service failure: ${result.left.message}');
-    }
-
-    // If unofficial API fails and we have an API key, try official API as fallback
-    if (result.isLeft &&
-        config.providerId == TranslationProviderId.googleUnofficial &&
-        config.apiKey != null &&
-        config.apiKey!.isNotEmpty) {
-      logger.info('Unofficial API failed, trying official API as fallback');
-      final fallbackConfig =
-          config.copyWith(providerId: TranslationProviderId.googleOfficial);
-      final officialResult =
-          await _officialService.translate(request, fallbackConfig);
-
-      if (officialResult.isRight) {
-        return officialResult;
-      }
-
-      logger.info('Official API also failed, using mock service for testing');
-      return _mockService.translate(request, config);
-    }
-
-    // If unofficial API fails and we don't have an API key, use mock service
-    if (result.isLeft &&
-        config.providerId == TranslationProviderId.googleUnofficial) {
-      logger.info(
-        'Unofficial API failed and no API key available, using mock service for testing',
-      );
-      return _mockService.translate(request, config);
-    }
-
-    // If we're already using official API and it fails, try mock service
-    if (result.isLeft &&
-        config.providerId == TranslationProviderId.googleOfficial) {
-      logger.info('Official API failed, using mock service for testing');
-      return _mockService.translate(request, config);
     }
 
     return result;

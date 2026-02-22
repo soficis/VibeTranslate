@@ -49,8 +49,24 @@ namespace TranslationFiesta.WinUI
                 _cached.UseOfficialApi = ProviderIds.IsOfficial(_cached.ProviderId);
                 return _cached;
             }
-            catch
+            catch (JsonException ex)
             {
+                Logger.Warning($"SettingsService.Load parse error: {ex.Message}");
+                return new AppSettings();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Logger.Warning($"SettingsService.Load access denied: {ex.Message}");
+                return new AppSettings();
+            }
+            catch (IOException ex)
+            {
+                Logger.Warning($"SettingsService.Load I/O error: {ex.Message}");
+                return new AppSettings();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("SettingsService.Load unexpected error.", ex);
                 return new AppSettings();
             }
         }
@@ -68,8 +84,17 @@ namespace TranslationFiesta.WinUI
                 File.WriteAllText(PathFile, txt);
                 _cached = s;
             }
-            catch
+            catch (UnauthorizedAccessException ex)
             {
+                Logger.Error("SettingsService.Save access denied.", ex);
+            }
+            catch (IOException ex)
+            {
+                Logger.Error("SettingsService.Save I/O error.", ex);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("SettingsService.Save unexpected error.", ex);
             }
         }
     }

@@ -3,6 +3,7 @@ bin/
 obj/
 build/
 dist/
+artifacts/
 dist-electron/
 dist-electron/**
 .vite/
@@ -47,6 +48,8 @@ docs/.mkdocs/
 # Python
 __pycache__/
 *.py[cod]
+*.pyc
+*.pyo
 *$py.class
 *.so
 .Python
@@ -224,6 +227,9 @@ tm_cache.json
 translationfiesta.log
 settings.json
 secure_storage/
+_ct2_tmp/
+_pack_tmp/
+flutter_output.log
 
 # Wails specific
 wails.json.bak

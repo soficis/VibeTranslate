@@ -1,8 +1,0 @@
-﻿ElanMT tiny models (English↔Japanese)
-
-Original authors: ELAN MITSUA Project / Abstract Engine
-Original sources:
-- https://huggingface.co/Mitsua/elan-mt-tiny-en-ja
-- https://huggingface.co/Mitsua/elan-mt-tiny-ja-en
-
-Converted to CTranslate2 int8 for offline inference.

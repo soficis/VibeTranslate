@@ -97,16 +97,13 @@ public enum APIProvider: String, CaseIterable, Codable, Identifiable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let raw = try container.decode(String.self)
-        switch raw {
-        case "local":
-            self = .localOffline
-        case "google_unofficial":
-            self = .googleUnofficialAPI
-        case "google_cloud", "google_official":
-            self = .googleCloudAPI
-        default:
-            self = .googleUnofficialAPI
+        guard let value = APIProvider(rawValue: raw) else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unsupported APIProvider value: \(raw)"
+            )
         }
+        self = value
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -116,15 +113,6 @@ public enum APIProvider: String, CaseIterable, Codable, Identifiable, Sendable {
 
     public var storageKey: String { rawValue }
 
-    public var legacyStorageKeys: [String] {
-        switch self {
-        case .googleCloudAPI:
-            return ["google_cloud"]
-        default:
-            return []
-        }
-    }
-    
     public var displayName: String {
         switch self {
         case .localOffline: return "Local (Offline)"

@@ -416,7 +416,7 @@ IMPLEMENTATION BREAKDOWN
                 try:
                     # Update budget display on main thread
                     self.window.after(0, self._update_budget_display)
-                except:
+                except tk.TclError:
                     break
                 time.sleep(30)  # Update every 30 seconds
 

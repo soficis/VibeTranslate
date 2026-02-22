@@ -97,7 +97,9 @@ class _ControlPanelState extends State<ControlPanel> {
                   child: TextField(
                     controller: _apiKeyController,
                     onChanged: (value) => provider.updateApiConfiguration(
-                        provider.providerId, value),
+                      provider.providerId,
+                      value,
+                    ),
                     obscureText: true,
                     enabled:
                         provider.providerId.isOfficial && !provider.isLoading,

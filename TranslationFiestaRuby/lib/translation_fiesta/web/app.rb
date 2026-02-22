@@ -87,7 +87,7 @@ module TranslationFiesta
           local_settings_store.apply_to_env(settings)
         end
 
-        def local_service_request(method, path)
+        def local_service_request(method, path, body = nil)
           base = ENV.fetch('TF_LOCAL_URL', 'http://127.0.0.1:5055')
           uri = URI.join(base, path)
           http = Net::HTTP.new(uri.host, uri.port)
@@ -97,7 +97,7 @@ module TranslationFiesta
                     else
                       req = Net::HTTP::Post.new(uri.request_uri)
                       req['Content-Type'] = 'application/json'
-                      req.body = JSON.generate({})
+                      req.body = JSON.generate(body || {})
                       req
                     end
           response = http.request(request)

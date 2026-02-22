@@ -19,36 +19,6 @@ namespace TranslationFiestaCSharp
             return HtmlProcessor.ExtractTextFromHtml(htmlContent);
         }
 
-        static void TestHtmlProcessing()
-        {
-            try
-            {
-                Console.WriteLine("Testing HTML Processing Functionality");
-                Console.WriteLine("=====================================");
-
-                string testFilePath = "test_sample.html";
-                if (!File.Exists(testFilePath))
-                {
-                    Console.WriteLine($"Test file '{testFilePath}' not found.");
-                    return;
-                }
-
-                string htmlContent = File.ReadAllText(testFilePath, Encoding.UTF8);
-                Console.WriteLine($"Original HTML length: {htmlContent.Length} characters");
-
-                string extractedText = HtmlProcessor.ExtractTextFromHtml(htmlContent);
-                Console.WriteLine($"Extracted text length: {extractedText.Length} characters");
-                Console.WriteLine("\nExtracted text:");
-                Console.WriteLine(extractedText);
-
-                Console.WriteLine("\nHTML processing test completed successfully!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Test failed: {ex.Message}");
-            }
-        }
-
         static string LoadTextFromFile(string filePath)
         {
             try
@@ -93,13 +63,6 @@ namespace TranslationFiestaCSharp
 
         static void Main(string[] args)
         {
-            // Check for test mode
-            if (args.Length > 0 && args[0] == "--test-html")
-            {
-                TestHtmlProcessing();
-                return;
-            }
-
             // Initialize Windows Forms for GUI mode
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();

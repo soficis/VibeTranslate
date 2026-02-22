@@ -36,7 +36,8 @@ class SettingsStorage:
         self.system = platform.system().lower()
         self._settings_file = self._get_settings_file_path()
         self._defaults = self._get_default_settings()
-        self._settings = self._load_settings()
+        load_result = self._load_settings_enhanced()
+        self._settings = load_result.value if load_result.is_success() else self._defaults.copy()  # type: ignore
 
     def _get_settings_file_path(self) -> Path:
         """Get the path for settings file."""
@@ -140,11 +141,6 @@ class SettingsStorage:
             })
             return Failure(error)
 
-    def _load_settings(self) -> Dict[str, Any]:
-        """Legacy load method for backward compatibility."""
-        result = self._load_settings_enhanced()
-        return result.value if result.is_success() else self._defaults.copy()  # type: ignore
-
     def _save_settings_enhanced(self) -> Result[bool, SettingsStorageError]:
         """Save current settings to file with enhanced error handling."""
         logger = get_logger()
@@ -191,11 +187,6 @@ class SettingsStorage:
             })
             return Failure(error)
 
-    def _save_settings(self) -> bool:
-        """Legacy save method for backward compatibility."""
-        result = self._save_settings_enhanced()
-        return result.is_success()
-
     def get(self, key: str, default: Any = None) -> Any:
         """
         Get a setting value.
@@ -209,7 +200,7 @@ class SettingsStorage:
         """
         return self._settings.get(key, default if default is not None else self._defaults.get(key))
 
-    def set_enhanced(self, key: str, value: Any) -> Result[bool, SettingsStorageError]:
+    def set(self, key: str, value: Any) -> bool:
         """
         Set a setting value with enhanced error handling.
 
@@ -229,19 +220,19 @@ class SettingsStorage:
                 "key": str(key),
                 "error": str(error)
             })
-            return Failure(error)
+            return False
 
         try:
             self._settings[key] = value
             save_result = self._save_settings_enhanced()
             if save_result.is_failure():
-                return Failure(save_result.error)  # type: ignore
+                return False
 
             logger.debug("Setting updated successfully", extra={
                 "key": key,
                 "value_type": type(value).__name__
             })
-            return Success(True)
+            return True
 
         except Exception as e:
             error = SettingsStorageError(
@@ -253,12 +244,7 @@ class SettingsStorage:
                 "key": key,
                 "error": str(error)
             })
-            return Failure(error)
-
-    def set(self, key: str, value: Any) -> bool:
-        """Legacy set method for backward compatibility."""
-        result = self.set_enhanced(key, value)
-        return result.is_success()
+            return False
 
     def update(self, settings_dict: Dict[str, Any]) -> bool:
         """
@@ -271,7 +257,7 @@ class SettingsStorage:
             bool: True if successful, False otherwise
         """
         self._settings.update(settings_dict)
-        return self._save_settings()
+        return self._save_settings_enhanced().is_success()
 
     def reset(self, key: Optional[str] = None) -> bool:
         """
@@ -291,7 +277,7 @@ class SettingsStorage:
         else:
             self._settings = self._defaults.copy()
 
-        return self._save_settings()
+        return self._save_settings_enhanced().is_success()
 
     def get_all(self) -> Dict[str, Any]:
         """Get all current settings."""
@@ -325,32 +311,16 @@ class SettingsStorage:
         """Set window geometry setting."""
         return self.set("window_geometry", geometry)
 
-    def get_use_official_api(self) -> bool:
-        """Get official API usage setting."""
-        provider_id = self.get("provider_id", None)
-        if provider_id:
-            return normalize_provider_id(provider_id) == PROVIDER_GOOGLE_OFFICIAL
-        return self.get("use_official_api", False)
-
-    def set_use_official_api(self, use_official: bool) -> bool:
-        """Set official API usage setting."""
-        provider_id = PROVIDER_GOOGLE_OFFICIAL if use_official else PROVIDER_GOOGLE_UNOFFICIAL
-        self._settings["provider_id"] = provider_id
-        return self.set("use_official_api", use_official)
-
     def get_provider_id(self) -> str:
         """Get provider selection in canonical form."""
-        provider_id = self.get("provider_id", None)
-        if provider_id:
-            return normalize_provider_id(provider_id)
-        return PROVIDER_GOOGLE_OFFICIAL if self.get_use_official_api() else PROVIDER_GOOGLE_UNOFFICIAL
+        return normalize_provider_id(self.get("provider_id", PROVIDER_GOOGLE_UNOFFICIAL))
 
     def set_provider_id(self, provider_id: str) -> bool:
-        """Set provider selection and keep legacy flag in sync."""
+        """Set provider selection and keep API flags in sync."""
         normalized = normalize_provider_id(provider_id)
         self._settings["provider_id"] = normalized
         self._settings["use_official_api"] = normalized == PROVIDER_GOOGLE_OFFICIAL
-        return self._save_settings()
+        return self._save_settings_enhanced().is_success()
 
     def add_recent_file(self, file_path: str, max_recent: int = 10) -> bool:
         """Add a file to recent files list."""

@@ -7,6 +7,7 @@ from file_utils import load_text_from_path
 from translation_services import TranslationService
 from bleu_scorer import get_bleu_scorer
 from langdetect import detect
+from langdetect.lang_detect_exception import LangDetectException
 
 class BatchProcessor:
     def __init__(self, translation_service: TranslationService, update_callback=None):
@@ -79,7 +80,8 @@ class BatchProcessor:
         if source_lang is None:
             try:
                 source_lang = detect(content)
-            except:
+            except LangDetectException as error:
+                self.logger.warning(f"Language detection failed, defaulting source language to 'en': {error}")
                 source_lang = "en"  # fallback
 
         def validate_language(code):
