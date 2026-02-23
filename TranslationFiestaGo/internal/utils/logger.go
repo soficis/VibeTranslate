@@ -2,9 +2,11 @@ package utils
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -27,11 +29,13 @@ type Logger struct {
 
 // Global logger instance
 var globalLogger *Logger
+var loggerInitOnce sync.Once
 
 // NewLogger creates a new logger instance
 func NewLogger(level LogLevel, logFile string) (*Logger, error) {
 	var file *os.File
 	var err error
+	var output io.Writer = os.Stdout
 
 	if logFile != "" {
 		// Create log directory if it doesn't exist
@@ -44,11 +48,13 @@ func NewLogger(level LogLevel, logFile string) (*Logger, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to open log file: %w", err)
 		}
+
+		output = file
 	}
 
 	logger := &Logger{
 		level:  level,
-		logger: log.New(file, "", log.LstdFlags),
+		logger: log.New(output, "", log.LstdFlags),
 		file:   file,
 	}
 
@@ -57,6 +63,15 @@ func NewLogger(level LogLevel, logFile string) (*Logger, error) {
 
 // GetLogger returns the global logger instance
 func GetLogger() *Logger {
+	loggerInitOnce.Do(func() {
+		if globalLogger == nil {
+			globalLogger = &Logger{
+				level:  INFO,
+				logger: log.New(os.Stdout, "", log.LstdFlags),
+			}
+		}
+	})
+
 	return globalLogger
 }
 
@@ -73,6 +88,10 @@ func InitLogger(level LogLevel, logFile string) error {
 
 // Close closes the logger and its file handle
 func (l *Logger) Close() error {
+	if l == nil {
+		return nil
+	}
+
 	if l.file != nil {
 		return l.file.Close()
 	}
@@ -81,6 +100,10 @@ func (l *Logger) Close() error {
 
 // log writes a message to the log with the specified level
 func (l *Logger) log(level LogLevel, format string, args ...interface{}) {
+	if l == nil {
+		return
+	}
+
 	if level < l.level {
 		return
 	}

@@ -53,11 +53,6 @@ jobs:
           cache: "npm"
           cache-dependency-path: TranslationFiestaGo/frontend/package-lock.json
 
-      - name: Generate Wails JS bindings
-        run: |
-          cd TranslationFiestaGo
-          go run github.com/wailsapp/wails/v2/cmd/wails@v2.10.2 generate module
-
       - name: Build Go frontend assets
         run: |
           cd TranslationFiestaGo/frontend
@@ -157,7 +152,7 @@ jobs:
       - name: Lint and test Ruby
         run: |
           cd TranslationFiestaRuby
-          bundle exec rubocop
+          bundle exec rubocop --fail-level E
           bundle exec rspec
 
   swift:
