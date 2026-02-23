@@ -7,10 +7,10 @@ Following functional programming principles similar to Flutter's Either type.
 """
 
 from __future__ import annotations
-from typing import Generic, TypeVar, Union, Callable, Any, Optional
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from typing import Any, Callable, Generic, Optional, TypeVar
 
 from exceptions import TranslationFiestaError
 

@@ -6,14 +6,15 @@ Enhanced logging system with structured data, levels, and file output.
 """
 
 from __future__ import annotations
-from typing import Optional, Dict, Any, TextIO
+
+import json
 import logging
 import logging.handlers
-import json
 import sys
 from datetime import datetime
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 
 class LogLevel(Enum):

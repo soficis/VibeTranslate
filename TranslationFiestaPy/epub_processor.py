@@ -1,6 +1,7 @@
 import ebooklib
-from ebooklib import epub
 from bs4 import BeautifulSoup
+from ebooklib import epub
+
 
 class EpubProcessor:
     def __init__(self, file_path):

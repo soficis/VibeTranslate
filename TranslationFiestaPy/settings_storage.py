@@ -10,22 +10,20 @@ import json
 import os
 import platform
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Any, Dict, Optional
 
-from exceptions import (
-    SettingsStorageError,
-    FilePermissionError,
-    FileNotFoundError as CustomFileNotFoundError,
-    ValidationError,
-    get_user_friendly_message,
-)
-from result import Result, Success, Failure
 from enhanced_logger import get_logger
+from exceptions import (
+    FilePermissionError,
+    SettingsStorageError,
+    ValidationError,
+)
 from provider_ids import (
     PROVIDER_GOOGLE_OFFICIAL,
     PROVIDER_GOOGLE_UNOFFICIAL,
     normalize_provider_id,
 )
+from result import Failure, Result, Success
 
 
 class SettingsStorage:
@@ -121,7 +119,7 @@ class SettingsStorage:
             })
             return Failure(error)
 
-        except PermissionError as e:
+        except PermissionError:
             error = FilePermissionError(str(self._settings_file), "read")
             logger.error("Permission denied reading settings file", extra={
                 "file_path": str(self._settings_file),
@@ -167,7 +165,7 @@ class SettingsStorage:
             })
             return Success(True)
 
-        except PermissionError as e:
+        except PermissionError:
             error = FilePermissionError(str(self._settings_file), "write")
             logger.error("Permission denied writing settings file", extra={
                 "file_path": str(self._settings_file),

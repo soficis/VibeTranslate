@@ -18,10 +18,9 @@ except ImportError:
     keyring = None  # type: ignore[assignment]
     KEYRING_AVAILABLE = False
 
-from exceptions import SecureStorageError
-from result import Result, Success, Failure
 from enhanced_logger import get_logger
-
+from exceptions import SecureStorageError
+from result import Failure, Result, Success
 
 T = TypeVar("T")
 

@@ -14,7 +14,6 @@ import threading
 from logging.handlers import RotatingFileHandler
 from typing import Optional
 
-
 DEFAULT_LOG_FILE = "translationfiesta.log"
 
 

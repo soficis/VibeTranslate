@@ -6,41 +6,37 @@ metadata inclusion, and quality metrics.
 """
 
 import os
-import json
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
-from dataclasses import dataclass, asdict
-from pathlib import Path
-import tempfile
+from typing import List, Optional
 
 # Export dependencies
 try:
     from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter, A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.pagesizes import A4, letter
+    from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
 
 try:
     from docx import Document
-    from docx.shared import Inches, Pt
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
 
 try:
-    from jinja2 import Template, Environment, FileSystemLoader
+    from jinja2 import Environment, FileSystemLoader
     JINJA2_AVAILABLE = True
 except ImportError:
     JINJA2_AVAILABLE = False
 
-from exceptions import TranslationFiestaError
-from bleu_scorer import BLEUScorer
 from app_logger import create_logger
+from bleu_scorer import BLEUScorer
+from exceptions import TranslationFiestaError
 
 
 @dataclass
