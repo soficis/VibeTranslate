@@ -342,4 +342,3 @@ jobs:
           prerelease: ${{ steps.release-meta.outputs.prerelease }}
           files: release-assets/*
           fail_on_unmatched_files: true
-          overwrite_files: true
