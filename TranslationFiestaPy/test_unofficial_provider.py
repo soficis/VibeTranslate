@@ -2,10 +2,8 @@
 
 import json
 
-import pytest
-
-from translation_services import TranslationRequest, TranslationService
 from exceptions import BlockedError, InvalidTranslationResponseError, RateLimitedError
+from translation_services import TranslationRequest, TranslationService
 
 
 class DummyResponse:

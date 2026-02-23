@@ -7,16 +7,18 @@ including retry/backoff, error mapping, and structured logging.
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.parse
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Optional
-import os
 
 import requests
+from rapidfuzz import fuzz
 
+from cost_tracker import track_translation_cost
 from enhanced_logger import get_logger
 from exceptions import (
     ApiKeyRequiredError,
@@ -34,14 +36,11 @@ from exceptions import (
 from local_service_client import LocalServiceClient
 from provider_ids import (
     PROVIDER_GOOGLE_OFFICIAL,
-    PROVIDER_GOOGLE_UNOFFICIAL,
     PROVIDER_LOCAL,
     normalize_provider_id,
 )
 from rate_limiter import RateLimiter
 from result import Failure, Result, Success, TranslationResult
-from rapidfuzz import fuzz
-from cost_tracker import track_translation_cost
 
 
 @dataclass
@@ -450,14 +449,14 @@ class TranslationService:
         if cache_result is not None:
             self.logger.info(f"Cache hit for {text[:50]}...")
             return Success(cache_result)
-    
+
         # Check fuzzy cache
         fuzzy_result = self.tm.fuzzy_lookup(text, target_lang)
         if fuzzy_result is not None:
             translation, score = fuzzy_result
             self.logger.info(f"Fuzzy cache hit (score: {score:.2f}) for {text[:50]}...")
             return Success(translation)
-    
+
         if resolved_provider_id == PROVIDER_LOCAL:
             retry_result = self.local_client.translate(text, source_lang, target_lang)
         else:
@@ -492,7 +491,7 @@ class TranslationService:
                     self.rate_limiter.wait()
                 else:
                     break
-    
+
         if retry_result.is_failure():
             error = retry_result.error  # type: ignore
             # Log translation failure
@@ -507,12 +506,12 @@ class TranslationService:
                 provider_id=resolved_provider_id,
             )
             return Failure(error)
-    
+
         translated_text = retry_result.value  # type: ignore
-    
+
         # Store in cache
         self.tm.store(text, target_lang, translated_text)
-    
+
         # Log successful translation
         self.logger.log_translation_attempt(
             source_lang=source_lang,
@@ -523,7 +522,7 @@ class TranslationService:
             success=True,
             provider_id=resolved_provider_id,
         )
-    
+
         return Success(translated_text)
 
     def perform_backtranslation(

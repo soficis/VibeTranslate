@@ -9,20 +9,19 @@ Enhanced with comprehensive error handling and Result pattern.
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from bs4 import BeautifulSoup
 
+from enhanced_logger import get_logger
+from exceptions import (
+    FileFormatError,
+    FilePermissionError,
+    FileSizeError,
+)
 from exceptions import (
     FileNotFoundError as CustomFileNotFoundError,
-    FilePermissionError,
-    FileFormatError,
-    FileSizeError,
-    get_user_friendly_message,
 )
-from result import Result, Success, Failure
-from enhanced_logger import get_logger
-
+from result import Failure, Result, Success
 
 SUPPORTED_EXTENSIONS = {".txt", ".md", ".html"}
 
@@ -53,7 +52,7 @@ def read_text_file_utf8(path: str) -> Result[str, Exception]:
         logger.log_file_operation("read", path, True, file_size)
         return Success(content)
 
-    except PermissionError as e:
+    except PermissionError:
         error = FilePermissionError(path, "read")
         logger.log_file_operation("read", path, False, error=str(error))
         return Failure(error)

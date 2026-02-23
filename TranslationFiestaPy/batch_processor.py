@@ -1,13 +1,14 @@
 import os
-import tkinter as tk
-from tkinter import filedialog, messagebox
-from enhanced_logger import get_logger
-from provider_ids import normalize_provider_id
-from file_utils import load_text_from_path
-from translation_services import TranslationService
-from bleu_scorer import get_bleu_scorer
+
 from langdetect import detect
 from langdetect.lang_detect_exception import LangDetectException
+
+from bleu_scorer import get_bleu_scorer
+from enhanced_logger import get_logger
+from file_utils import load_text_from_path
+from provider_ids import normalize_provider_id
+from translation_services import TranslationService
+
 
 class BatchProcessor:
     def __init__(self, translation_service: TranslationService, update_callback=None):
@@ -151,7 +152,7 @@ class BatchProcessor:
                 # Add quality assessment if original content is available
                 if original_content:
                     quality_assessment = self.bleu_scorer.assess_translation_quality(original_content, translated_content)
-                    f.write(f"\n\n=== QUALITY ASSESSMENT ===\n")
+                    f.write("\n\n=== QUALITY ASSESSMENT ===\n")
                     f.write(f"BLEU Score: {quality_assessment['bleu_percentage']}\n")
                     f.write(f"Confidence: {quality_assessment['confidence_level']}\n")
                     f.write(f"Rating: {quality_assessment['quality_rating']}\n")

@@ -5,9 +5,10 @@ This module provides BLEU score calculation for back-translation quality assessm
 including confidence indicators and user-friendly quality feedback.
 """
 
-import sacrebleu
-from typing import Tuple, Dict, Any
 import logging
+from typing import Any, Dict, Tuple
+
+import sacrebleu
 
 logger = logging.getLogger(__name__)
 

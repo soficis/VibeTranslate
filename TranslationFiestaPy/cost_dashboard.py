@@ -8,14 +8,14 @@ Provides UI components for viewing and managing translation costs.
 
 from __future__ import annotations
 
-import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
-from typing import Optional, Callable
 import threading
 import time
-from datetime import datetime, timedelta
+import tkinter as tk
+from datetime import datetime
+from tkinter import messagebox, scrolledtext, ttk
+from typing import Callable, Optional
 
-from cost_tracker import get_cost_tracker, CostEntry
+from cost_tracker import get_cost_tracker
 from enhanced_logger import get_logger
 
 

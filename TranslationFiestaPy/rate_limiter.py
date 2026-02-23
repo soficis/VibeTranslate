@@ -1,6 +1,6 @@
-import time
-import random
 import logging
+import random
+import time
 from functools import wraps
 
 # Configure logging
@@ -30,7 +30,7 @@ class RateLimiter:
                 self.adaptive_delay = None  # Reset after use
             else:
                 delay = self.delay + random.uniform(0, self.jitter)
-            
+
             logger.info(f"Rate limit hit. Waiting for {delay:.2f} seconds.")
             time.sleep(delay)
 

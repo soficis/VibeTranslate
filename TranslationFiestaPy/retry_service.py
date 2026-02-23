@@ -7,20 +7,15 @@ Following Clean Code principles and functional programming patterns.
 """
 
 from __future__ import annotations
-from typing import Callable, Any, Optional, TypeVar, Awaitable
+
 import asyncio
 import random
 import time
 from datetime import datetime, timedelta
+from typing import Any, Awaitable, Callable, Optional, TypeVar
 
-from exceptions import (
-    TranslationFiestaError,
-    MaxRetriesExceededError,
-    NetworkError,
-    TimeoutError,
-    UnexpectedError
-)
-from result import Result, Success, Failure
+from exceptions import MaxRetriesExceededError, NetworkError, TimeoutError, UnexpectedError
+from result import Failure, Result, Success
 
 T = TypeVar('T')
 

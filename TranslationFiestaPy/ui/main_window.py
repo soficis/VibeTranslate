@@ -13,15 +13,16 @@ Features:
 - Cross-platform support
 """
 
-import tkinter as tk
-from tkinter import messagebox, scrolledtext, filedialog
-from tkinter import ttk
-import requests
 import json
-import threading
-import sys
 import os
 import platform
+import sys
+import threading
+import tkinter as tk
+from tkinter import filedialog, messagebox, scrolledtext, ttk
+
+import requests
+
 if platform.system() == "Windows":
     import ctypes
 try:
@@ -30,18 +31,13 @@ except ImportError:
     # Fallback if tkinterweb is not available or doesn't have HtmlFrame
     HtmlFrame = None
 
-from exceptions import get_user_friendly_message, TranslationFiestaError
-from result import Result, Success, Failure
-from enhanced_logger import get_logger
-from file_utils import load_text_from_path
-from epub_processor import EpubProcessor
-from translation_services import TranslationService
-from local_service_client import LocalServiceClient, LocalServiceConfig
-from secure_storage import get_secure_storage
-from settings_storage import get_settings_storage, get_theme, set_theme
 from batch_processor import BatchProcessor
 from bleu_scorer import get_bleu_scorer
-from .theme import build_themes, toggle_button_label
+from enhanced_logger import get_logger
+from epub_processor import EpubProcessor
+from exceptions import get_user_friendly_message
+from file_utils import load_text_from_path
+from local_service_client import LocalServiceClient, LocalServiceConfig
 from provider_ids import (
     PROVIDER_GOOGLE_OFFICIAL,
     PROVIDER_GOOGLE_UNOFFICIAL,
@@ -49,6 +45,11 @@ from provider_ids import (
     PROVIDER_LOCAL,
     normalize_provider_id,
 )
+from secure_storage import get_secure_storage
+from settings_storage import get_settings_storage
+from translation_services import TranslationService
+
+from .theme import build_themes, toggle_button_label
 
 
 class TranslationFiesta:
@@ -301,11 +302,11 @@ class TranslationFiesta:
             bg=theme['text_bg'], fg=theme['text_fg']
         )
         self.txt_back.grid(row=7, column=0, sticky="ew", padx=10, pady=(0, 10))
- 
+
         # Output format selection
         format_frame = tk.Frame(self.root, bg=theme['bg'])
         format_frame.grid(row=8, column=0, sticky="ew", padx=10, pady=(10, 0))
- 
+
         tk.Label(format_frame, text="Output Format:", bg=theme['bg'], fg=theme['fg'], font=("Arial", self.scale_font(9))).pack(side=tk.LEFT, padx=(0, 5))
         self.format_combo = ttk.Combobox(
             format_frame, textvariable=self.output_format_var,
@@ -314,12 +315,12 @@ class TranslationFiesta:
         )
         self.format_combo.pack(side=tk.LEFT, padx=(0, 10))
         self.format_combo.bind("<<ComboboxSelected>>", self.on_format_selected)
- 
+
         # Preview pane
         self.lbl_preview = tk.Label(self.root, text="Preview:", anchor="w",
                                     bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", self.scale_font(10)))
         self.lbl_preview.grid(row=9, column=0, sticky="ew", padx=10, pady=(10, 2))
- 
+
         # Webview for HTML preview (fallback to Text widget if not available)
         if HtmlFrame is not None:
             try:
@@ -892,7 +893,7 @@ class TranslationFiesta:
 
         # Close the window
         self.root.destroy()
- 
+
     def on_format_selected(self, event):
         """Handle format selection change."""
         selected_format = self.output_format_var.get()
@@ -900,7 +901,7 @@ class TranslationFiesta:
         # Update preview immediately if there's content
         if self.txt_back.get("1.0", tk.END).strip():
             self.update_preview(self.txt_back.get("1.0", tk.END).strip())
- 
+
     def update_preview(self, content):
         """Update the WebView with formatted content."""
         selected_format = self.output_format_var.get()
@@ -1016,7 +1017,7 @@ def main():
         root = tk.Tk()
 
         # Create the application
-        app = TranslationFiesta(root)
+        TranslationFiesta(root)
 
         # Start the GUI event loop
         root.mainloop()
