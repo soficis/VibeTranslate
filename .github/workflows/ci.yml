@@ -53,13 +53,6 @@ jobs:
           cache: "npm"
           cache-dependency-path: TranslationFiestaGo/frontend/package-lock.json
 
-      - name: Generate Wails JS bindings
-        run: |
-          cd TranslationFiestaGo
-          mkdir -p frontend/dist
-          printf '<!doctype html><html><body>placeholder</body></html>\n' > frontend/dist/index.html
-          go run github.com/wailsapp/wails/v2/cmd/wails@v2.10.2 generate module
-
       - name: Build Go frontend assets
         run: |
           cd TranslationFiestaGo/frontend

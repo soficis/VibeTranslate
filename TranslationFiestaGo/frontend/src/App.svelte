@@ -1,6 +1,5 @@
 <script>
   import { onMount } from 'svelte';
-  import { BackTranslate } from '../wailsjs/go/main/App.js';
 
   const providers = [
     { id: 'local', label: 'Local (Offline)' },
@@ -69,7 +68,10 @@
   async function translate() {
     status = '';
     try {
-      const result = await BackTranslate(inputText);
+      if (!window?.go?.main?.App?.BackTranslate) {
+        throw new Error('Backend bridge unavailable');
+      }
+      const result = await window.go.main.App.BackTranslate(inputText);
       resultText = result.result;
       intermediateText = result.intermediate;
     } catch (err) {
