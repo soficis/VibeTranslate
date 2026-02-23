@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+exclude = [
+  "dist",
+  "__pycache__",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

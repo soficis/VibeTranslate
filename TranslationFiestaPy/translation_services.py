@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 """
-translation_services.py
-
-Clean, testable translation utilities with comprehensive error handling.
-
-Implements both the unofficial Google endpoint (default) and the official
-Google Cloud Translation API (via API key) with robust error handling,
-retry mechanisms, and structured logging.
+Translation providers and translation orchestration (unofficial Google, Google Cloud, local service),
+including retry/backoff, error mapping, and structured logging.
 """
 
 from __future__ import annotations
@@ -14,32 +9,39 @@ from __future__ import annotations
 import json
 import time
 import urllib.parse
-from typing import Optional, Callable
+from collections import OrderedDict
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Callable, Optional
+import os
 
 import requests
 
+from enhanced_logger import get_logger
 from exceptions import (
-    TranslationFiestaError,
+    ApiKeyRequiredError,
+    BlockedError,
+    ConnectionError,
     HttpError,
     InvalidTranslationResponseError,
-    NoTranslationFoundError,
-    ApiKeyRequiredError,
     NetworkError,
-    TimeoutError,
-    ConnectionError,
+    NoTranslationFoundError,
+    RateLimitedError,
     SSLError,
-    get_user_friendly_message,
+    TimeoutError,
+    TranslationFiestaError,
 )
-from result import Result, Success, Failure, TranslationResult
-from enhanced_logger import get_logger
+from local_service_client import LocalServiceClient
+from provider_ids import (
+    PROVIDER_GOOGLE_OFFICIAL,
+    PROVIDER_GOOGLE_UNOFFICIAL,
+    PROVIDER_LOCAL,
+    normalize_provider_id,
+)
 from rate_limiter import RateLimiter
-
-from collections import OrderedDict
-import json
-from datetime import datetime
+from result import Failure, Result, Success, TranslationResult
 from rapidfuzz import fuzz
-from cost_tracker import get_cost_tracker, track_translation_cost
+from cost_tracker import track_translation_cost
 
 
 @dataclass
@@ -199,9 +201,15 @@ class TranslationMemory:
 class TranslationService:
     """Enhanced translation service with comprehensive error handling"""
 
-    def __init__(self):
+    def __init__(
+        self,
+        session: Optional[requests.Session] = None,
+        local_client: Optional[LocalServiceClient] = None,
+    ) -> None:
         self.logger = get_logger()
         self.rate_limiter = RateLimiter()
+        self.session = session or requests.Session()
+        self.local_client = local_client or LocalServiceClient(self.session)
         self.tm = TranslationMemory(cache_size=1000, persistence_path="tm_cache.json")
 
     def _extract_text_from_unofficial_response(self, data: object) -> Result[str, TranslationFiestaError]:
@@ -245,7 +253,20 @@ class TranslationService:
                 f"?client=gtx&sl={request.source_language}&tl={request.target_language}&dt=t&q={encoded_text}"
             )
 
-            response = session.get(url, timeout=10)
+            headers = {
+                "Accept": "application/json,text/plain,*/*",
+            }
+            user_agent = os.getenv("TF_UNOFFICIAL_USER_AGENT")
+            if user_agent:
+                headers["User-Agent"] = user_agent
+
+            proxy_url = os.getenv("TF_UNOFFICIAL_PROXY_URL", "").strip()
+            proxies = None
+            if proxy_url:
+                proxies = {"http": proxy_url, "https": proxy_url}
+
+            timeout_seconds = float(os.getenv("TF_UNOFFICIAL_TIMEOUT_SECONDS", "10"))
+            response = session.get(url, timeout=timeout_seconds, headers=headers, proxies=proxies)
             duration = time.time() - start_time
 
             # Log API call
@@ -258,10 +279,28 @@ class TranslationService:
             )
 
             if response.status_code >= 400:
+                body_preview = (response.text or "")[:200]
+                if response.status_code == 429:
+                    retry_after = response.headers.get("Retry-After")
+                    retry_delay = None
+                    if retry_after:
+                        try:
+                            retry_delay = int(retry_after)
+                        except ValueError:
+                            retry_delay = None
+                    return Failure(RateLimitedError(retry_after=retry_delay, details=body_preview))
+                if response.status_code == 403:
+                    return Failure(BlockedError(details=body_preview))
                 error_msg = f"HTTP {response.status_code}"
                 if response.text:
-                    error_msg += f": {response.text[:200]}"
+                    error_msg += f": {body_preview}"
                 return Failure(HttpError(response.status_code, error_msg, response.text, response.headers))
+
+            body_lower = (response.text or "").lower()
+            if not response.text:
+                return Failure(InvalidTranslationResponseError("Empty response body"))
+            if "<html" in body_lower or "captcha" in body_lower:
+                return Failure(BlockedError(details=body_lower[:200]))
 
             try:
                 data = response.json()
@@ -353,17 +392,17 @@ class TranslationService:
             if not translated_text:
                 return Failure(NoTranslationFoundError())
 
-            # Track cost for successful official API translation
-            try:
-                track_translation_cost(
-                    characters=len(translated_text),
-                    source_lang=request.source_language,
-                    target_lang=request.target_language,
-                    implementation="python",
-                    api_version="v2"
-                )
-            except Exception as e:
-                self.logger.warning(f"Failed to track translation cost: {e}")
+            if os.getenv("TF_COST_TRACKING_ENABLED") == "1":
+                try:
+                    track_translation_cost(
+                        characters=len(translated_text),
+                        source_lang=request.source_language,
+                        target_lang=request.target_language,
+                        implementation="python",
+                        api_version="v2",
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Failed to track translation cost: {e}")
 
             return Success(translated_text)
 
@@ -380,11 +419,12 @@ class TranslationService:
 
     def translate_text(
         self,
-        session: requests.Session,
+        session: Optional[requests.Session],
         text: str,
         source_lang: str,
         target_lang: str,
         *,
+        provider_id: Optional[str] = None,
         use_official_api: bool = False,
         api_key: Optional[str] = None,
         max_attempts: int = 4,
@@ -401,6 +441,10 @@ class TranslationService:
         except (TypeError, ValueError) as e:
             return Failure(TranslationFiestaError(f"Invalid request parameters: {e}"))
 
+        session = session or self.session
+        resolved_provider_id = normalize_provider_id(provider_id, use_official_api)
+        is_official = resolved_provider_id == PROVIDER_GOOGLE_OFFICIAL
+
         # Check cache before API call
         cache_result = self.tm.lookup(text, target_lang)
         if cache_result is not None:
@@ -414,31 +458,40 @@ class TranslationService:
             self.logger.info(f"Fuzzy cache hit (score: {score:.2f}) for {text[:50]}...")
             return Success(translation)
     
-        # Execute with retry if cache miss
-        retry_result = None
-        for attempt in range(max_attempts):
-            if use_official_api:
-                retry_result = self._translate_official(session, api_key or "", request)
-            else:
-                retry_result = self._translate_unofficial(session, request)
-    
-            if retry_result.is_success():
-                self.rate_limiter.success()
-                break
-    
-            if isinstance(retry_result.error, HttpError) and retry_result.error.status_code == 429:
-                retry_after = retry_result.error.headers.get("Retry-After")
-                if retry_after:
-                    try:
-                        retry_after = int(retry_after)
-                    except ValueError:
-                        retry_after = None
-                self.rate_limiter.failure(retry_after=retry_after)
-                if not self.rate_limiter.should_retry():
+        if resolved_provider_id == PROVIDER_LOCAL:
+            retry_result = self.local_client.translate(text, source_lang, target_lang)
+        else:
+            # Execute with retry if cache miss
+            retry_result = None
+            for attempt in range(max_attempts):
+                if resolved_provider_id == PROVIDER_GOOGLE_OFFICIAL:
+                    retry_result = self._translate_official(session, api_key or "", request)
+                else:
+                    retry_result = self._translate_unofficial(session, request)
+
+                if retry_result.is_success():
+                    self.rate_limiter.success()
                     break
-                self.rate_limiter.wait()
-            else:
-                break
+
+                if isinstance(retry_result.error, RateLimitedError):
+                    retry_after = retry_result.error.retry_after
+                    self.rate_limiter.failure(retry_after=retry_after)
+                    if not self.rate_limiter.should_retry():
+                        break
+                    self.rate_limiter.wait()
+                elif isinstance(retry_result.error, HttpError) and retry_result.error.status_code == 429:
+                    retry_after = retry_result.error.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            retry_after = int(retry_after)
+                        except ValueError:
+                            retry_after = None
+                    self.rate_limiter.failure(retry_after=retry_after)
+                    if not self.rate_limiter.should_retry():
+                        break
+                    self.rate_limiter.wait()
+                else:
+                    break
     
         if retry_result.is_failure():
             error = retry_result.error  # type: ignore
@@ -447,10 +500,11 @@ class TranslationService:
                 source_lang=source_lang,
                 target_lang=target_lang,
                 text_length=len(text),
-                use_official=use_official_api,
+                use_official=is_official,
                 attempt=max_attempts,  # Final attempt
                 success=False,
-                error=str(error)
+                error=str(error),
+                provider_id=resolved_provider_id,
             )
             return Failure(error)
     
@@ -464,9 +518,10 @@ class TranslationService:
             source_lang=source_lang,
             target_lang=target_lang,
             text_length=len(text),
-            use_official=use_official_api,
+            use_official=is_official,
             attempt=1,  # Assume success on first attempt for logging
-            success=True
+            success=True,
+            provider_id=resolved_provider_id,
         )
     
         return Success(translated_text)
@@ -489,7 +544,10 @@ class TranslationService:
         if not text or text.isspace():
             return Success(("", ""))
 
-        use_official = api_config.get("use_official_api", False)
+        provider_id = normalize_provider_id(
+            api_config.get("provider_id"),
+            api_config.get("use_official_api", False),
+        )
         api_key = api_config.get("api_key")
 
         # First translation: source -> intermediate
@@ -498,7 +556,7 @@ class TranslationService:
             text=text,
             source_lang="en",
             target_lang=intermediate_language,
-            use_official_api=use_official,
+            provider_id=provider_id,
             api_key=api_key,
             status_callback=status_callback
         )
@@ -514,7 +572,7 @@ class TranslationService:
             text=intermediate_text,
             source_lang=intermediate_language,
             target_lang="en",
-            use_official_api=use_official,
+            provider_id=provider_id,
             api_key=api_key,
             status_callback=status_callback
         )
@@ -524,24 +582,21 @@ class TranslationService:
 
         final_text = second_result.value  # type: ignore
 
-        # Track costs for backtranslation (two API calls)
-        if use_official and api_key:
+        if provider_id == PROVIDER_GOOGLE_OFFICIAL and api_key and os.getenv("TF_COST_TRACKING_ENABLED") == "1":
             try:
-                # Track cost for first translation (source -> intermediate)
                 track_translation_cost(
                     characters=len(intermediate_text),
                     source_lang="en",
                     target_lang=intermediate_language,
                     implementation="python",
-                    api_version="v2"
+                    api_version="v2",
                 )
-                # Track cost for second translation (intermediate -> source)
                 track_translation_cost(
                     characters=len(final_text),
                     source_lang=intermediate_language,
                     target_lang="en",
                     implementation="python",
-                    api_version="v2"
+                    api_version="v2",
                 )
             except Exception as e:
                 self.logger.warning(f"Failed to track backtranslation costs: {e}")
@@ -556,41 +611,4 @@ class TranslationService:
         )
 
         return Success((intermediate_text, final_text))
-
-
-# Legacy function for backward compatibility
-def translate_text(
-    session: requests.Session,
-    text: str,
-    source_lang: str,
-    target_lang: str,
-    *,
-    use_official_api: bool = False,
-    api_key: Optional[str] = None,
-    max_attempts: int = 4,
-    initial_backoff_seconds: float = 0.5,
-    backoff_multiplier: float = 2.0,
-    logger: Optional[object] = None,
-) -> str:
-    """
-    Legacy function for backward compatibility.
-    Use TranslationService for new code with comprehensive error handling.
-    """
-    service = TranslationService()
-    result = service.translate_text(
-        session=session,
-        text=text,
-        source_lang=source_lang,
-        target_lang=target_lang,
-        use_official_api=use_official_api,
-        api_key=api_key,
-        max_attempts=max_attempts
-    )
-
-    if result.is_success():
-        return result.value  # type: ignore
-    else:
-        # For backward compatibility, raise the exception
-        raise result.error  # type: ignore
-
 

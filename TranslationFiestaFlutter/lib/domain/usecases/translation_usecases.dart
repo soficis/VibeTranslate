@@ -1,5 +1,3 @@
-/// Clean Code use cases with meaningful naming and Single Responsibility
-/// Following Clean Architecture principles
 library;
 
 import '../../core/utils/logger.dart';
@@ -61,7 +59,7 @@ class PerformBackTranslationUseCase {
     Logger.instance.info('UseCase: execute called with text: "$text"');
     Logger.instance.info('UseCase: config: $config');
     Logger.instance.info(
-        'UseCase: sourceLanguage: $sourceLanguage, targetLanguage: $targetLanguage');
+        'UseCase: sourceLanguage: $sourceLanguage, targetLanguage: $targetLanguage',);
 
     if (text.trim().isEmpty) {
       Logger.instance.info('UseCase: text is empty, returning empty result');
@@ -93,7 +91,7 @@ class PerformBackTranslationUseCase {
       intermediateLanguage: targetLanguage,
     );
     Logger.instance.info(
-        'UseCase: repository result: ${result.isRight ? "Success" : "Failure"}');
+        'UseCase: repository result: ${result.isRight ? "Success" : "Failure"}',);
     return result;
   }
 

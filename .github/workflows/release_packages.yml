@@ -1,0 +1,344 @@
+name: Release Packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag name to publish (for example: v0.4.1)"
+        required: true
+        type: string
+      release_name:
+        description: Optional release title override
+        required: false
+        default: ""
+        type: string
+      prerelease:
+        description: Mark the release as prerelease
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-packages-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  PYTHONUTF8: "1"
+
+jobs:
+  windows-x64:
+    name: Windows x64 (all desktop apps)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            TranslationFiestaElectron/package-lock.json
+            TranslationFiestaGo/frontend/package-lock.json
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: TranslationFiestaRuby
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Prepare output folders
+        shell: pwsh
+        run: |
+          $root = "$env:GITHUB_WORKSPACE\dist\release\windows-x64"
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+
+      - name: Build TranslationFiestaCSharp
+        shell: pwsh
+        run: |
+          dotnet publish TranslationFiestaCSharp/TranslationFiestaCSharp.csproj `
+            -c Release -r win-x64 --self-contained false `
+            -o "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiestaCSharp"
+
+      - name: Build TranslationFiestaFSharp
+        shell: pwsh
+        run: |
+          dotnet publish TranslationFiestaFSharp/TranslationFiestaFSharp.fsproj `
+            -c Release -r win-x64 --self-contained false `
+            -o "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiestaFSharp"
+
+      - name: Build TranslationFiesta.WinUI
+        shell: pwsh
+        run: |
+          dotnet publish TranslationFiesta.WinUI/TranslationFiesta.WinUI.csproj `
+            -c Release -r win-x64 --self-contained false `
+            -p:WindowsPackageType=None -p:AppxPackage=false -p:GenerateAppxPackageOnBuild=false `
+            -o "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiesta.WinUI"
+
+      - name: Build TranslationFiestaElectron
+        shell: pwsh
+        run: |
+          Push-Location TranslationFiestaElectron
+          npm ci
+          npm run build
+          npx electron-packager . TranslationFiestaElectron --platform=win32 --arch=x64 --out "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiestaElectron" --overwrite --prune=true
+          Pop-Location
+
+      - name: Build TranslationFiestaFlutter
+        shell: pwsh
+        run: |
+          flutter config --enable-windows-desktop
+          Push-Location TranslationFiestaFlutter
+          flutter pub get
+          flutter build windows --release
+          Pop-Location
+
+          $target = "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiestaFlutter"
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
+          Copy-Item "$env:GITHUB_WORKSPACE\TranslationFiestaFlutter\build\windows\x64\runner\Release\*" $target -Recurse -Force
+
+      - name: Build TranslationFiestaGo (Wails)
+        shell: pwsh
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+          $env:PATH = "$env:PATH;$(go env GOPATH)\\bin"
+
+          Push-Location TranslationFiestaGo
+          wails build -platform windows/amd64 -clean -o TranslationFiestaGo.exe
+          Pop-Location
+
+          $target = "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiestaGo"
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
+          Copy-Item "$env:GITHUB_WORKSPACE\TranslationFiestaGo\build\bin\TranslationFiestaGo.exe" "$target\TranslationFiestaGo.exe" -Force
+
+      - name: Build TranslationFiestaPy
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r TranslationFiestaPy/requirements.txt
+          pip install pyinstaller
+
+          Push-Location TranslationFiestaPy
+          pyinstaller --noconfirm --clean --windowed --onefile --name TranslationFiestaPy TranslationFiesta.py
+          Pop-Location
+
+          $target = "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiestaPy"
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
+          Copy-Item "$env:GITHUB_WORKSPACE\TranslationFiestaPy\dist\TranslationFiestaPy.exe" "$target\TranslationFiestaPy.exe" -Force
+
+      - name: Build TranslationFiestaLocal service
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaLocalService TranslationFiestaLocal/local_service.py
+
+          $target = "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiestaLocal"
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
+          Copy-Item "$env:GITHUB_WORKSPACE\dist\TranslationFiestaLocalService.exe" "$target\TranslationFiestaLocalService.exe" -Force
+
+      - name: Build TranslationFiestaRuby
+        shell: pwsh
+        run: |
+          Push-Location TranslationFiestaRuby
+          bundle install --jobs 4 --retry 3
+          gem install ocra --no-document
+
+          Set-Content -Path fiber.so -Value "" -NoNewline
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiestaRuby" | Out-Null
+
+          ocra --quiet bin\translation_fiesta --no-dep-run --gemfile Gemfile --gem-full --add-all-core --windows --chdir-first `
+            --output "$env:GITHUB_WORKSPACE\dist\release\windows-x64\TranslationFiestaRuby\TranslationFiestaRuby.exe" `
+            config\config.yml lib\translation_fiesta\web\views\index.erb lib\translation_fiesta\web\views\layout.erb
+
+          Remove-Item fiber.so -Force
+          Pop-Location
+
+      - name: Verify expected Windows executables
+        shell: pwsh
+        run: |
+          $expected = @(
+            "dist\release\windows-x64\TranslationFiestaCSharp\TranslationFiestaCSharp.exe",
+            "dist\release\windows-x64\TranslationFiestaFSharp\TranslationFiestaFSharp.exe",
+            "dist\release\windows-x64\TranslationFiesta.WinUI\TranslationFiesta.WinUI.exe",
+            "dist\release\windows-x64\TranslationFiestaElectron\TranslationFiestaElectron-win32-x64\TranslationFiestaElectron.exe",
+            "dist\release\windows-x64\TranslationFiestaFlutter\TranslationFiestaFlutter.exe",
+            "dist\release\windows-x64\TranslationFiestaGo\TranslationFiestaGo.exe",
+            "dist\release\windows-x64\TranslationFiestaPy\TranslationFiestaPy.exe",
+            "dist\release\windows-x64\TranslationFiestaRuby\TranslationFiestaRuby.exe",
+            "dist\release\windows-x64\TranslationFiestaLocal\TranslationFiestaLocalService.exe"
+          )
+
+          foreach ($relative in $expected) {
+            $full = Join-Path $env:GITHUB_WORKSPACE $relative
+            if (!(Test-Path $full)) {
+              throw "Missing expected executable: $relative"
+            }
+          }
+
+      - name: Package Windows app folders
+        shell: pwsh
+        run: |
+          $sourceRoot = "$env:GITHUB_WORKSPACE\dist\release\windows-x64"
+          $zipRoot = "$env:GITHUB_WORKSPACE\dist\release\windows-x64-zips"
+          New-Item -ItemType Directory -Force -Path $zipRoot | Out-Null
+
+          Get-ChildItem -Path $sourceRoot -Directory | Sort-Object Name | ForEach-Object {
+            $appName = $_.Name
+            $zipName = "$appName-windows-x64.zip"
+            $zipPath = Join-Path $zipRoot $zipName
+
+            if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+            Compress-Archive -Path (Join-Path $_.FullName '*') -DestinationPath $zipPath -CompressionLevel Optimal
+
+            $hash = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLower()
+            "$hash  $zipName" | Set-Content "$zipPath.sha256"
+          }
+
+          $manifestPath = Join-Path $zipRoot 'SHA256SUMS-windows-x64.txt'
+          Get-ChildItem -Path $zipRoot -Filter '*.sha256' | Sort-Object Name | Get-Content | Set-Content $manifestPath
+
+      - name: Upload Windows assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-x64
+          path: dist/release/windows-x64-zips/*
+          if-no-files-found: error
+
+  macos-swift:
+    name: macOS Swift (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-13
+          - arch: arm64
+            runner: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build TranslationFiestaSwift
+        run: |
+          cd TranslationFiestaSwift
+          swift build -c release
+
+      - name: Package Swift binary
+        run: |
+          set -euo pipefail
+          root="dist/release/macos-${{ matrix.arch }}"
+          bundle_dir="$root/TranslationFiestaSwift-macos-${{ matrix.arch }}"
+          mkdir -p "$bundle_dir"
+
+          cp "TranslationFiestaSwift/.build/release/TranslationFiestaSwift" "$bundle_dir/TranslationFiestaSwift"
+
+          zip_path="$root/TranslationFiestaSwift-macos-${{ matrix.arch }}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$bundle_dir" "$zip_path"
+          shasum -a 256 "$zip_path" > "${zip_path}.sha256"
+
+      - name: Upload macOS Swift assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-swift-${{ matrix.arch }}
+          path: |
+            dist/release/macos-${{ matrix.arch }}/TranslationFiestaSwift-macos-${{ matrix.arch }}.zip
+            dist/release/macos-${{ matrix.arch }}/TranslationFiestaSwift-macos-${{ matrix.arch }}.zip.sha256
+          if-no-files-found: error
+
+  publish-release-assets:
+    name: Publish assets to GitHub Release
+    if: ${{ (github.event_name == 'release' || github.event_name == 'workflow_dispatch') && always() }}
+    runs-on: ubuntu-24.04
+    needs:
+      - windows-x64
+      - macos-swift
+
+    steps:
+      - name: Download all packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Resolve release metadata
+        id: release-meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            tag="${{ github.event.release.tag_name }}"
+            name="${{ github.event.release.name }}"
+            prerelease="${{ github.event.release.prerelease }}"
+          else
+            tag="${{ inputs.release_tag }}"
+            name="${{ inputs.release_name }}"
+            prerelease="${{ inputs.prerelease }}"
+          fi
+
+          if [[ -z "$tag" ]]; then
+            echo "Release tag is required." >&2
+            exit 1
+          fi
+
+          if [[ -z "$name" ]]; then
+            name="VibeTranslate Release ${tag}"
+          fi
+
+          {
+            echo "tag=$tag"
+            echo "name=$name"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Ensure release assets exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(release-assets/*)
+          if (( ${#assets[@]} == 0 )); then
+            echo "No release artifacts were found in release-assets/." >&2
+            exit 1
+          fi
+
+      - name: Publish assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release-meta.outputs.tag }}
+          name: ${{ steps.release-meta.outputs.name }}
+          prerelease: ${{ steps.release-meta.outputs.prerelease }}
+          files: release-assets/*
+          fail_on_unmatched_files: true

@@ -153,17 +153,3 @@ def load_text_from_path(path: str) -> Result[str, Exception]:
         logger.log_file_operation("load", path, False, error=str(e))
         return Failure(e)
 
-
-def load_text_from_path_legacy(path: str) -> str:
-    """
-    Legacy function for backward compatibility.
-    Use load_text_from_path for new code with comprehensive error handling.
-    """
-    result = load_text_from_path(path)
-    if result.is_success():
-        return result.value  # type: ignore
-    else:
-        # For backward compatibility, raise the exception
-        raise result.error  # type: ignore
-
-

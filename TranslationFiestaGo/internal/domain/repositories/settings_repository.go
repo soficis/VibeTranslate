@@ -7,11 +7,26 @@ type SettingsRepository interface {
 	SetTheme(theme string) error
 
 	// API settings
+	GetProviderID() string
+	SetProviderID(providerID string) error
+
 	GetUseOfficialAPI() bool
 	SetUseOfficialAPI(useOfficial bool) error
 
 	GetAPIKey() string
 	SetAPIKey(apiKey string) error
+
+	// Cost tracking (official provider only; opt-in)
+	GetCostTrackingEnabled() bool
+	SetCostTrackingEnabled(enabled bool) error
+
+	// Local model service settings
+	GetLocalServiceURL() string
+	SetLocalServiceURL(url string) error
+	GetLocalModelDir() string
+	SetLocalModelDir(path string) error
+	GetLocalAutoStart() bool
+	SetLocalAutoStart(enabled bool) error
 
 	// Language settings
 	GetSourceLanguage() string

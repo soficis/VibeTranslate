@@ -88,7 +88,7 @@ module TranslationFiesta
         end
 
         def calculate_cost(original_text, first_translation, api_type)
-          return 0.0 if api_type == :unofficial
+          return 0.0 if [:unofficial, :local].include?(api_type)
 
           character_count = original_text.length + first_translation.length
           character_count * 0.00002 # Google Translate pricing: $20 per 1M characters

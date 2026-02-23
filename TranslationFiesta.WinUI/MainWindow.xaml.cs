@@ -8,16 +8,25 @@ using Windows.Storage.Pickers;
 using Windows.UI.Core;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Automation.Provider;
+using System.Net.Http;
+using System.Threading;
 
 namespace TranslationFiesta.WinUI
 {
     public sealed partial class MainWindow : Window
     {
        private enum OutputFormat { Plain, Markdown, Html }
+        private sealed class ProviderOption
+        {
+            public string Id { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+        }
         private readonly TranslationClient _translator = new TranslationClient();
         private AppSettings _settings;
         private BatchProcessor? _currentBatchProcessor;
         private readonly TemplateManager _templateManager;
+        private readonly HttpClient _localHttp = new HttpClient();
+        private LocalServiceClient _modelsClient;
 
         public MainWindow()
         {
@@ -29,9 +38,18 @@ namespace TranslationFiesta.WinUI
 
             // Load settings
             _settings = SettingsService.Load();
+            ApplyLocalSettings(_settings);
 
-            // Apply settings to cost tracker
-            _translator.CostTracker.SetMonthlyBudget(_settings.MonthlyBudget);
+            CostTrackingPanel.Visibility = _settings.CostTrackingEnabled && _settings.ShowCostInUI
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            if (_settings.CostTrackingEnabled)
+            {
+                _translator.CostTracker.SetMonthlyBudget(_settings.MonthlyBudget);
+            }
+
+            InitializeProviderSelector();
 
             // Wire up event handlers
             TranslateButton.Click += TranslateButton_Click;
@@ -48,6 +66,7 @@ namespace TranslationFiesta.WinUI
             TargetSpeakButton.Click += TargetSpeakButton_Click;
             KeyboardShortcutsMenuItem.Click += KeyboardShortcutsMenuItem_Click;
             ManageTemplatesButton.Click += ManageTemplatesButton_Click;
+            LocalModelsButton.Click += LocalModelsButton_Click;
 
             // Update character count when text changes
             SourceTextBox.TextChanged += SourceTextBox_TextChanged;
@@ -68,6 +87,14 @@ namespace TranslationFiesta.WinUI
 
             Logger.Info("Translation Fiesta initialized");
 
+        }
+
+        private void ApplyLocalSettings(AppSettings settings)
+        {
+            LocalServiceClient.ApplyEnvironment(settings.LocalServiceUrl, settings.LocalModelDir, settings.LocalAutoStart);
+            _translator.ApplyLocalSettings(settings.LocalServiceUrl, settings.LocalModelDir, settings.LocalAutoStart);
+            Environment.SetEnvironmentVariable("TF_COST_TRACKING_ENABLED", settings.CostTrackingEnabled ? "1" : "0");
+            _modelsClient = new LocalServiceClient(_localHttp);
         }
 
         private void Window_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
@@ -235,6 +262,8 @@ namespace TranslationFiesta.WinUI
                     Logger.Error("UI elements not initialized in TranslateButton_Click");
                     return;
                 }
+
+                ApplyProviderSelection();
 
                 var sourceText = SourceTextBox.Text?.Trim();
                 if (string.IsNullOrWhiteSpace(sourceText))
@@ -546,6 +575,7 @@ namespace TranslationFiesta.WinUI
         {
             try
             {
+                ApplyProviderSelection();
                 var openPicker = new Windows.Storage.Pickers.FolderPicker();
                 var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
                 WinRT.Interop.InitializeWithWindow.Initialize(openPicker, hwnd);
@@ -731,6 +761,11 @@ namespace TranslationFiesta.WinUI
         {
             try
             {
+                if (!_settings.CostTrackingEnabled || !_settings.ShowCostInUI)
+                {
+                    return;
+                }
+
                 var monthlyStats = _translator.CostTracker.GetCurrentMonthStats();
                 var budget = _translator.CostTracker.GetMonthlyBudget();
                 var remaining = budget - monthlyStats.TotalCost;

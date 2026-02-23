@@ -119,9 +119,9 @@ namespace TranslationFiesta.WinUI
                 {
                     await WriteToFile(logEntry + Environment.NewLine);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Ignore errors during shutdown
+                    Console.Error.WriteLine($"Logger shutdown flush failed: {ex.Message}");
                 }
             }
         }
@@ -145,9 +145,9 @@ namespace TranslationFiesta.WinUI
                     var tempLog = Path.Combine(Path.GetTempPath(), "TranslationFiesta_critical_error.log");
                     await File.AppendAllTextAsync(tempLog, $"[{DateTime.UtcNow:O}] [CRITICAL]: Failed to write to main log. Original Log: {logEntry}{Environment.NewLine}Exception: {ex.Message}{Environment.NewLine}");
                 }
-                catch
+                catch (Exception fallbackEx)
                 {
-                    // Last resort: do nothing if even temp logging fails
+                    Console.Error.WriteLine($"Logger critical fallback write failed: {fallbackEx.Message}");
                 }
             }
         }

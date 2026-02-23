@@ -4,7 +4,6 @@ import Crypto
 import Logging
 
 /// Secure storage service for API keys and settings
-/// Following Clean Code: encapsulation and single responsibility
 public final class SecureStorageService: SecureStorageRepository {
     private let logger = Logger(label: "SecureStorageService")
     private let serviceName: String
@@ -16,20 +15,20 @@ public final class SecureStorageService: SecureStorageRepository {
     // MARK: - API Key Management
     
     public func storeAPIKey(_ key: String, for provider: APIProvider) async throws {
-        let account = "api_key_\(provider.rawValue)"
+        let account = "api_key_\(provider.storageKey)"
         try await storeInKeychain(value: key, account: account)
-        logger.info("API key stored successfully", metadata: ["provider": "\(provider.rawValue)"])
+        logger.info("API key stored successfully", metadata: ["provider": "\(provider.storageKey)"])
     }
     
     public func getAPIKey(for provider: APIProvider) async throws -> String? {
-        let account = "api_key_\(provider.rawValue)"
+        let account = "api_key_\(provider.storageKey)"
         return try await getFromKeychain(account: account)
     }
     
     public func removeAPIKey(for provider: APIProvider) async throws {
-        let account = "api_key_\(provider.rawValue)"
+        let account = "api_key_\(provider.storageKey)"
         try await removeFromKeychain(account: account)
-        logger.info("API key removed", metadata: ["provider": "\(provider.rawValue)"])
+        logger.info("API key removed", metadata: ["provider": "\(provider.storageKey)"])
     }
     
     public func hasAPIKey(for provider: APIProvider) async throws -> Bool {

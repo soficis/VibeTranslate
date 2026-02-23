@@ -1,151 +1,157 @@
 import Foundation
 import SwiftUI
+import Logging
 
 public final class AppContainer: ObservableObject {
-    @Published public var isInitialized = false
-    
-    // Core Services
-    public private(set) var networkService: NetworkService!
-    public private(set) var secureStorageService: SecureStorageService!
-    public private(set) var translationMemoryService: TranslationMemoryService!
-    public private(set) var costTrackingService: CostTrackingService!
-    public private(set) var fileProcessingService: FileProcessingService!
-    public private(set) var batchProcessingService: BatchProcessingService!
-    public private(set) var translationService: TranslationService!
-    public private(set) var epubProcessor: EpubProcessor!
-    
-    // Use Cases
-    public private(set) var backTranslationUseCase: BackTranslationUseCase!
-    public private(set) var batchProcessingUseCase: BatchProcessingUseCase!
-    public private(set) var costManagementUseCase: CostManagementUseCase!
-    public private(set) var exportUseCase: ExportUseCase!
-    
-    // Repositories
-    public var translationMemoryRepository: TranslationMemoryRepository { 
-        return translationMemoryService ?? TranslationMemoryService(config: TranslationMemoryConfig())
-    }
-    public var secureStorageRepository: SecureStorageRepository { 
-        return secureStorageService ?? SecureStorageService()
-    }
-    
-    public init() {
-        print("🚀 AppContainer: Starting initialization...")
-        
-        // Start async initialization immediately but don't block the UI thread
-        Task { @MainActor in
-            await self.initializeServices()
-        }
-    }
-    
-    @MainActor
-    private func initializeServices() async {
-        print("🔧 AppContainer: Initializing services asynchronously...")
-        let start = Date()
-        
-    // Initialize core services first
-    print("▶️ Initializing core services")
-    self.networkService = NetworkService()
-    self.secureStorageService = SecureStorageService()
-    self.epubProcessor = EpubProcessor()
+    @Published public private(set) var isInitialized = false
+    @Published public private(set) var costTrackingEnabled: Bool
 
-    print("✅ AppContainer: Basic services ready (" + String(format: "%.3f", Date().timeIntervalSince(start)) + "s)")
+    private static let costTrackingEnabledKey = "cost_tracking_enabled"
+    private let logger = Logger(label: "AppContainer")
+
+    // MARK: - Services
+    private var _networkService: NetworkService?
+    private var _secureStorageService: SecureStorageService?
+    private var _translationMemoryService: TranslationMemoryService?
+    private var _costTrackingService: CostTrackingService?
+    private var _fileProcessingService: FileProcessingService?
+    private var _batchProcessingService: BatchProcessingService?
+    private var _translationService: TranslationService?
+    private var _epubProcessor: EpubProcessor?
+
+    // MARK: - Use Cases
+    private var _backTranslationUseCase: BackTranslationUseCase?
+    private var _batchProcessingUseCase: BatchProcessingUseCase?
+    private var _costManagementUseCase: CostManagementUseCase?
+    private var _exportUseCase: ExportUseCase?
+
+    // Public Accessors
+    public var networkService: NetworkService { _networkService! }
+    public var secureStorageService: SecureStorageService { _secureStorageService! }
+    public var translationMemoryService: TranslationMemoryService { _translationMemoryService! }
+    public var costTrackingService: CostTrackingService { _costTrackingService! }
+    public var fileProcessingService: FileProcessingService { _fileProcessingService! }
+    public var batchProcessingService: BatchProcessingService { _batchProcessingService! }
+    public var translationService: TranslationService { _translationService! }
+    public var epubProcessor: EpubProcessor { _epubProcessor! }
+
+    public var backTranslationUseCase: BackTranslationUseCase { _backTranslationUseCase! }
+    public var batchProcessingUseCase: BatchProcessingUseCase { _batchProcessingUseCase! }
+    public var costManagementUseCase: CostManagementUseCase { _costManagementUseCase! }
+    public var exportUseCase: ExportUseCase { _exportUseCase! }
+
+    // Repository Accessors (for ViewModel access)
+    public var translationMemoryRepository: TranslationMemoryService { _translationMemoryService! }
+    public var secureStorageRepository: SecureStorageService { _secureStorageService! }
+
+    public init() {
+        let enabled = UserDefaults.standard.bool(forKey: Self.costTrackingEnabledKey)
+        self.costTrackingEnabled = enabled
+        Self.applyCostTrackingEnvironment(enabled)
         
-        // Allow UI to update
-        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+        logger.info("AppContainer initialized")
+    }
+
+    public func setCostTrackingEnabled(_ enabled: Bool) {
+        costTrackingEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: Self.costTrackingEnabledKey)
+        Self.applyCostTrackingEnvironment(enabled)
+        logger.info("Cost tracking visibility changed", metadata: ["enabled": "\(enabled)"])
+    }
+
+    private static func applyCostTrackingEnvironment(_ enabled: Bool) {
+        setenv("TF_COST_TRACKING_ENABLED", enabled ? "1" : "0", 1)
+    }
+
+    @MainActor
+    public func initialize() async {
+        guard !isInitialized else { return }
         
-        // Initialize more complex services
-        let tmConfig = TranslationMemoryConfig(maxCacheSize: 10000, similarityThreshold: 0.8)
-        self.translationMemoryService = TranslationMemoryService(config: tmConfig)
+        logger.info("Starting service initialization...")
         
-        self.costTrackingService = CostTrackingService()
-        self.fileProcessingService = FileProcessingService()
+        let network = NetworkService()
+        _networkService = network
         
-        self.translationService = TranslationService(
-            networkService: networkService,
-            secureStorage: secureStorageService
+        let secureStorage = SecureStorageService()
+        _secureStorageService = secureStorage
+        
+        _epubProcessor = EpubProcessor()
+
+        let tmConfig = TranslationMemoryConfig(maxCacheSize: 10_000, similarityThreshold: 0.8)
+        let tmService = TranslationMemoryService(config: tmConfig)
+        _translationMemoryService = tmService
+
+        let costTracking = CostTrackingService()
+        _costTrackingService = costTracking
+        
+        let fileProcessing = FileProcessingService()
+        _fileProcessingService = fileProcessing
+
+        let translation = TranslationService(
+            networkService: network,
+            secureStorage: secureStorage
         )
-        
-    print("✅ AppContainer: Translation services ready (" + String(format: "%.3f", Date().timeIntervalSince(start)) + "s)")
-        
-        // Create quality service
+        _translationService = translation
+
         let qualityService = QualityService()
-        
-        // Initialize use cases
-        self.backTranslationUseCase = BackTranslationUseCase(
-            translationRepository: translationService,
-            costTrackingRepository: costTrackingService,
-            translationMemoryRepository: translationMemoryService,
+
+        let backTranslation = BackTranslationUseCase(
+            translationRepository: translation,
+            costTrackingRepository: costTracking,
+            translationMemoryRepository: tmService,
             qualityRepository: qualityService
         )
-        
-        self.batchProcessingService = BatchProcessingService(
-            fileRepository: fileProcessingService,
-            backTranslationUseCase: backTranslationUseCase
+        _backTranslationUseCase = backTranslation
+
+        let batchProcessing = BatchProcessingService(
+            fileRepository: fileProcessing,
+            backTranslationUseCase: backTranslation
         )
-        
-        self.batchProcessingUseCase = BatchProcessingUseCase(
-            fileRepository: fileProcessingService,
-            batchRepository: batchProcessingService,
-            backTranslationUseCase: backTranslationUseCase
+        _batchProcessingService = batchProcessing
+
+        _batchProcessingUseCase = BatchProcessingUseCase(
+            fileRepository: fileProcessing,
+            batchRepository: batchProcessing,
+            backTranslationUseCase: backTranslation
         )
-        
-        self.costManagementUseCase = CostManagementUseCase(
-            costTrackingRepository: costTrackingService
-        )
-        
-        self.exportUseCase = ExportUseCase(
-            exportRepository: ExportService()
-        )
-        
-        print("🎉 AppContainer: All services initialized successfully! (" + String(format: "%.3f", Date().timeIntervalSince(start)) + "s)")
-        self.isInitialized = true
+
+        _costManagementUseCase = CostManagementUseCase(costTrackingRepository: costTracking)
+        _exportUseCase = ExportUseCase(exportRepository: ExportService())
+
+        isInitialized = true
+        logger.info("Service initialization completed successfully")
     }
 }
 
-// Basic QualityService implementation
 public final class QualityService: QualityRepository {
-    public func calculateBLEUScore(
-        reference: String,
-        candidate: String
-    ) async throws -> Double {
-        return 0.75 // Simplified implementation
+    public func calculateBLEUScore(reference: String, candidate: String) async throws -> Double {
+        0.75
     }
-    
+
     public func assessQuality(originalText: String, backTranslatedText: String) async throws -> QualityAssessment {
-        return QualityAssessment(
-            bleuScore: 0.75,
-            recommendations: ["Consider reviewing translation accuracy"]
-        )
+        QualityAssessment(bleuScore: 0.75, recommendations: ["Consider reviewing translation accuracy"])
     }
-    
+
     public func getQualityRecommendations(
         bleuScore: Double,
         originalLength: Int,
         translatedLength: Int
     ) async throws -> [String] {
-        return ["Consider reviewing translation accuracy", "Length ratio: \(translatedLength)/\(originalLength)"]
+        ["Consider reviewing translation accuracy", "Length ratio: \(translatedLength)/\(originalLength)"]
     }
 }
 
-// Basic ExportService implementation
 public final class ExportService: ExportRepository {
-    public func exportResults(
-        _ results: [BackTranslationResult],
-        config: ExportConfig,
-        to url: URL
-    ) async throws {
+    public func exportResults(_ results: [BackTranslationResult], config: ExportConfig, to url: URL) async throws {
         let content = "Export Report\nResults: \(results.count)"
         try content.write(to: url, atomically: true, encoding: .utf8)
     }
-    
-    public func generatePreview(
-        _ results: [BackTranslationResult],
-        format: ExportFormat
-    ) async throws -> String {
-        return "Preview: \(results.count) results"
+
+    public func generatePreview(_ results: [BackTranslationResult], format: ExportFormat) async throws -> String {
+        "Preview: \(results.count) results"
     }
-    
+
     public func getAvailableTemplates(for format: ExportFormat) async throws -> [String] {
-        return ["Standard", "Detailed"]
+        ["Standard", "Detailed"]
     }
 }

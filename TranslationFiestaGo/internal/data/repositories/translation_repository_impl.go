@@ -30,9 +30,13 @@ func (r *TranslationRepositoryImpl) Translate(ctx context.Context, request entit
 	var result *entities.TranslationResult
 	var err error
 
-	if request.UseOfficial {
+	providerID := entities.NormalizeProviderID(request.ProviderID)
+	switch providerID {
+	case entities.ProviderLocal:
+		result, err = r.translationService.TranslateLocal(ctx, request.Text, request.SourceLang, request.TargetLang)
+	case entities.ProviderGoogleOfficial:
 		result, err = r.translationService.TranslateOfficial(ctx, request.Text, request.SourceLang, request.TargetLang, request.APIKey)
-	} else {
+	default:
 		result, err = r.translationService.TranslateUnofficial(ctx, request.Text, request.SourceLang, request.TargetLang)
 	}
 
@@ -78,7 +82,7 @@ func (r *TranslationRepositoryImpl) TranslateOfficial(ctx context.Context, text,
 }
 
 // BackTranslate performs a full back-translation (source -> intermediate -> source)
-func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sourceLang, intermediateLang string, useOfficial bool, apiKey string) (*entities.BackTranslation, error) {
+func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sourceLang, intermediateLang, providerID, apiKey string) (*entities.BackTranslation, error) {
 	r.logger.Info("Starting back-translation: %s -> %s -> %s", sourceLang, intermediateLang, sourceLang)
 
 	startTime := time.Now()
@@ -95,11 +99,11 @@ func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sou
 	r.logger.Debug("Step 1: %s -> %s", sourceLang, intermediateLang)
 
 	step1Result, err := r.Translate(ctx, entities.TranslationRequest{
-		Text:        text,
-		SourceLang:  sourceLang,
-		TargetLang:  intermediateLang,
-		UseOfficial: useOfficial,
-		APIKey:      apiKey,
+		Text:       text,
+		SourceLang: sourceLang,
+		TargetLang: intermediateLang,
+		ProviderID: providerID,
+		APIKey:     apiKey,
 	})
 
 	if err != nil {
@@ -115,11 +119,11 @@ func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sou
 	r.logger.Debug("Step 2: %s -> %s", intermediateLang, sourceLang)
 
 	step2Result, err := r.Translate(ctx, entities.TranslationRequest{
-		Text:        backTranslation.Intermediate,
-		SourceLang:  intermediateLang,
-		TargetLang:  sourceLang,
-		UseOfficial: useOfficial,
-		APIKey:      apiKey,
+		Text:       backTranslation.Intermediate,
+		SourceLang: intermediateLang,
+		TargetLang: sourceLang,
+		ProviderID: providerID,
+		APIKey:     apiKey,
 	})
 
 	if err != nil {

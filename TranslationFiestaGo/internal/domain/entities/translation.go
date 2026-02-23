@@ -18,11 +18,11 @@ type Translation struct {
 
 // TranslationRequest represents a request for translation
 type TranslationRequest struct {
-	Text        string
-	SourceLang  string
-	TargetLang  string
-	UseOfficial bool
-	APIKey      string
+	Text       string
+	SourceLang string
+	TargetLang string
+	ProviderID string
+	APIKey     string
 }
 
 // TranslationResult represents the result of a translation operation

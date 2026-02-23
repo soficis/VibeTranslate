@@ -1,5 +1,3 @@
-/// Application-wide constants following Clean Code principles
-/// with meaningful names and clear organization
 class AppConstants {
   // Translation Configuration
   static const String defaultIntermediateLanguageCode = 'ja';
@@ -10,6 +8,7 @@ class AppConstants {
       'https://translate.googleapis.com/translate_a/single';
   static const String officialTranslateBaseUrl =
       'https://translation.googleapis.com/language/translate/v2';
+  static const String localTranslateBaseUrl = 'http://127.0.0.1:5055';
   static const String unofficialApiClient = 'gtx';
 
   // Retry Configuration
@@ -37,6 +36,10 @@ class AppConstants {
   static const String themePreferenceKey = 'isDarkTheme';
   static const String apiKeyPreferenceKey = 'apiKey';
   static const String useOfficialApiPreferenceKey = 'useOfficialApi';
+  static const String providerIdPreferenceKey = 'providerId';
+  static const String localServiceUrlPreferenceKey = 'localServiceUrl';
+  static const String localModelDirPreferenceKey = 'localModelDir';
+  static const String localAutoStartPreferenceKey = 'localAutoStart';
 
   // Animation Configuration
   static const int progressAnimationDurationMs = 300;

@@ -2,10 +2,12 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from enhanced_logger import get_logger
+from provider_ids import normalize_provider_id
 from file_utils import load_text_from_path
 from translation_services import TranslationService
 from bleu_scorer import get_bleu_scorer
 from langdetect import detect
+from langdetect.lang_detect_exception import LangDetectException
 
 class BatchProcessor:
     def __init__(self, translation_service: TranslationService, update_callback=None):
@@ -15,11 +17,20 @@ class BatchProcessor:
         self.bleu_scorer = get_bleu_scorer()
         self.is_running = False
 
-    def process_directory(self, directory_path, use_official_api, api_key, source_lang=None, target_lang="ja"):
+    def process_directory(
+        self,
+        directory_path,
+        provider_id=None,
+        api_key=None,
+        source_lang=None,
+        target_lang="ja",
+        use_official_api: bool = False,
+    ):
         self.is_running = True
         files_to_process = [f for f in os.listdir(directory_path) if f.endswith(('.txt', '.md', '.html'))]
         total_files = len(files_to_process)
         self.logger.info(f"Starting batch processing for {total_files} files in {directory_path}")
+        resolved_provider_id = normalize_provider_id(provider_id, use_official_api)
 
         for i, filename in enumerate(files_to_process):
             if not self.is_running:
@@ -33,7 +44,13 @@ class BatchProcessor:
                 result = load_text_from_path(filepath)
                 if result.is_success():
                     content = result.value
-                    translated_content = self.back_translate_content(content, use_official_api, api_key, source_lang, target_lang)
+                    translated_content = self.back_translate_content(
+                        content,
+                        resolved_provider_id,
+                        api_key,
+                        source_lang,
+                        target_lang,
+                    )
                     self.save_translated_file(filepath, translated_content, content)
                 else:
                     self.logger.error(f"Failed to load file {filename}: {result.error}")
@@ -47,14 +64,24 @@ class BatchProcessor:
         self.is_running = False
         self.logger.info("Batch processing finished.")
 
-    def back_translate_content(self, content, use_official_api, api_key, source_lang=None, target_lang="ja"):
+    def back_translate_content(
+        self,
+        content,
+        provider_id,
+        api_key,
+        source_lang=None,
+        target_lang="ja",
+        use_official_api: bool = False,
+    ):
+        resolved_provider_id = normalize_provider_id(provider_id, use_official_api)
         if not content or content.isspace():
             return ""
 
         if source_lang is None:
             try:
                 source_lang = detect(content)
-            except:
+            except LangDetectException as error:
+                self.logger.warning(f"Language detection failed, defaulting source language to 'en': {error}")
                 source_lang = "en"  # fallback
 
         def validate_language(code):
@@ -67,11 +94,25 @@ class BatchProcessor:
             return content
 
         # First translation: source -> target
-        first_result = self.translation_service.translate_text(None, content, source_lang, target_lang, use_official_api, api_key)
+        first_result = self.translation_service.translate_text(
+            None,
+            content,
+            source_lang,
+            target_lang,
+            provider_id=resolved_provider_id,
+            api_key=api_key,
+        )
         if first_result.is_success():
             intermediate = first_result.value
             # Second translation: target -> source
-            second_result = self.translation_service.translate_text(None, intermediate, target_lang, source_lang, use_official_api, api_key)
+            second_result = self.translation_service.translate_text(
+                None,
+                intermediate,
+                target_lang,
+                source_lang,
+                provider_id=resolved_provider_id,
+                api_key=api_key,
+            )
             if second_result.is_success():
                 backtranslated = second_result.value
 

@@ -13,12 +13,14 @@ module TranslationFiesta
           candidate_tokens = tokenize(candidate.downcase)
 
           return 0.0 if candidate_tokens.empty?
+          effective_max_n = [max_n_gram, candidate_tokens.length].min
+          return 0.0 if effective_max_n <= 0
 
           # Calculate brevity penalty
           brevity_penalty = calculate_brevity_penalty(reference_tokens, candidate_tokens)
 
           # Calculate precision for each n-gram level
-          precisions = (1..@max_n_gram).map do |n|
+          precisions = (1..effective_max_n).map do |n|
             calculate_n_gram_precision(reference_tokens, candidate_tokens, n)
           end
 
@@ -60,14 +62,14 @@ module TranslationFiesta
           return 0.0 if candidate_n_grams.empty?
 
           matches = 0
-          candidate_n_grams.each do |n_gram|
-            if reference_n_grams[n_gram] && reference_n_grams[n_gram] > 0
-              matches += 1
-              reference_n_grams[n_gram] -= 1
-            end
+          total = 0
+          candidate_n_grams.each do |n_gram, count|
+            total += count
+            available = reference_n_grams[n_gram]
+            matches += [count, available].min if available > 0
           end
 
-          matches.to_f / candidate_n_grams.length
+          matches.to_f / total
         end
 
         def extract_n_grams(tokens, n)

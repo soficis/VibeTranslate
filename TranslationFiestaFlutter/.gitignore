@@ -68,3 +68,6 @@ ehthumbs.db
 *.ipa
 *.tar.gz
 *.zip
+
+# Documents
+docs

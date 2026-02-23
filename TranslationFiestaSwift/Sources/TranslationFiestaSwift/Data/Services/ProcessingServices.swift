@@ -21,19 +21,23 @@ public final class CostTrackingService: CostTrackingRepository {
         self.budget = Budget()
         self.costEntries = []
         
-        // Load existing data (non-blocking)
+        guard Self.isEnabled() else {
+            return
+        }
+
         Task.detached(priority: .background) { [weak self] in
             do {
-                try await Task.sleep(nanoseconds: 100_000_000) // Small delay to let app start
+                try await Task.sleep(nanoseconds: 100_000_000)
                 try await self?.loadFromPersistence()
             } catch {
-                // Silently handle initialization errors
                 self?.logger.debug("Cost tracking initialization failed: \(error.localizedDescription)")
             }
         }
     }
     
     public func trackCost(_ entry: CostEntry) async throws {
+        guard Self.isEnabled() else { return }
+
         costEntries.append(entry)
         budget.addUsage(entry.costUSD)
         
@@ -57,6 +61,8 @@ public final class CostTrackingService: CostTrackingRepository {
     }
     
     public func updateBudget(_ newBudget: Budget) async throws {
+        guard Self.isEnabled() else { return }
+
         budget = newBudget
         logger.info("Budget updated", metadata: [
             "monthlyLimit": "\(newBudget.monthlyLimitUSD)",
@@ -79,11 +85,17 @@ public final class CostTrackingService: CostTrackingRepository {
     }
     
     public func clearCostData() async throws {
+        guard Self.isEnabled() else { return }
+
         costEntries.removeAll()
         budget = Budget()
         
         logger.info("Cost data cleared")
         try await persist()
+    }
+
+    private static func isEnabled() -> Bool {
+        ProcessInfo.processInfo.environment["TF_COST_TRACKING_ENABLED"] == "1"
     }
     
     // MARK: - Private Methods

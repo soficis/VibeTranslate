@@ -2,8 +2,7 @@
 """
 exceptions.py
 
-Custom exception classes for TranslationFiestaPy following Clean Code principles.
-Provides structured error handling with meaningful names and categorization.
+Custom exception classes and error taxonomy for TranslationFiestaPy.
 """
 
 from __future__ import annotations
@@ -100,13 +99,38 @@ class TranslationServiceError(TranslationError):
     pass
 
 
+class RateLimitedError(TranslationServiceError):
+    """Provider rate limiting errors"""
+
+    def __init__(self, retry_after: Optional[int] = None, details: Optional[str] = None, **kwargs):
+        super().__init__(
+            message="Provider rate limited",
+            code="rate_limited",
+            details=details,
+            **kwargs
+        )
+        self.retry_after = retry_after
+
+
+class BlockedError(TranslationServiceError):
+    """Provider blocked or captcha errors"""
+
+    def __init__(self, details: Optional[str] = None, **kwargs):
+        super().__init__(
+            message="Provider blocked or captcha detected",
+            code="blocked",
+            details=details,
+            **kwargs
+        )
+
+
 class InvalidTranslationResponseError(TranslationError):
     """Invalid response from translation service"""
 
     def __init__(self, details: str, **kwargs):
         super().__init__(
             message="Invalid response format from translation service",
-            code="INVALID_RESPONSE",
+            code="invalid_response",
             details=details,
             **kwargs
         )

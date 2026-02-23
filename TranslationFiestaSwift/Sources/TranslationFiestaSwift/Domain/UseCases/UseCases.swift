@@ -1,7 +1,6 @@
 import Foundation
 
 /// Use case for performing back-translations
-/// Following Clean Code: single responsibility principle
 public final class BackTranslationUseCase {
     private let translationRepository: TranslationRepository
     private let costTrackingRepository: CostTrackingRepository
@@ -85,9 +84,59 @@ public final class BackTranslationUseCase {
     }
     
     private func createResultFromMemoryEntry(_ entry: TranslationMemoryEntry) async throws -> BackTranslationResult {
-        // This is simplified - in a real implementation, we'd need to store
-        // the complete back-translation result in memory
-        throw TranslationError.notImplemented("Memory-based result creation not implemented")
+        // Create forward translation result from the entry
+        let forwardResult = TranslationResult(
+            originalText: entry.sourceText,
+            translatedText: entry.translatedText,
+            sourceLanguage: entry.sourceLanguage,
+            targetLanguage: entry.targetLanguage,
+            apiProvider: .googleUnofficialAPI,
+            cost: nil
+        )
+        
+        // Try to find the corresponding backward translation in memory
+        let backwardEntry = try await translationMemoryRepository.lookupExact(
+            sourceText: entry.translatedText,
+            sourceLanguage: entry.targetLanguage,
+            targetLanguage: entry.sourceLanguage
+        )
+        
+        let backwardResult: TranslationResult
+        if let bEntry = backwardEntry {
+            backwardResult = TranslationResult(
+                originalText: bEntry.sourceText,
+                translatedText: bEntry.translatedText,
+                sourceLanguage: bEntry.sourceLanguage,
+                targetLanguage: bEntry.targetLanguage,
+                apiProvider: .googleUnofficialAPI,
+                cost: nil
+            )
+        } else {
+            // Fallback: Use original text as back-translation if missing from memory
+            backwardResult = TranslationResult(
+                originalText: entry.translatedText,
+                translatedText: entry.sourceText,
+                sourceLanguage: entry.targetLanguage,
+                targetLanguage: entry.sourceLanguage,
+                apiProvider: .googleUnofficialAPI,
+                cost: nil
+            )
+        }
+        
+        let qualityAssessment = try await qualityRepository.assessQuality(
+            originalText: entry.sourceText,
+            backTranslatedText: backwardResult.translatedText
+        )
+        
+        return BackTranslationResult(
+            originalEnglish: entry.sourceLanguage == .english ? entry.sourceText : backwardResult.translatedText,
+            japanese: entry.targetLanguage == .japanese ? entry.translatedText : entry.sourceText,
+            backTranslatedEnglish: entry.sourceLanguage == .english ? backwardResult.translatedText : entry.sourceText,
+            forwardTranslation: forwardResult,
+            backwardTranslation: backwardResult,
+            qualityAssessment: qualityAssessment,
+            totalCost: TranslationCost(characterCount: 0, costInUSD: 0, apiProvider: .googleUnofficialAPI)
+        )
     }
     
     private func trackTranslationCosts(
@@ -364,6 +413,9 @@ public enum TranslationError: LocalizedError {
     case invalidAPIKey(APIProvider)
     case networkError(String)
     case quotaExceeded
+    case rateLimited
+    case blocked
+    case invalidResponse(String)
     case invalidInput(String)
     case notImplemented(String)
     case fileNotSupported(String)
@@ -377,6 +429,12 @@ public enum TranslationError: LocalizedError {
             return "Network error: \(message)"
         case .quotaExceeded:
             return "API quota exceeded"
+        case .rateLimited:
+            return "Provider rate limited"
+        case .blocked:
+            return "Provider blocked or captcha detected"
+        case .invalidResponse(let message):
+            return "Invalid response: \(message)"
         case .invalidInput(let message):
             return "Invalid input: \(message)"
         case .notImplemented(let feature):

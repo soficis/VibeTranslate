@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
 require_relative 'infrastructure/dependency_container'
+require_relative 'infrastructure/settings_store'
 require_relative 'web/app'
 
 module TranslationFiesta
   class Application
     def initialize
+      store = Infrastructure::SettingsStore.new
+      store.apply_to_env(store.load)
       @container = Infrastructure::DependencyContainer.new
     end
 

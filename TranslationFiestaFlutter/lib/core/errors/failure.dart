@@ -1,5 +1,3 @@
-/// Clean Code failure handling using sealed classes and meaningful names
-/// Following the Either pattern for explicit error handling
 abstract class Failure {
   final String message;
   final String? code;
@@ -43,14 +41,14 @@ class TranslationFailure extends Failure {
   factory TranslationFailure.noTranslationFound() {
     return TranslationFailure(
       message: 'No translation found in response',
-      code: 'NO_TRANSLATION',
+      code: 'no_translation',
     );
   }
 
   factory TranslationFailure.invalidResponse(String details) {
     return TranslationFailure(
       message: 'Invalid response format: $details',
-      code: 'INVALID_RESPONSE',
+      code: 'invalid_response',
     );
   }
 
@@ -58,6 +56,27 @@ class TranslationFailure extends Failure {
     return TranslationFailure(
       message: 'API key required for official endpoint',
       code: 'API_KEY_REQUIRED',
+    );
+  }
+
+  factory TranslationFailure.localProviderUnavailable(String details) {
+    return TranslationFailure(
+      message: 'Local provider unavailable: $details',
+      code: 'LOCAL_PROVIDER_UNAVAILABLE',
+    );
+  }
+
+  factory TranslationFailure.rateLimited() {
+    return TranslationFailure(
+      message: 'Provider rate limited',
+      code: 'rate_limited',
+    );
+  }
+
+  factory TranslationFailure.blocked() {
+    return TranslationFailure(
+      message: 'Provider blocked or captcha detected',
+      code: 'blocked',
     );
   }
 }

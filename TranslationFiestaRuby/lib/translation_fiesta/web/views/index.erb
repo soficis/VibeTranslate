@@ -80,8 +80,9 @@
       <div class="form-group">
         <label for="api-type" class="form-label">Translation API</label>
         <select id="api-type" class="form-control select">
-          <option value="unofficial">Unofficial (Free, Rate-limited)</option>
-          <option value="official">Official Google Cloud (Paid, Higher Quality)</option>
+          <option value="local">Local (Offline)</option>
+          <option value="google_unofficial">Google Translate (Unofficial / Free)</option>
+          <option value="google_official">Google Cloud Translate (Official)</option>
         </select>
       </div>
 
@@ -132,10 +133,12 @@
             <div class="metric-value" id="quality-rating">--</div>
             <div class="metric-label">Quality</div>
           </div>
-          <div class="metric-card">
-            <div class="metric-value" id="translation-cost">$0.0000</div>
-            <div class="metric-label">Cost</div>
-          </div>
+          <% if ENV['TF_COST_TRACKING_ENABLED'] == '1' %>
+            <div class="metric-card">
+              <div class="metric-value" id="translation-cost">$0.0000</div>
+              <div class="metric-label">Cost</div>
+            </div>
+          <% end %>
           <div class="metric-card">
             <div class="metric-value" id="character-count">--</div>
             <div class="metric-label">Characters</div>
@@ -206,6 +209,7 @@
 <!-- Analytics Tab -->
 <div id="analytics-tab" class="tab-content">
   <div class="grid grid-cols-1 gap-6">
+    <% if ENV['TF_COST_TRACKING_ENABLED'] == '1' %>
     <!-- Cost Tracking Dashboard -->
     <div class="card">
       <div class="card-header">
@@ -241,7 +245,7 @@
         </div>
         <div class="mt-2">
           <div id="budget-warning" class="alert alert-warning hidden">
-            ⚠️ You've used over 80% of your monthly budget
+            You've used over 80% of your monthly budget
           </div>
         </div>
       </div>
@@ -257,6 +261,7 @@
         </div>
       </div>
     </div>
+    <% end %>
 
     <!-- Translation Memory Stats -->
     <div class="card">
@@ -306,8 +311,9 @@
       <div class="form-group">
         <label for="default-api" class="form-label">Default Translation API</label>
         <select id="default-api" class="form-control select">
-          <option value="unofficial">Unofficial (Free)</option>
-          <option value="official">Official Google Cloud</option>
+          <option value="local">Local (Offline)</option>
+          <option value="google_unofficial">Google Translate (Unofficial / Free)</option>
+          <option value="google_official">Google Cloud Translate (Official)</option>
         </select>
       </div>
 
@@ -344,6 +350,41 @@
           Test API Connection
         </button>
       </div>
+    </div>
+
+    <!-- Local Model Manager -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Local Model Manager</h2>
+        <p class="card-description">Configure and manage offline models</p>
+      </div>
+
+      <div class="form-group">
+        <label for="local-service-url" class="form-label">Service URL</label>
+        <input type="text" id="local-service-url" class="form-control" placeholder="http://127.0.0.1:5055">
+      </div>
+
+      <div class="form-group">
+        <label for="local-model-dir" class="form-label">Model Directory</label>
+        <input type="text" id="local-model-dir" class="form-control" placeholder="Optional override path">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Auto-start</label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" id="local-auto-start" checked>
+          Auto-start local service
+        </label>
+      </div>
+
+      <div class="form-group">
+        <button class="btn btn-secondary btn-sm" onclick="installDefaultLocalModels()">Install Default</button>
+        <button class="btn btn-secondary btn-sm" onclick="refreshLocalModels()">Refresh</button>
+        <button class="btn btn-secondary btn-sm" onclick="verifyLocalModels()">Verify</button>
+        <button class="btn btn-secondary btn-sm" onclick="removeLocalModels()">Remove</button>
+      </div>
+
+      <pre id="local-model-status" class="text-xs text-muted"></pre>
     </div>
   </div>
 </div>
@@ -418,7 +459,7 @@
       // Process through API
       const result = await apiCall('/api/batch', 'POST', {
         files: fileContents,
-        api_type: 'unofficial'
+        api_type: 'google_unofficial'
       });
 
       displayBatchResults(result.results);
@@ -501,7 +542,8 @@
     document.getElementById('bleu-score').textContent = result.bleu_score ? 
       formatPercentage(result.bleu_score * 100) : 'N/A';
     document.getElementById('quality-rating').textContent = result.quality_rating || 'N/A';
-    document.getElementById('translation-cost').textContent = formatCurrency(result.cost || 0);
+    const costEl = document.getElementById('translation-cost');
+    if (costEl) costEl.textContent = formatCurrency(result.cost || 0);
     document.getElementById('character-count').textContent = result.original_text.length.toLocaleString();
   }
 
@@ -568,30 +610,92 @@
       const ct = data.cost_tracking;
       const tm = data.translation_memory;
       
-      document.getElementById('monthly-cost').textContent = formatCurrency(ct.monthly_cost);
-      document.getElementById('budget-remaining').textContent = formatCurrency(ct.budget_remaining);
-      document.getElementById('budget-usage').textContent = formatPercentage(ct.budget_usage);
-      document.getElementById('total-characters').textContent = ct.total_characters.toLocaleString();
-      document.getElementById('unofficial-usage').textContent = ct.unofficial_usage.toString();
-      document.getElementById('official-usage').textContent = formatCurrency(ct.official_cost);
+      if (ct) {
+        document.getElementById('monthly-cost').textContent = formatCurrency(ct.monthly_cost);
+        document.getElementById('budget-remaining').textContent = formatCurrency(ct.budget_remaining);
+        document.getElementById('budget-usage').textContent = formatPercentage(ct.budget_usage);
+        document.getElementById('total-characters').textContent = ct.total_characters.toLocaleString();
+        document.getElementById('unofficial-usage').textContent = ct.unofficial_usage.toString();
+        document.getElementById('official-usage').textContent = formatCurrency(ct.official_cost);
+        document.getElementById('budget-progress-bar').style.width = `${ct.budget_usage}%`;
+        if (ct.budget_usage > 80) {
+          document.getElementById('budget-warning').classList.remove('hidden');
+        }
+      }
       
       document.getElementById('cache-entries').textContent = tm.cache_entries.toString();
       document.getElementById('cache-hit-rate').textContent = formatPercentage(tm.hit_rate);
       document.getElementById('cache-savings').textContent = formatCurrency(tm.savings);
       document.getElementById('cache-size').textContent = `${tm.cache_size_kb} KB`;
-      
-      document.getElementById('budget-progress-bar').style.width = `${ct.budget_usage}%`;
-      
-      if (ct.budget_usage > 80) {
-        document.getElementById('budget-warning').classList.remove('hidden');
-      }
     } catch (error) {
       console.error('Failed to load analytics:', error);
     }
   }
 
-  function saveSettings() {
-    showNotification('Settings saved successfully', 'success');
+  async function loadLocalSettings() {
+    try {
+      const settings = await apiCall('/api/local/settings');
+      document.getElementById('local-service-url').value = settings.local_service_url || '';
+      document.getElementById('local-model-dir').value = settings.local_model_dir || '';
+      document.getElementById('local-auto-start').checked = settings.local_auto_start !== false;
+    } catch (error) {
+      console.error('Failed to load local settings', error);
+    }
+  }
+
+  async function saveSettings() {
+    try {
+      const payload = {
+        local_service_url: document.getElementById('local-service-url').value,
+        local_model_dir: document.getElementById('local-model-dir').value,
+        local_auto_start: document.getElementById('local-auto-start').checked
+      };
+      await apiCall('/api/local/settings', 'POST', payload);
+      showNotification('Settings saved successfully', 'success');
+    } catch (error) {
+      showNotification(`Failed to save settings: ${error.message}`, 'error');
+    }
+  }
+
+  function updateLocalModelStatus(message) {
+    document.getElementById('local-model-status').textContent = message;
+  }
+
+  async function refreshLocalModels() {
+    try {
+      const result = await apiCall('/api/local/models');
+      updateLocalModelStatus(result.body || 'No response');
+    } catch (error) {
+      updateLocalModelStatus(error.message);
+    }
+  }
+
+  async function verifyLocalModels() {
+    try {
+      const result = await apiCall('/api/local/models/verify', 'POST', {});
+      updateLocalModelStatus(result.body || 'No response');
+    } catch (error) {
+      updateLocalModelStatus(error.message);
+    }
+  }
+
+  async function removeLocalModels() {
+    if (!confirm('Remove local models from disk?')) return;
+    try {
+      const result = await apiCall('/api/local/models/remove', 'POST', {});
+      updateLocalModelStatus(result.body || 'No response');
+    } catch (error) {
+      updateLocalModelStatus(error.message);
+    }
+  }
+
+  async function installDefaultLocalModels() {
+    try {
+      const result = await apiCall('/api/local/models/install', 'POST', {});
+      updateLocalModelStatus(result.body || 'No response');
+    } catch (error) {
+      updateLocalModelStatus(error.message);
+    }
   }
 
   function testApiConnection() {
@@ -658,6 +762,10 @@
 
     return result;
   }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadLocalSettings();
+  });
 
   // Utility functions
   function showNotification(message, type = 'success') {

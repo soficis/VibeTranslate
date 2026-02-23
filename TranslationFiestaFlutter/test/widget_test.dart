@@ -15,6 +15,9 @@ void main() {
     await tester.pumpWidget(const FlutterTranslateApp());
 
     // Verify that the main page is displayed.
-    expect(find.text('Flutter Translate'), findsOneWidget);
+    expect(
+      find.text('Backtranslation (English -> Japanese -> English)'),
+      findsOneWidget,
+    );
   });
 }

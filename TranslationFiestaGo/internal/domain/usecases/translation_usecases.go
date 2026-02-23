@@ -25,7 +25,7 @@ func NewTranslationUseCases(translationRepo repositories.TranslationRepository, 
 }
 
 // Translate performs a single translation
-func (uc *TranslationUseCases) Translate(ctx context.Context, text, sourceLang, targetLang string, useOfficial bool, apiKey string) (*entities.TranslationResult, error) {
+func (uc *TranslationUseCases) Translate(ctx context.Context, text, sourceLang, targetLang, providerID, apiKey string) (*entities.TranslationResult, error) {
 	if text == "" {
 		return nil, fmt.Errorf("text cannot be empty")
 	}
@@ -38,20 +38,22 @@ func (uc *TranslationUseCases) Translate(ctx context.Context, text, sourceLang, 
 		return nil, fmt.Errorf("invalid target language: %s", targetLang)
 	}
 
+	normalizedProvider := entities.NormalizeProviderID(providerID)
+
 	if sourceLang == "" {
 		var err error
-		sourceLang, err = uc.DetectLanguage(ctx, text, apiKey)
+		sourceLang, err = uc.DetectLanguage(ctx, text, normalizedProvider, apiKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to detect language: %w", err)
 		}
 	}
 
 	request := entities.TranslationRequest{
-		Text:        text,
-		SourceLang:  sourceLang,
-		TargetLang:  targetLang,
-		UseOfficial: useOfficial,
-		APIKey:      apiKey,
+		Text:       text,
+		SourceLang: sourceLang,
+		TargetLang: targetLang,
+		ProviderID: normalizedProvider,
+		APIKey:     apiKey,
 	}
 
 	return uc.translationRepo.Translate(ctx, request)
@@ -75,7 +77,10 @@ func (uc *TranslationUseCases) validateLanguage(lang string) bool {
 }
 
 // DetectLanguage delegates to the repository
-func (uc *TranslationUseCases) DetectLanguage(ctx context.Context, text, apiKey string) (string, error) {
+func (uc *TranslationUseCases) DetectLanguage(ctx context.Context, text, providerID, apiKey string) (string, error) {
+	if !entities.IsOfficialProvider(providerID) {
+		return "en", nil
+	}
 	return uc.translationRepo.DetectLanguage(ctx, text, apiKey)
 }
 
@@ -95,12 +100,12 @@ func (uc *TranslationUseCases) BackTranslate(ctx context.Context, text string) (
 		intermediateLang = "ja"
 	}
 
-	useOfficial := uc.settingsRepo.GetUseOfficialAPI()
+	providerID := uc.settingsRepo.GetProviderID()
 	apiKey := uc.settingsRepo.GetAPIKey()
 
 	startTime := time.Now()
 
-	result, err := uc.translationRepo.BackTranslate(ctx, text, sourceLang, intermediateLang, useOfficial, apiKey)
+	result, err := uc.translationRepo.BackTranslate(ctx, text, sourceLang, intermediateLang, providerID, apiKey)
 
 	if result != nil {
 		result.Duration = time.Since(startTime)

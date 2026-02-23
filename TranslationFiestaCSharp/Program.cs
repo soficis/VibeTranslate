@@ -14,44 +14,11 @@ namespace TranslationFiestaCSharp
 {
     static class Program
     {
-        // HTML text extraction using HtmlAgilityPack (similar to Python's BeautifulSoup)
         static string ExtractTextFromHtml(string htmlContent)
         {
             return HtmlProcessor.ExtractTextFromHtml(htmlContent);
         }
 
-        // Simple test method for HTML processing
-        static void TestHtmlProcessing()
-        {
-            try
-            {
-                Console.WriteLine("Testing HTML Processing Functionality");
-                Console.WriteLine("=====================================");
-
-                string testFilePath = "test_sample.html";
-                if (!File.Exists(testFilePath))
-                {
-                    Console.WriteLine($"Test file '{testFilePath}' not found.");
-                    return;
-                }
-
-                string htmlContent = File.ReadAllText(testFilePath, Encoding.UTF8);
-                Console.WriteLine($"Original HTML length: {htmlContent.Length} characters");
-
-                string extractedText = HtmlProcessor.ExtractTextFromHtml(htmlContent);
-                Console.WriteLine($"Extracted text length: {extractedText.Length} characters");
-                Console.WriteLine("\nExtracted text:");
-                Console.WriteLine(extractedText);
-
-                Console.WriteLine("\nHTML processing test completed successfully!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Test failed: {ex.Message}");
-            }
-        }
-
-        // File loading function that handles different file types (similar to F# version)
         static string LoadTextFromFile(string filePath)
         {
             try
@@ -86,17 +53,16 @@ namespace TranslationFiestaCSharp
         }
     // Use TranslationClient for parsing and HTTP
     static readonly TranslationClient Translator = new TranslationClient();
+
+    private sealed class ProviderOption
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+    }
     static readonly BLEUScorer BleuScorer = new BLEUScorer();
 
         static void Main(string[] args)
         {
-            // Check for test mode
-            if (args.Length > 0 && args[0] == "--test-html")
-            {
-                TestHtmlProcessing();
-                return;
-            }
-
             // Initialize Windows Forms for GUI mode
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();
@@ -109,6 +75,9 @@ namespace TranslationFiestaCSharp
             // Load settings and API key
             var settings = SettingsService.Load();
             var savedApiKey = SecureStore.GetApiKey();
+            var providerId = ProviderIds.Normalize(settings.ProviderId);
+            ApplyLocalEnv(settings);
+            var localModelsClient = new LocalServiceClient(new HttpClient());
 
             // Make window responsive to screen size
             var screen = Screen.PrimaryScreen;
@@ -145,6 +114,10 @@ namespace TranslationFiestaCSharp
             var miExit = new ToolStripMenuItem("Exit") { ShortcutKeys = Keys.Alt | Keys.F4 };
             fileMenu.DropDownItems.AddRange(new ToolStripItem[] { miImport, miSaveBack, miCopyBack, new ToolStripSeparator(), miExit });
             menu.Items.Add(fileMenu);
+            var toolsMenu = new ToolStripMenuItem("Tools");
+            var miModels = new ToolStripMenuItem("Local Models...");
+            toolsMenu.DropDownItems.Add(miModels);
+            menu.Items.Add(toolsMenu);
             form.MainMenuStrip = menu;
             form.Controls.Add(menu);
 
@@ -158,9 +131,20 @@ namespace TranslationFiestaCSharp
             var btnTheme = new Button { Text = settings.DarkMode ? "Light" : "Dark", Left = margin, Top = yTop, Width = 80 };
             var btnLoad = new Button { Text = "Load File", Left = margin + 90, Top = yTop, Width = 100 };
             var btnBatch = new Button { Text = "Batch Process", Left = margin + 200, Top = yTop, Width = 120 };
-            var chkOfficial = new CheckBox { Text = "Use Official API", Left = margin + 330, Top = yTop + 3, Width = 140, Checked = settings.UseOfficialApi };
-            var lblKey = new Label { Text = "API Key:", Left = margin + 480, Top = yTop + 5, Width = 60 };
-            var txtApiKey = new TextBox { Left = margin + 540, Top = yTop + 2, Width = Math.Max(200, availableWidth - 550), UseSystemPasswordChar = true, Enabled = settings.UseOfficialApi, Text = savedApiKey ?? "" };
+            var providerOptions = new[]
+            {
+                new ProviderOption { Id = ProviderIds.Local, Name = "Local (Offline)" },
+                new ProviderOption { Id = ProviderIds.GoogleUnofficial, Name = "Google Translate (Unofficial / Free)" },
+                new ProviderOption { Id = ProviderIds.GoogleOfficial, Name = "Google Cloud Translate (Official)" }
+            };
+            var lblProvider = new Label { Text = "Provider:", Left = margin + 330, Top = yTop + 5, Width = 70 };
+            var cmbProvider = new ComboBox { Left = margin + 400, Top = yTop + 2, Width = 210, DropDownStyle = ComboBoxStyle.DropDownList };
+            cmbProvider.DataSource = providerOptions;
+            cmbProvider.DisplayMember = "Name";
+            cmbProvider.ValueMember = "Id";
+            cmbProvider.SelectedValue = providerId;
+            var lblKey = new Label { Text = "API Key:", Left = margin + 620, Top = yTop + 5, Width = 60 };
+            var txtApiKey = new TextBox { Left = margin + 680, Top = yTop + 2, Width = Math.Max(200, availableWidth - 690), UseSystemPasswordChar = true, Enabled = ProviderIds.IsOfficial(providerId), Text = savedApiKey ?? "" };
             var lblFile = new Label { Text = "", Left = margin, Top = yTop + 34, Width = availableWidth };
 
             var lblInput = new Label { Text = "Input (English):", Left = margin, Top = yTop + 60, Width = 200 };
@@ -181,7 +165,7 @@ namespace TranslationFiestaCSharp
             var btnCopy = new Button { Text = "Copy Back", Left = margin, Top = yTop + 742, Width = 100 };
             var btnSave = new Button { Text = "Save Back...", Left = margin + 110, Top = yTop + 742, Width = 120 };
 
-            form.Controls.AddRange(new Control[] { btnTheme, btnLoad, btnBatch, chkOfficial, lblKey, txtApiKey, lblFile, lblInput, txtInput, btnTranslate, btnCancel, lblStatus, progress, lblJa, txtJa, lblBack, txtBack, btnCopy, btnSave });
+            form.Controls.AddRange(new Control[] { btnTheme, btnLoad, btnBatch, lblProvider, cmbProvider, lblKey, txtApiKey, lblFile, lblInput, txtInput, btnTranslate, btnCancel, lblStatus, progress, lblJa, txtJa, lblBack, txtBack, btnCopy, btnSave });
 
             var dark = settings.DarkMode;
             // Apply initial theme
@@ -234,15 +218,14 @@ namespace TranslationFiestaCSharp
                 ApplyTheme();
 
                 // Save theme setting
-                SettingsService.SaveCurrentSettings(dark, chkOfficial.Checked, form.Width, form.Height, form.Location.X, form.Location.Y);
+                SettingsService.SaveCurrentSettings(dark, GetSelectedProviderId(), form.Width, form.Height, form.Location.X, form.Location.Y);
             };
 
-            // Official API toggle
-            chkOfficial.CheckedChanged += (s, e) =>
+            // Provider selection
+            cmbProvider.SelectedIndexChanged += (s, e) =>
             {
-                txtApiKey.Enabled = chkOfficial.Checked;
-                // Save official API setting
-                SettingsService.SaveCurrentSettings(dark, chkOfficial.Checked, form.Width, form.Height, form.Location.X, form.Location.Y);
+                txtApiKey.Enabled = ProviderIds.IsOfficial(GetSelectedProviderId());
+                SettingsService.SaveCurrentSettings(dark, GetSelectedProviderId(), form.Width, form.Height, form.Location.X, form.Location.Y);
             };
 
             // API Key save handler
@@ -298,7 +281,7 @@ namespace TranslationFiestaCSharp
                         Logger.Info($"Successfully imported file: {ofd.FileName}");
 
                         // Save last file path
-                        SettingsService.SaveCurrentSettings(dark, chkOfficial.Checked, form.Width, form.Height, form.Location.X, form.Location.Y, ofd.FileName);
+                        SettingsService.SaveCurrentSettings(dark, GetSelectedProviderId(), form.Width, form.Height, form.Location.X, form.Location.Y, ofd.FileName);
                     }
                     catch (Exception ex)
                     {
@@ -354,7 +337,7 @@ namespace TranslationFiestaCSharp
                     Logger.Info($"Saved back-translation with quality assessment to '{sfd.FileName}'");
 
                     // Save last save path
-                    SettingsService.SaveCurrentSettings(dark, chkOfficial.Checked, form.Width, form.Height, form.Location.X, form.Location.Y, settings.LastFilePath, sfd.FileName);
+                    SettingsService.SaveCurrentSettings(dark, GetSelectedProviderId(), form.Width, form.Height, form.Location.X, form.Location.Y, settings.LastFilePath, sfd.FileName);
                 }
                 else
                 {
@@ -365,6 +348,7 @@ namespace TranslationFiestaCSharp
             miSaveBack.Click += (s, e) => saveBack();
 
             miExit.Click += (s, e) => form.Close();
+            miModels.Click += (s, e) => ShowModelManager();
 
             // Save settings on form closing
             // Handle window resizing for responsive layout
@@ -373,7 +357,7 @@ namespace TranslationFiestaCSharp
                 var margin = 10;
                 var availableWidth = form.ClientSize.Width - (2 * margin);
 
-                txtApiKey.Width = Math.Max(200, availableWidth - 550);
+                txtApiKey.Width = Math.Max(200, availableWidth - 690);
                 lblFile.Width = availableWidth;
                 txtInput.Width = availableWidth;
                 txtJa.Width = availableWidth;
@@ -386,7 +370,7 @@ namespace TranslationFiestaCSharp
 
             form.FormClosing += (s, e) =>
             {
-                SettingsService.SaveCurrentSettings(dark, chkOfficial.Checked, form.Width, form.Height, form.Location.X, form.Location.Y);
+                SettingsService.SaveCurrentSettings(dark, GetSelectedProviderId(), form.Width, form.Height, form.Location.X, form.Location.Y);
             };
 
             form.KeyDown += (s, e) =>
@@ -405,9 +389,110 @@ namespace TranslationFiestaCSharp
                 Logger.Info($"Status: {message}");
             }
 
+            string GetSelectedProviderId()
+            {
+                return ProviderIds.Normalize(cmbProvider.SelectedValue?.ToString() ?? ProviderIds.GoogleUnofficial);
+            }
+
             // Initialize settings and log them
-            Logger.Debug($"Initial settings loaded: DarkMode={settings.DarkMode}, UseOfficialApi={settings.UseOfficialApi}, WindowSize={settings.WindowWidth}x{settings.WindowHeight}, WindowPos=({settings.WindowX},{settings.WindowY}), LastFilePath='{settings.LastFilePath}', LastSavePath='{settings.LastSavePath}'");
+            Logger.Debug($"Initial settings loaded: DarkMode={settings.DarkMode}, ProviderId={providerId}, UseOfficialApi={settings.UseOfficialApi}, WindowSize={settings.WindowWidth}x{settings.WindowHeight}, WindowPos=({settings.WindowX},{settings.WindowY}), LastFilePath='{settings.LastFilePath}', LastSavePath='{settings.LastSavePath}'");
             Logger.Debug($"API Key loaded: {(string.IsNullOrEmpty(savedApiKey) ? "Not set" : "Set")}");
+
+            void ApplyLocalEnv(AppSettings appSettings)
+            {
+                if (!string.IsNullOrWhiteSpace(appSettings.LocalServiceUrl))
+                {
+                    Environment.SetEnvironmentVariable("TF_LOCAL_URL", appSettings.LocalServiceUrl);
+                }
+                else
+                {
+                    Environment.SetEnvironmentVariable("TF_LOCAL_URL", null);
+                }
+
+                if (!string.IsNullOrWhiteSpace(appSettings.LocalModelDir))
+                {
+                    Environment.SetEnvironmentVariable("TF_LOCAL_MODEL_DIR", appSettings.LocalModelDir);
+                }
+                else
+                {
+                    Environment.SetEnvironmentVariable("TF_LOCAL_MODEL_DIR", null);
+                }
+
+                Environment.SetEnvironmentVariable("TF_LOCAL_AUTOSTART", appSettings.LocalAutoStart ? "1" : "0");
+            }
+
+            void ShowModelManager()
+            {
+                var dialog = new Form
+                {
+                    Text = "Local Model Manager",
+                    Width = 520,
+                    Height = 320,
+                    StartPosition = FormStartPosition.CenterParent
+                };
+
+                var lblUrl = new Label { Text = "Service URL:", Left = 12, Top = 15, Width = 90 };
+                var txtUrl = new TextBox { Left = 110, Top = 12, Width = 360, Text = settings.LocalServiceUrl ?? "" };
+                var lblDir = new Label { Text = "Model Dir:", Left = 12, Top = 45, Width = 90 };
+                var txtDir = new TextBox { Left = 110, Top = 42, Width = 360, Text = settings.LocalModelDir ?? "" };
+                var chkAuto = new CheckBox { Text = "Auto-start local service", Left = 110, Top = 72, Width = 220, Checked = settings.LocalAutoStart };
+
+                var txtStatus = new TextBox
+                {
+                    Left = 12,
+                    Top = 105,
+                    Width = 458,
+                    Height = 120,
+                    Multiline = true,
+                    ScrollBars = ScrollBars.Vertical,
+                    ReadOnly = true
+                };
+
+                var btnSave = new Button { Text = "Save", Left = 12, Top = 235, Width = 80 };
+                var btnRefresh = new Button { Text = "Refresh", Left = 100, Top = 235, Width = 80 };
+                var btnVerify = new Button { Text = "Verify", Left = 188, Top = 235, Width = 80 };
+                var btnRemove = new Button { Text = "Remove", Left = 276, Top = 235, Width = 80 };
+                var btnInstall = new Button { Text = "Install Default", Left = 364, Top = 235, Width = 106 };
+
+                async Task UpdateStatus(Func<CancellationToken, Task<string>> action)
+                {
+                    try
+                    {
+                        var result = await action(CancellationToken.None);
+                        txtStatus.Text = result;
+                    }
+                    catch (Exception ex)
+                    {
+                        txtStatus.Text = ex.Message;
+                    }
+                }
+
+                btnSave.Click += (s, e) =>
+                {
+                    settings.LocalServiceUrl = txtUrl.Text.Trim();
+                    settings.LocalModelDir = txtDir.Text.Trim();
+                    settings.LocalAutoStart = chkAuto.Checked;
+                    SettingsService.Save(settings);
+                    ApplyLocalEnv(settings);
+                    localModelsClient = new LocalServiceClient(new HttpClient());
+                    txtStatus.Text = "Settings saved.";
+                };
+
+                btnRefresh.Click += async (s, e) => await UpdateStatus(localModelsClient.GetModelsStatusAsync);
+                btnVerify.Click += async (s, e) => await UpdateStatus(localModelsClient.VerifyModelsAsync);
+                btnRemove.Click += async (s, e) =>
+                {
+                    if (MessageBox.Show(dialog, "Remove local models from disk?", "Confirm", MessageBoxButtons.YesNo) != DialogResult.Yes)
+                    {
+                        return;
+                    }
+                    await UpdateStatus(localModelsClient.RemoveModelsAsync);
+                };
+                btnInstall.Click += async (s, e) => await UpdateStatus(localModelsClient.InstallDefaultModelsAsync);
+
+                dialog.Controls.AddRange(new Control[] { lblUrl, txtUrl, lblDir, txtDir, chkAuto, txtStatus, btnSave, btnRefresh, btnVerify, btnRemove, btnInstall });
+                dialog.ShowDialog(form);
+            }
 
             void setBusy(bool busy)
             {
@@ -417,8 +502,8 @@ namespace TranslationFiestaCSharp
                 btnLoad.Enabled = !busy;
                 btnCopy.Enabled = !busy;
                 btnSave.Enabled = !busy;
-                chkOfficial.Enabled = !busy;
-                txtApiKey.Enabled = !busy && chkOfficial.Checked;
+                cmbProvider.Enabled = !busy;
+                txtApiKey.Enabled = !busy && ProviderIds.IsOfficial(GetSelectedProviderId());
                 progress.Visible = busy;
             }
 
@@ -446,8 +531,12 @@ namespace TranslationFiestaCSharp
                         return;
                     }
 
-                    Translator.OfficialApiKey = chkOfficial.Checked ? (string.IsNullOrWhiteSpace(txtApiKey.Text) ? null : txtApiKey.Text) : null;
-                    Logger.Debug($"Translation initiated. Input length: {input.Length} chars. Using official API: {chkOfficial.Checked}");
+                    var selectedProvider = GetSelectedProviderId();
+                    Translator.ProviderId = selectedProvider;
+                    Translator.OfficialApiKey = ProviderIds.IsOfficial(selectedProvider)
+                        ? (string.IsNullOrWhiteSpace(txtApiKey.Text) ? null : txtApiKey.Text)
+                        : null;
+                    Logger.Debug($"Translation initiated. Input length: {input.Length} chars. ProviderId={selectedProvider}");
 
                     setStatus("Translating to Japanese...");
                     var jaStopwatch = Stopwatch.StartNew();
@@ -511,6 +600,12 @@ namespace TranslationFiestaCSharp
                 using var fbd = new FolderBrowserDialog();
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
+                    var selectedProvider = GetSelectedProviderId();
+                    Translator.ProviderId = selectedProvider;
+                    Translator.OfficialApiKey = ProviderIds.IsOfficial(selectedProvider)
+                        ? (string.IsNullOrWhiteSpace(txtApiKey.Text) ? null : txtApiKey.Text)
+                        : null;
+
                     var batchProcessor = new BatchProcessor(Translator, (current, total) =>
                     {
                         form.Invoke((Action)(() =>

@@ -3,6 +3,11 @@ bin/
 obj/
 build/
 dist/
+artifacts/
+dist-electron/
+dist-electron/**
+.vite/
+.vite/**
 *.exe
 *.dll
 *.pdb
@@ -18,16 +23,39 @@ dist/
 *.tar.gz
 *.zip
 *.7z
+!TranslationFiestaLocal/model_packs/*.zip
 *.egg-info/
 *.egg
 *.whl
+*.binlog
+*.tsbuildinfo
+.eslintcache
 
 # Documentation and reference files
-cleancode.md
-
+docs/
+*.md
+*.pdf
+*.docx
+*.txt
+!CMakeLists.txt
+!requirements.txt
+!*README.md
+docs/cleancodeJS.md
+docs/CleanCodeDotNet.md
+docs/_site/
+docs/site/
+docs/build/
+docs/out/
+docs/.docusaurus/
+docs/.vitepress/dist/
+docs/.vuepress/dist/
+docs/.mkdocs/
+.obsidian/
 # Python
 __pycache__/
 *.py[cod]
+*.pyc
+*.pyo
 *$py.class
 *.so
 .Python
@@ -86,11 +114,21 @@ go.work.sum
 coverage.txt
 coverage.html
 
+# Swift / SwiftPM
+.build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+
 # Flutter/Dart
 .dart_tool/
 .packages
 .pub/
 flutter_*.log
+.flutter-plugins
+.flutter-plugins-dependencies
 android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 android/.gradle/
 android/app/build/
@@ -107,6 +145,10 @@ ios/Flutter/flutter_export/
 ios/Flutter/generated.xcconfig
 ios/Pods/
 web/index.html
+linux/build/
+macos/build/
+windows/build/
+web/build/
 *.apk
 *.aab
 *.ipa
@@ -122,6 +164,10 @@ package-lock.json.md5
 *.log
 wailsjs/
 frontend/dist/
+TranslationFiestaElectron/node_modules/
+TranslationFiestaElectron/dist/
+TranslationFiestaElectron/dist-electron/
+TranslationFiestaElectron/.vite/
 
 # IDE and Editor files
 .vscode/
@@ -187,6 +233,9 @@ tm_cache.json
 translationfiesta.log
 settings.json
 secure_storage/
+_ct2_tmp/
+_pack_tmp/
+flutter_output.log
 
 # Wails specific
 wails.json.bak
@@ -242,7 +291,6 @@ log/
 /.rbenv-vars
 
 # Ignore the clean code book file (large, not source)
-cleancode.md
 
 # Additional personal/private files
 *.key
@@ -338,3 +386,22 @@ node_modules/.cache/
 *.rej
 *.old
 *~
+docs/CleanCodeBook.md
+docs/clean-code-ruby-master.md
+docs/clean-code-dotnet-master.md
+docs/Assumptions.md
+docs/CleanCodePython.md
+docs/cleancodeTS.md
+docs/COST_TRACKING_README.md
+docs/GoCleanCode.md
+docs/translation_contract.md
+docs/UnofficialGoogleProvider.md
+docs/CostTracking.md
+docs/GuiModernization.md
+docs/OfflineModels.md
+docs/antigravity mcp.json
+sosumi_search.txt
+sosumi_app_task.txt
+context7_res.txt
+context7_log_docs.txt
+context7_di_docs.txt

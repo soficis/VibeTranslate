@@ -41,7 +41,7 @@ module TranslationFiesta
       end
 
       def setup_services
-        @cost_tracker = Features::CostTracker.new(@cost_repository)
+        @cost_tracker = ENV['TF_COST_TRACKING_ENABLED'] == '1' ? Features::CostTracker.new(@cost_repository) : nil
         @translator_service = Domain::Services::TranslatorService.new(
           @translation_repository,
           @memory_repository,

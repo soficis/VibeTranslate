@@ -1,7 +1,7 @@
 import Foundation
 
 /// Translation memory cache entry
-public struct TranslationMemoryEntry: Equatable, Codable, Identifiable {
+public struct TranslationMemoryEntry: Equatable, Codable, Identifiable, Sendable {
     public let id: UUID
     public let sourceText: String
     public let translatedText: String
@@ -38,7 +38,7 @@ public struct TranslationMemoryEntry: Equatable, Codable, Identifiable {
 }
 
 /// Fuzzy match result from translation memory
-public struct FuzzyMatch: Equatable, Codable, Identifiable {
+public struct FuzzyMatch: Equatable, Codable, Identifiable, Sendable {
     public let entry: TranslationMemoryEntry
     public let similarityScore: Double
     public let levenshteinDistance: Int
@@ -76,7 +76,7 @@ public struct TranslationMemoryConfig: Equatable, Codable, Sendable {
 }
 
 /// Translation memory statistics
-public struct TranslationMemoryStats: Equatable, Codable {
+public struct TranslationMemoryStats: Equatable, Codable, Sendable {
     public let totalEntries: Int
     public let maxCacheSize: Int
     public let cacheUtilization: Double
@@ -112,7 +112,7 @@ public struct TranslationMemoryStats: Equatable, Codable {
 }
 
 /// EPUB chapter information
-public struct EPUBChapter: Equatable, Codable, Identifiable {
+public struct EPUBChapter: Equatable, Codable, Identifiable, Sendable {
     public let id: String
     public let title: String
     public let content: String
@@ -130,7 +130,7 @@ public struct EPUBChapter: Equatable, Codable, Identifiable {
 }
 
 /// EPUB book metadata and chapters
-public struct EPUBBook: Equatable, Codable, Identifiable {
+public struct EPUBBook: Equatable, Codable, Identifiable, Sendable {
     public let id: UUID
     public let title: String
     public let author: String?
@@ -201,7 +201,7 @@ public enum ExportFormat: String, CaseIterable, Codable, Identifiable {
 }
 
 /// Export configuration options
-public struct ExportConfig: Equatable, Codable {
+public struct ExportConfig: Equatable, Codable, Sendable {
     public let format: ExportFormat
     public let includeMetadata: Bool
     public let includeQualityMetrics: Bool

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -21,15 +22,18 @@ namespace TranslationFiestaCSharp
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
+        public string ProviderId { get; set; } = ProviderIds.GoogleUnofficial;
         public string? OfficialApiKey { get; set; }
         public int MaxRetries { get; set; } = 4;
         public TimeSpan BaseRetryDelay { get; set; } = TimeSpan.FromMilliseconds(300);
 
         private readonly TranslationMemory _tm = new TranslationMemory();
+        private readonly LocalServiceClient _localClient;
 
         public TranslationClient(HttpClient? http = null)
         {
             _http = http ?? new HttpClient();
+            _localClient = new LocalServiceClient(_http);
         }
 
         public async Task<string> TranslateAsync(string text, string source, string target, CancellationToken cancellationToken = default)
@@ -41,8 +45,10 @@ namespace TranslationFiestaCSharp
                 return string.Empty;
             }
 
+            var providerId = ProviderIds.Normalize(ProviderId);
+
             // Check cache
-            var cacheResult = _tm.Lookup(text, target);
+            var cacheResult = _tm.Lookup(text, target, providerId);
             if (cacheResult != null)
             {
                 Logger.Info($"Cache hit for {text.Substring(0, Math.Min(50, text.Length))}...");
@@ -50,7 +56,7 @@ namespace TranslationFiestaCSharp
             }
 
             // Check fuzzy cache
-            var fuzzyResult = _tm.FuzzyLookup(text, target);
+            var fuzzyResult = _tm.FuzzyLookup(text, target, providerId);
             if (fuzzyResult.HasValue && fuzzyResult.Value.Translation != null)
             {
                 var (translation, score) = fuzzyResult.Value;
@@ -59,19 +65,28 @@ namespace TranslationFiestaCSharp
             }
 
             string translatedText;
-            if (!string.IsNullOrWhiteSpace(OfficialApiKey))
+            switch (providerId)
             {
-                Logger.Debug("Using official API for translation.");
-                translatedText = await TranslateWithOfficialApiAsync(text, source, target, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                Logger.Debug("Using unofficial API for translation.");
-                translatedText = await TranslateWithUnofficialApiAsync(text, source, target, cancellationToken).ConfigureAwait(false);
+                case ProviderIds.Local:
+                    Logger.Debug("Using local provider for translation.");
+                    translatedText = await TranslateWithLocalServiceAsync(text, source, target, cancellationToken).ConfigureAwait(false);
+                    break;
+                case ProviderIds.GoogleOfficial:
+                    if (string.IsNullOrWhiteSpace(OfficialApiKey))
+                    {
+                        throw new InvalidOperationException("API key required for official translation.");
+                    }
+                    Logger.Debug("Using official API for translation.");
+                    translatedText = await TranslateWithOfficialApiAsync(text, source, target, cancellationToken).ConfigureAwait(false);
+                    break;
+                default:
+                    Logger.Debug("Using unofficial API for translation.");
+                    translatedText = await TranslateWithUnofficialApiAsync(text, source, target, cancellationToken).ConfigureAwait(false);
+                    break;
             }
 
             // Store in cache
-            _tm.Store(text, target, translatedText);
+            _tm.Store(text, target, providerId, translatedText);
 
             return translatedText;
         }
@@ -99,10 +114,54 @@ namespace TranslationFiestaCSharp
                 attempt++;
                 try
                 {
-                    using var response = await _http.GetAsync(url, cancellationToken).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
+                    using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                    request.Headers.TryAddWithoutValidation("Accept", "application/json,text/plain,*/*");
+                    var userAgent = Environment.GetEnvironmentVariable("TF_UNOFFICIAL_USER_AGENT");
+                    if (!string.IsNullOrWhiteSpace(userAgent))
+                    {
+                        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+                    }
+
+                    using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
                     var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+                    if (response.StatusCode == (HttpStatusCode)429)
+                    {
+                        var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(2);
+                        if (attempt <= MaxRetries)
+                        {
+                            await Task.Delay(retryAfter, cancellationToken).ConfigureAwait(false);
+                            continue;
+                        }
+                        throw new TranslationProviderException("rate_limited", "Provider rate limited");
+                    }
+
+                    if (response.StatusCode == HttpStatusCode.Forbidden)
+                    {
+                        throw new TranslationProviderException("blocked", "Provider blocked or captcha detected");
+                    }
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new TranslationProviderException("invalid_response", $"HTTP {(int)response.StatusCode}");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(body))
+                    {
+                        throw new TranslationProviderException("invalid_response", "Empty response body");
+                    }
+
+                    var lowered = body.ToLowerInvariant();
+                    if (lowered.Contains("<html") || lowered.Contains("captcha"))
+                    {
+                        throw new TranslationProviderException("blocked", "Provider blocked or captcha detected");
+                    }
+
                     var translatedText = ParseUnofficialResponse(body);
+                    if (string.IsNullOrWhiteSpace(translatedText))
+                    {
+                        throw new TranslationProviderException("invalid_response", "No translation segments returned");
+                    }
                     stopwatch.Stop();
                     Logger.Performance($"Unofficial API translation successful after {attempt} attempts", stopwatch.Elapsed);
                     return translatedText;
@@ -120,6 +179,12 @@ namespace TranslationFiestaCSharp
                     throw;
                 }
             }
+        }
+
+        private async Task<string> TranslateWithLocalServiceAsync(string text, string source, string target, CancellationToken cancellationToken)
+        {
+            Logger.Debug($"Starting local service translation for text length {text.Length}");
+            return await _localClient.TranslateAsync(text, source, target, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task<string> TranslateWithOfficialApiAsync(string text, string source, string target, CancellationToken cancellationToken)
@@ -152,20 +217,22 @@ namespace TranslationFiestaCSharp
                     stopwatch.Stop();
                     Logger.Performance($"Official API translation successful after {attempt} attempts", stopwatch.Elapsed);
 
-                    // Track cost for successful official API translation
-                    try
+                    if (SettingsService.Load().EnableCostTracking)
                     {
-                        CostTracker.TrackTranslationCost(
-                            translatedText.Length,
-                            source,
-                            target,
-                            "csharp",
-                            "v2"
-                        );
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Warn($"Failed to track translation cost: {ex.Message}");
+                        try
+                        {
+                            CostTracker.TrackTranslationCost(
+                                translatedText.Length,
+                                source,
+                                target,
+                                "csharp",
+                                "v2"
+                            );
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Warn($"Failed to track translation cost: {ex.Message}");
+                        }
                     }
 
                     return translatedText;
@@ -241,6 +308,7 @@ namespace TranslationFiestaCSharp
             public string Source { get; set; } = string.Empty;
             public string Translation { get; set; } = string.Empty;
             public string TargetLang { get; set; } = string.Empty;
+            public string ProviderId { get; set; } = ProviderIds.GoogleUnofficial;
             public DateTime AccessTime { get; set; }
         }
 
@@ -276,12 +344,13 @@ namespace TranslationFiestaCSharp
                 LoadCache();
             }
 
-            private string GetKey(string source, string targetLang) => $"{source}:{targetLang}";
+            private string GetKey(string source, string targetLang, string providerId) => $"{source}:{targetLang}:{providerId}";
 
-            public string? Lookup(string source, string targetLang)
+            public string? Lookup(string source, string targetLang, string providerId)
             {
                 var stopwatch = Stopwatch.StartNew();
-                var key = GetKey(source, targetLang);
+                providerId = ProviderIds.Normalize(providerId);
+                var key = GetKey(source, targetLang, providerId);
                 if (cache.Contains(key))
                 {
                     Metrics.Hits++;
@@ -297,14 +366,15 @@ namespace TranslationFiestaCSharp
                 return null;
             }
 
-            public (string? Translation, double Score)? FuzzyLookup(string source, string targetLang)
+            public (string? Translation, double Score)? FuzzyLookup(string source, string targetLang, string providerId)
             {
                 var stopwatch = Stopwatch.StartNew();
+                providerId = ProviderIds.Normalize(providerId);
                 double bestScore = 0;
                 string? bestTranslation = null;
                 foreach (DictionaryEntry entry in cache)
                 {
-                    if (entry.Value is TranslationEntry e && e.TargetLang == targetLang)
+                    if (entry.Value is TranslationEntry e && e.TargetLang == targetLang && e.ProviderId == providerId)
                     {
                         var score = Fuzz.Ratio(source, e.Source) / 100.0;
                         if (score > bestScore && score >= similarityThreshold)
@@ -329,14 +399,16 @@ namespace TranslationFiestaCSharp
                 return null;
             }
 
-            public void Store(string source, string targetLang, string translation)
+            public void Store(string source, string targetLang, string providerId, string translation)
             {
-                var key = GetKey(source, targetLang);
+                providerId = ProviderIds.Normalize(providerId);
+                var key = GetKey(source, targetLang, providerId);
                 var entry = new TranslationEntry
                 {
                     Source = source,
                     Translation = translation,
                     TargetLang = targetLang,
+                    ProviderId = providerId,
                     AccessTime = DateTime.Now
                 };
                 cache[key] = entry;
@@ -415,7 +487,8 @@ namespace TranslationFiestaCSharp
                             var entry = JsonSerializer.Deserialize<TranslationEntry>(entryElem.GetRawText(), _jsonOptions);
                             if (entry != null)
                             {
-                                var key = GetKey(entry.Source, entry.TargetLang);
+                                entry.ProviderId = ProviderIds.Normalize(entry.ProviderId);
+                                var key = GetKey(entry.Source, entry.TargetLang, entry.ProviderId);
                                 cache[key] = entry;
                             }
                         }

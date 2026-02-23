@@ -3,35 +3,7 @@
 namespace TranslationFiestaFSharp
 
 /// <summary>
-/// This module contains the main application logic and UI setup for TranslationFiestaFSharp.
-/// It has been refactored according to Clean Code principles to improve readability,
-/// maintainability, and efficiency.
-///
-/// Key Refactorings:
-/// - **Meaningful Naming**: Renamed some variables and functions for clearer intent.
-/// - **Small Functions**: The large `main` function has been decomposed into several
-///   smaller, single-responsibility functions, such as `initializeUI`, `setupEventHandlers`,
-///   `loadInitialState`, and `runTranslationWorkflowAsync`.
-/// - **Clear Structure**: UI setup, event handling, and core business logic are now
-///   distinctly separated.
-/// - **Immutability and State Management**: Introduced an immutable `AppState` record and
-///   a `SharedState` module utilizing `MailboxProcessor` to manage application state
-///   in a thread-safe and functional manner, replacing the mutable `uiState` ref.
-/// - **Error Handling**: Explicitly uses F#'s `Result` type for operations that can fail,
-///   such as settings loading, API key retrieval, and file operations, ensuring robust
-///   error propagation and graceful handling in the UI.
-/// - **Elimination of Duplication**: Consolidated duplicated UI theming logic into
-///   `applyTheme` function. Removed duplicate `main` function code.
-/// - **Functional Composition**: Leveraged F# idioms for function composition and
-///   pipeline operators where appropriate.
-/// - **XML Documentation**: Added XML documentation to public functions and types
-///   for better clarity and discoverability.
-/// - **Improved Event Handling**: Event handlers now interact with the `SharedState`
-///   mailbox, dispatching messages to update state and trigger actions, which improves
-///   thread safety and separates concerns.
-/// - **Async Workflow Refinements**: Translation and batch processing now interact
-///   more cleanly with the UI through state updates and message passing, ensuring
-///   the UI remains responsive.
+/// Main application wiring: UI setup, provider selection, and translation workflows.
 /// </summary>
 
 /// <summary>
@@ -39,8 +11,13 @@ namespace TranslationFiestaFSharp
 /// </summary>
 type UIState = {
     IsDarkTheme: bool
+    ProviderId: string
     UseOfficialApi: bool
+    CostTrackingEnabled: bool
     ApiKey: string
+    LocalServiceUrl: string
+    LocalModelDir: string
+    LocalAutoStart: bool
     WindowWidth: int
     WindowHeight: int
     WindowX: int
@@ -68,8 +45,12 @@ type AppMessage =
     | LoadSettings
     | SaveSettings
     | UpdateTheme of bool
+    | UpdateProvider of string
     | ToggleApiEndpoint of bool
     | UpdateApiKey of string
+    | UpdateLocalServiceUrl of string
+    | UpdateLocalModelDir of string
+    | UpdateLocalAutoStart of bool
     | UpdateInputText of string
     | SetIntermediateResult of string
     | SetFinalResult of string
@@ -82,6 +63,8 @@ type AppMessage =
     | TriggerBacktranslation
     | TriggerBatchProcess
     | GetState of AsyncReplyChannel<UIState>
+
+type ProviderOption = { Id: string; Name: string }
 
 module Program =
     open System
@@ -110,8 +93,13 @@ module Program =
     /// </summary>
     let initialUIState = {
         IsDarkTheme = true
+        ProviderId = ProviderIds.GoogleUnofficial
         UseOfficialApi = false
+        CostTrackingEnabled = false
         ApiKey = ""
+        LocalServiceUrl = ""
+        LocalModelDir = ""
+        LocalAutoStart = true
         WindowWidth = 900
         WindowHeight = 650
         WindowX = -1
@@ -252,11 +240,18 @@ module SharedState =
                                 | SecureStore.Error e ->
                                     Logger.error (sprintf "Failed to load API key: %s" e)
                                     ""
+                            LocalServiceClient.applyEnvironment settings.LocalServiceUrl settings.LocalModelDir settings.LocalAutoStart
+                            Environment.SetEnvironmentVariable("TF_COST_TRACKING_ENABLED", if settings.CostTrackingEnabled then "1" else "0")
                             Logger.info "Settings loaded successfully"
                             { state with
                                 IsDarkTheme = settings.IsDarkTheme
+                                ProviderId = settings.ProviderId
                                 UseOfficialApi = settings.UseOfficialApi
+                                CostTrackingEnabled = settings.CostTrackingEnabled
                                 ApiKey = apiKey
+                                LocalServiceUrl = settings.LocalServiceUrl
+                                LocalModelDir = settings.LocalModelDir
+                                LocalAutoStart = settings.LocalAutoStart
                                 WindowWidth = settings.WindowWidth
                                 WindowHeight = settings.WindowHeight
                                 WindowX = settings.WindowX
@@ -276,7 +271,12 @@ module SharedState =
                     | SaveSettings ->
                         let settingsToSave = {
                             IsDarkTheme = state.IsDarkTheme
+                            ProviderId = state.ProviderId
                             UseOfficialApi = state.UseOfficialApi
+                            CostTrackingEnabled = state.CostTrackingEnabled
+                            LocalServiceUrl = state.LocalServiceUrl
+                            LocalModelDir = state.LocalModelDir
+                            LocalAutoStart = state.LocalAutoStart
                             WindowWidth = state.WindowWidth
                             WindowHeight = state.WindowHeight
                             WindowX = state.WindowX
@@ -293,6 +293,7 @@ module SharedState =
                         match Settings.saveSettings settingsToSave with
                         | Settings.Success () -> Logger.info "Settings saved successfully"
                         | Settings.Error e -> Logger.error (sprintf "Failed to save settings: %s" e)
+                        Environment.SetEnvironmentVariable("TF_COST_TRACKING_ENABLED", if state.CostTrackingEnabled then "1" else "0")
                         if not (String.IsNullOrWhiteSpace state.ApiKey) then
                             match SecureStore.saveApiKey state.ApiKey with
                             | SecureStore.Success () -> Logger.info "API key saved successfully"
@@ -303,8 +304,16 @@ module SharedState =
                             | SecureStore.Error e -> Logger.error (sprintf "Failed to clear API key: %s" e)
                         state
                     | UpdateTheme isDark -> { state with IsDarkTheme = isDark }
-                    | ToggleApiEndpoint useOfficial -> { state with UseOfficialApi = useOfficial }
+                    | UpdateProvider providerId ->
+                        let normalized = ProviderIds.normalize providerId
+                        { state with ProviderId = normalized; UseOfficialApi = ProviderIds.isOfficial normalized }
+                    | ToggleApiEndpoint useOfficial ->
+                        let providerId = if useOfficial then ProviderIds.GoogleOfficial else ProviderIds.GoogleUnofficial
+                        { state with ProviderId = providerId; UseOfficialApi = useOfficial }
                     | UpdateApiKey key -> { state with ApiKey = key }
+                    | UpdateLocalServiceUrl url -> { state with LocalServiceUrl = url }
+                    | UpdateLocalModelDir path -> { state with LocalModelDir = path }
+                    | UpdateLocalAutoStart enabled -> { state with LocalAutoStart = enabled }
                     | UpdateInputText text -> { state with InputText = text }
                     | SetIntermediateResult text -> { state with IntermediateTranslation = text }
                     | SetFinalResult text -> { state with FinalTranslation = text }
@@ -410,6 +419,7 @@ module TranslationService =
     open System.Text
     open TranslationFiestaFSharp.Logger
     open CostTracker
+    open TranslationFiestaFSharp
     /// <summary>
     /// Translates text using the unofficial Google Translate API endpoint.
     /// </summary>
@@ -426,41 +436,69 @@ module TranslationService =
                 let! response = Program.httpClient.GetAsync(url) |> Async.AwaitTask
                 let! body = response.Content.ReadAsStringAsync() |> Async.AwaitTask
 
-                if not response.IsSuccessStatusCode then
-                    let errorMsg = sprintf "HTTP %d: %s" (int response.StatusCode) body
-                    Logger.error errorMsg
-                    return FSharp.Core.Result.Error errorMsg
-                else
-                    use doc = System.Text.Json.JsonDocument.Parse(body)
-                    let root = doc.RootElement
-
-                    if root.ValueKind <> System.Text.Json.JsonValueKind.Array then
-                        let errorMsg = "Invalid response format"
+                let computedResult : FSharp.Core.Result<string, string> =
+                    match response.StatusCode with
+                    | System.Net.HttpStatusCode.TooManyRequests ->
+                        let errorMsg = "rate_limited: provider rate limited"
                         Logger.error errorMsg
-                        return FSharp.Core.Result.Error errorMsg
-                    else
-                        let translationArray = root.[0]
-                        if translationArray.ValueKind <> System.Text.Json.JsonValueKind.Array || translationArray.GetArrayLength() = 0 then
-                            let errorMsg = "No translation found in response"
+                        FSharp.Core.Result.Error errorMsg
+                    | System.Net.HttpStatusCode.Forbidden ->
+                        let errorMsg = "blocked: provider blocked or captcha detected"
+                        Logger.error errorMsg
+                        FSharp.Core.Result.Error errorMsg
+                    | _ when not response.IsSuccessStatusCode ->
+                        let errorMsg = sprintf "invalid_response: HTTP %d" (int response.StatusCode)
+                        Logger.error errorMsg
+                        FSharp.Core.Result.Error errorMsg
+                    | _ ->
+                        if String.IsNullOrWhiteSpace body then
+                            let errorMsg = "invalid_response: empty body"
                             Logger.error errorMsg
-                            return FSharp.Core.Result.Error errorMsg
+                            FSharp.Core.Result.Error errorMsg
                         else
-                            let sb = System.Text.StringBuilder()
-                            for sentence in translationArray.EnumerateArray() do
-                                if sentence.ValueKind = System.Text.Json.JsonValueKind.Array && sentence.GetArrayLength() > 0 then
-                                    let partNullable = sentence.[0].GetString()
-                                    let part =
-                                        match Option.ofObj partNullable with
-                                        | Some p when not (String.IsNullOrEmpty p) -> p
-                                        | _ -> ""
-                                    if not (String.IsNullOrEmpty part) then
-                                        sb.Append(part) |> ignore
+                            let bodyLower = body.ToLowerInvariant()
+                            if bodyLower.Contains("<html") || bodyLower.Contains("captcha") then
+                                let errorMsg = "blocked: provider blocked or captcha detected"
+                                Logger.error errorMsg
+                                FSharp.Core.Result.Error errorMsg
+                            else
+                                use doc = System.Text.Json.JsonDocument.Parse(body)
+                                let root = doc.RootElement
 
-                            let result : string = sb.ToString()
-                            Logger.info (sprintf "Unofficial translation successful: %d chars" result.Length)
-                            return FSharp.Core.Result.Ok result
+                                if root.ValueKind <> System.Text.Json.JsonValueKind.Array then
+                                    let errorMsg = "invalid_response: unexpected json root"
+                                    Logger.error errorMsg
+                                    FSharp.Core.Result.Error errorMsg
+                                else
+                                    let translationArray = root.[0]
+                                    if translationArray.ValueKind <> System.Text.Json.JsonValueKind.Array || translationArray.GetArrayLength() = 0 then
+                                        let errorMsg = "invalid_response: no translation segments"
+                                        Logger.error errorMsg
+                                        FSharp.Core.Result.Error errorMsg
+                                    else
+                                        let sb = System.Text.StringBuilder()
+                                        for sentence in translationArray.EnumerateArray() do
+                                            if sentence.ValueKind = System.Text.Json.JsonValueKind.Array && sentence.GetArrayLength() > 0 then
+                                                let partNullable = sentence.[0].GetString()
+                                                let part =
+                                                    match Option.ofObj partNullable with
+                                                    | Some p when not (String.IsNullOrEmpty p) -> p
+                                                    | _ -> ""
+                                                if not (String.IsNullOrEmpty part) then
+                                                    sb.Append(part) |> ignore
+
+                                        let result : string = sb.ToString()
+                                        if String.IsNullOrWhiteSpace result then
+                                            let errorMsg = "invalid_response: empty translation"
+                                            Logger.error errorMsg
+                                            FSharp.Core.Result.Error errorMsg
+                                        else
+                                            Logger.info (sprintf "Unofficial translation successful: %d chars" result.Length)
+                                            FSharp.Core.Result.Ok result
+
+                return computedResult
             with ex ->
-                let errorMsg = sprintf "Unofficial translation error: %s" ex.Message
+                let errorMsg = sprintf "network_error: %s" ex.Message
                 Logger.error errorMsg
                 return FSharp.Core.Result.Error errorMsg
         }
@@ -507,17 +545,25 @@ module TranslationService =
                             | _ -> ""
                         Logger.info (sprintf "Official translation successful: %d chars" translation.Length)
 
-                        // Track cost for successful official API translation
-                        try
-                            CostTracker.trackTranslationCost translation.Length source target "fsharp" "v2"
-                        with ex ->
-                            Logger.info (sprintf "Failed to track translation cost: %s" ex.Message)
+                        if Environment.GetEnvironmentVariable("TF_COST_TRACKING_ENABLED") = "1" then
+                            try
+                                CostTracker.trackTranslationCost translation.Length source target "fsharp" "v2"
+                            with ex ->
+                                Logger.info (sprintf "Failed to track translation cost: %s" ex.Message)
 
                         return FSharp.Core.Result.Ok translation
             with ex ->
                 let errorMsg = sprintf "Official translation error: %s" ex.Message
                 Logger.error errorMsg
                 return FSharp.Core.Result.Error errorMsg
+        }
+
+    /// <summary>
+    /// Translates text using the local offline service.
+    /// </summary>
+    let translateLocalAsync (text: string) (source: string) (target: string) : Async<FSharp.Core.Result<string, string>> =
+        async {
+            return! LocalServiceClient.translateAsync Program.httpClient text source target
         }
 
     /// <summary>
@@ -562,26 +608,39 @@ module TranslationService =
     /// <param name="text">The text to translate.</param>
     /// <param name="source">The source language code.</param>
     /// <param name="target">The target language code.</param>
-    /// <param name="useOfficialApi">A boolean indicating whether to use the official API.</param>
+    /// <param name="providerId">Provider selection identifier.</param>
     /// <param name="apiKey">The API key (required for official API).</param>
     /// <param name="maxAttempts">The maximum number of retry attempts.</param>
     /// <param name="statusCallback">A callback function to update status messages in the UI.</param>
     /// <returns>An async Result indicating success with the translated text or an error message.</returns>
-    let translateWithRetriesAsync (text: string) (source: string) (target: string) (useOfficialApi: bool) (apiKey: string) (maxAttempts: int) (statusCallback: string -> unit) : Async<FSharp.Core.Result<string, string>> =
+    let translateWithRetriesAsync (text: string) (source: string) (target: string) (providerId: string) (apiKey: string) (maxAttempts: int) (statusCallback: string -> unit) : Async<FSharp.Core.Result<string, string>> =
         async {
             if String.IsNullOrEmpty text then return FSharp.Core.Result.Ok ""
             else
                 let rnd = Random()
+                let normalizedProvider = ProviderIds.normalize providerId
+                let isRetryable (error: string) =
+                    error.StartsWith("rate_limited") || error.StartsWith("network_error") || error.StartsWith("timeout")
 
                 let rec attemptLoop (attempt: int) =
                     async {
                         try
                             let! result =
-                                if useOfficialApi then
+                                match normalizedProvider with
+                                | provider when provider = ProviderIds.Local ->
+                                    translateLocalAsync text source target
+                                | provider when provider = ProviderIds.GoogleOfficial ->
                                     translateOfficialAsync text source target apiKey
-                                else
+                                | _ ->
                                     translateUnofficialAsync text source target
-                            return result
+                            match result with
+                            | Ok _ -> return result
+                            | Error err when attempt < maxAttempts && isRetryable err ->
+                                let delay = TimeSpan.FromSeconds(Math.Pow(2.0, float attempt)) + TimeSpan.FromMilliseconds(float (rnd.Next(0, 300)))
+                                statusCallback (sprintf "Retrying in %.1fs (attempt %d/%d)" delay.TotalSeconds attempt maxAttempts)
+                                do! Async.Sleep (int delay.TotalMilliseconds)
+                                return! attemptLoop (attempt + 1)
+                            | Error _ -> return result
                         with
                         | :? HttpRequestException as hre ->
                             Logger.error (sprintf "HTTP error attempt %d: %s" attempt hre.Message)
@@ -622,13 +681,15 @@ module UI =
     let mutable form: Form = Unchecked.defaultof<Form>
     let mutable lblTitle: Label = Unchecked.defaultof<Label>
     let mutable txtInput: TextBox = Unchecked.defaultof<TextBox>
-    let mutable tglEndpoint: CheckBox = Unchecked.defaultof<CheckBox>
+    let mutable lblProvider: Label = Unchecked.defaultof<Label>
+    let mutable cmbProvider: ComboBox = Unchecked.defaultof<ComboBox>
     let mutable txtApiKey: TextBox = Unchecked.defaultof<TextBox>
     let mutable btnBacktranslate: Button = Unchecked.defaultof<Button>
     let mutable btnImportTxt: Button = Unchecked.defaultof<Button>
     let mutable btnBatchProcess: Button = Unchecked.defaultof<Button>
     let mutable btnCopyResult: Button = Unchecked.defaultof<Button>
     let mutable btnSaveResult: Button = Unchecked.defaultof<Button>
+    let mutable btnModels: Button = Unchecked.defaultof<Button>
     let mutable tglTheme: CheckBox = Unchecked.defaultof<CheckBox>
     let mutable lblFormat: Label = Unchecked.defaultof<Label>
     let mutable cmbFormat: ComboBox = Unchecked.defaultof<ComboBox>
@@ -693,13 +754,16 @@ module UI =
 
                 // Adjust API controls
                 let apiControlsTop = txtInput.Top + txtInput.Height + 15
-                tglEndpoint.Left <- 10
-                tglEndpoint.Top <- apiControlsTop
+                lblProvider.Left <- 10
+                lblProvider.Top <- apiControlsTop
+                cmbProvider.Left <- 10
+                cmbProvider.Top <- apiControlsTop + 20
+                cmbProvider.Width <- effectiveWidth - 300
                 txtApiKey.Left <- 10
-                txtApiKey.Top <- apiControlsTop + 25
+                txtApiKey.Top <- apiControlsTop + 50
                 txtApiKey.Width <- effectiveWidth - 300 // Leave space for buttons
                 btnBacktranslate.Left <- effectiveWidth - 150
-                btnBacktranslate.Top <- apiControlsTop + 25
+                btnBacktranslate.Top <- apiControlsTop + 50
 
                 // Adjust import and batch buttons (stacked under API settings on the left)
                 btnImportTxt.Left <- 10
@@ -772,6 +836,79 @@ module UI =
                 Logger.debug "Progress spinner disabled"
         )) |> ignore
 
+    let showModelManager () =
+        let state = SharedState.getState()
+        let dialog = new Form(Text = "Local Model Manager", Width = 520, Height = 320, StartPosition = FormStartPosition.CenterParent)
+        let lblUrl = new Label(Text = "Service URL:", Left = 12, Top = 15, Width = 90)
+        let txtUrl = new TextBox(Left = 110, Top = 12, Width = 370, Text = state.LocalServiceUrl)
+        let lblDir = new Label(Text = "Model Dir:", Left = 12, Top = 45, Width = 90)
+        let txtDir = new TextBox(Left = 110, Top = 42, Width = 370, Text = state.LocalModelDir)
+        let chkAuto = new CheckBox(Text = "Auto-start local service", Left = 110, Top = 72, Width = 220, Checked = state.LocalAutoStart)
+
+        let txtStatus = new TextBox(Left = 12, Top = 105, Width = 468, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true)
+        let btnSave = new Button(Text = "Save", Left = 12, Top = 235, Width = 80)
+        let btnRefresh = new Button(Text = "Refresh", Left = 100, Top = 235, Width = 80)
+        let btnVerify = new Button(Text = "Verify", Left = 188, Top = 235, Width = 80)
+        let btnRemove = new Button(Text = "Remove", Left = 276, Top = 235, Width = 80)
+        let btnInstall = new Button(Text = "Install Default", Left = 364, Top = 235, Width = 116)
+
+        let updateStatus (result: Result<string, string>) =
+            match result with
+            | Ok body -> txtStatus.Text <- body
+            | Error err -> txtStatus.Text <- err
+
+        let refreshStatusAsync () =
+            async {
+                let! result = LocalServiceClient.modelsStatusAsync Program.httpClient
+                dialog.Invoke(Action(fun () -> updateStatus result)) |> ignore
+            }
+
+        let verifyStatusAsync () =
+            async {
+                let! result = LocalServiceClient.modelsVerifyAsync Program.httpClient
+                dialog.Invoke(Action(fun () -> updateStatus result)) |> ignore
+            }
+
+        let removeStatusAsync () =
+            async {
+                let! result = LocalServiceClient.modelsRemoveAsync Program.httpClient
+                dialog.Invoke(Action(fun () -> updateStatus result)) |> ignore
+            }
+
+        let installStatusAsync () =
+            async {
+                let! result = LocalServiceClient.modelsInstallDefaultAsync Program.httpClient
+                dialog.Invoke(Action(fun () -> updateStatus result)) |> ignore
+            }
+
+        btnSave.Click.Add(fun _ ->
+            let url = txtUrl.Text.Trim()
+            let dir = txtDir.Text.Trim()
+            let autoStart = chkAuto.Checked
+            SharedState.dispatch (UpdateLocalServiceUrl url)
+            SharedState.dispatch (UpdateLocalModelDir dir)
+            SharedState.dispatch (UpdateLocalAutoStart autoStart)
+            SharedState.dispatch SaveSettings
+            LocalServiceClient.applyEnvironment url dir autoStart
+            txtStatus.Text <- "Settings saved."
+        )
+
+        btnRefresh.Click.Add(fun _ -> Async.StartImmediate(refreshStatusAsync ()))
+        btnVerify.Click.Add(fun _ -> Async.StartImmediate(verifyStatusAsync ()))
+        btnRemove.Click.Add(fun _ ->
+            if MessageBox.Show(dialog, "Remove local models from disk?", "Confirm", MessageBoxButtons.YesNo) = DialogResult.Yes then
+                Async.StartImmediate(removeStatusAsync ())
+        )
+        btnInstall.Click.Add(fun _ -> Async.StartImmediate(installStatusAsync ()))
+
+        dialog.Controls.AddRange([|
+            lblUrl :> Control; txtUrl :> Control; lblDir :> Control; txtDir :> Control; chkAuto :> Control;
+            txtStatus :> Control; btnSave :> Control; btnRefresh :> Control; btnVerify :> Control; btnRemove :> Control; btnInstall :> Control
+        |])
+
+        Async.StartImmediate(refreshStatusAsync ())
+        dialog.ShowDialog(form) |> ignore
+
     /// <summary>
     /// Disables relevant UI controls during processing.
     /// </summary>
@@ -781,6 +918,8 @@ module UI =
             btnImportTxt.Enabled <- false
             txtInput.Enabled <- false
             btnBatchProcess.Enabled <- false
+            cmbProvider.Enabled <- false
+            txtApiKey.Enabled <- false
             Logger.debug "UI disabled"
         )) |> ignore
 
@@ -793,6 +932,9 @@ module UI =
             btnImportTxt.Enabled <- true
             txtInput.Enabled <- true
             btnBatchProcess.Enabled <- true
+            cmbProvider.Enabled <- true
+            let providerId = (SharedState.getState()).ProviderId
+            txtApiKey.Enabled <- ProviderIds.isOfficial providerId
             Logger.debug "UI enabled"
         )) |> ignore
 
@@ -861,9 +1003,11 @@ module UI =
                 styleButton btnCopyResult
                 styleButton btnSaveResult
 
-                // Checkboxes
-                tglEndpoint.BackColor <- darkBg
-                tglEndpoint.ForeColor <- lightText
+                // Provider controls
+                lblProvider.BackColor <- darkBg
+                lblProvider.ForeColor <- secondaryText
+                cmbProvider.BackColor <- darkControlBg
+                cmbProvider.ForeColor <- lightText
 
                 tglTheme.BackColor <- darkBg
                 tglTheme.ForeColor <- lightText
@@ -926,8 +1070,10 @@ module UI =
                 btnSaveResult.ForeColor <- System.Drawing.SystemColors.ControlText
                 btnSaveResult.FlatStyle <- FlatStyle.Standard
                 
-                tglEndpoint.BackColor <- System.Drawing.SystemColors.Control
-                tglEndpoint.ForeColor <- System.Drawing.SystemColors.ControlText
+                lblProvider.BackColor <- System.Drawing.SystemColors.Control
+                lblProvider.ForeColor <- System.Drawing.SystemColors.ControlText
+                cmbProvider.BackColor <- System.Drawing.SystemColors.Window
+                cmbProvider.ForeColor <- System.Drawing.SystemColors.WindowText
                 
                 tglTheme.BackColor <- System.Drawing.SystemColors.Control
                 tglTheme.ForeColor <- System.Drawing.SystemColors.ControlText
@@ -980,16 +1126,28 @@ module UI =
 
         initializeDynamicText()
 
-        lblTitle <- new Label(Text = "Backtranslation (English → Japanese → English)", Left = 10, Top = 30, Width = 600, Height = 25, Font = new System.Drawing.Font("Segoe UI", 10.0f, System.Drawing.FontStyle.Bold), TextAlign = System.Drawing.ContentAlignment.MiddleCenter)
+        lblTitle <- new Label(Text = "Backtranslation (English -> Japanese -> English)", Left = 10, Top = 30, Width = 600, Height = 25, Font = new System.Drawing.Font("Segoe UI", 10.0f, System.Drawing.FontStyle.Bold), TextAlign = System.Drawing.ContentAlignment.MiddleCenter)
         txtInput <- new TextBox(Left = 10, Top = 65, Width = 600, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, Text = uiState.InputText)
-        tglEndpoint <- new CheckBox(Text = "Use Official API", Left = 620, Top = 65, Width = 160, Checked = uiState.UseOfficialApi)
-        txtApiKey <- new TextBox(Left = 620, Top = 95, Width = 260, Height = 25, PasswordChar = '*', Text = uiState.ApiKey, Enabled = uiState.UseOfficialApi)
-        btnBacktranslate <- new Button(Text = "Backtranslate", Left = 620, Top = 115, Width = 140)
+        lblProvider <- new Label(Text = "Provider:", Left = 620, Top = 65, Width = 160)
+        cmbProvider <- new ComboBox(Left = 620, Top = 85, Width = 260, Height = 25, DropDownStyle = ComboBoxStyle.DropDownList)
+        let providerOptions =
+            [|
+                { Id = ProviderIds.Local; Name = "Local (Offline)" }
+                { Id = ProviderIds.GoogleUnofficial; Name = "Google Translate (Unofficial / Free)" }
+                { Id = ProviderIds.GoogleOfficial; Name = "Google Cloud Translate (Official)" }
+            |]
+        cmbProvider.DataSource <- providerOptions
+        cmbProvider.DisplayMember <- "Name"
+        cmbProvider.ValueMember <- "Id"
+        cmbProvider.SelectedValue <- uiState.ProviderId
+        txtApiKey <- new TextBox(Left = 620, Top = 115, Width = 260, Height = 25, PasswordChar = '*', Text = uiState.ApiKey, Enabled = ProviderIds.isOfficial uiState.ProviderId)
+        btnBacktranslate <- new Button(Text = "Backtranslate", Left = 620, Top = 145, Width = 140)
         btnImportTxt <- new Button(Text = "Import .txt", Left = 620, Top = 150, Width = 140)
         btnBatchProcess <- new Button(Text = "Batch Process", Left = 620, Top = 185, Width = 140)
         btnCopyResult <- new Button(Text = "Copy Result", Left = 620, Top = 220, Width = 140)
         btnSaveResult <- new Button(Text = "Save Result", Left = 620, Top = 255, Width = 140)
         tglTheme <- new CheckBox(Text = "Dark Mode", Left = 620, Top = 290, Width = 140, Checked = uiState.IsDarkTheme)
+        btnModels <- new Button(Text = "Local Models...", Left = 620, Top = 320, Width = 140)
         lblIntermediate <- new Label(Text = "Intermediate (ja):", Left = 10, Top = 195, Width = 200, Font = new System.Drawing.Font("Segoe UI", 9.0f, System.Drawing.FontStyle.Bold))
         txtIntermediate <- new TextBox(Left = 10, Top = 215, Width = 600, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Text = uiState.IntermediateTranslation)
         lblBack <- new Label(Text = "Back to English:", Left = 10, Top = 345, Width = 200, Font = new System.Drawing.Font("Segoe UI", 9.0f, System.Drawing.FontStyle.Bold))
@@ -1003,10 +1161,10 @@ module UI =
 
         // Add all controls to form
         form.Controls.AddRange([|
-            lblTitle :> Control; txtInput :> Control; tglEndpoint :> Control; txtApiKey :> Control;
+            lblTitle :> Control; txtInput :> Control; lblProvider :> Control; cmbProvider :> Control; txtApiKey :> Control;
             btnBacktranslate :> Control; btnImportTxt :> Control; btnBatchProcess :> Control;
             btnCopyResult :> Control; btnSaveResult :> Control; tglTheme :> Control;
-            lblIntermediate :> Control; txtIntermediate :> Control; lblBack :> Control;
+            btnModels :> Control; lblIntermediate :> Control; txtIntermediate :> Control; lblBack :> Control;
             txtBack :> Control; lblStatus :> Control; progressSpinner :> Control
         |])
 
@@ -1028,8 +1186,13 @@ module UI =
     /// Sets up all event handlers for UI controls.
     /// </summary>
     let setupEventHandlers () =
-        tglEndpoint.CheckedChanged.Add(fun _ ->
-            SharedState.dispatch (ToggleApiEndpoint tglEndpoint.Checked)
+        cmbProvider.SelectedIndexChanged.Add(fun _ ->
+            let selected = cmbProvider.SelectedValue
+            let providerId =
+                if isNull selected then ProviderIds.GoogleUnofficial
+                else selected.ToString()
+            txtApiKey.Enabled <- ProviderIds.isOfficial providerId
+            SharedState.dispatch (UpdateProvider providerId)
         )
 
         txtApiKey.TextChanged.Add(fun _ ->
@@ -1072,6 +1235,10 @@ module UI =
             SharedState.dispatch TriggerBatchProcess
         )
 
+        btnModels.Click.Add(fun _ ->
+            showModelManager ()
+        )
+
 
 
 
@@ -1091,9 +1258,10 @@ module UI =
                         txtBack.Text <- state.FinalTranslation
                         // Use setStatus to prevent flashing from redundant updates
                         setStatus state.CurrentStatus
-                        tglEndpoint.Checked <- state.UseOfficialApi
+                        if cmbProvider.SelectedValue = null || cmbProvider.SelectedValue.ToString() <> state.ProviderId then
+                            cmbProvider.SelectedValue <- state.ProviderId
                         txtApiKey.Text <- state.ApiKey
-                        txtApiKey.Enabled <- state.UseOfficialApi
+                        txtApiKey.Enabled <- ProviderIds.isOfficial state.ProviderId
                         tglTheme.Checked <- state.IsDarkTheme
 
                         applyTheme state.IsDarkTheme // Reapply theme on state change
@@ -1155,7 +1323,7 @@ module ApplicationLogic =
 
                 SharedState.dispatch (SetStatus (sprintf "Translating to %s..." targetCode))
 
-                let! r1 = TranslationService.translateWithRetriesAsync input sourceCode targetCode currentState.UseOfficialApi currentState.ApiKey currentState.MaxRetries UI.setStatus
+                let! r1 = TranslationService.translateWithRetriesAsync input sourceCode targetCode currentState.ProviderId currentState.ApiKey currentState.MaxRetries UI.setStatus
                 match r1 with
                 | FSharp.Core.Result.Error e ->
                     Logger.error (sprintf "Translation to target failed: %s" e)
@@ -1167,7 +1335,7 @@ module ApplicationLogic =
 
                     SharedState.dispatch (SetStatus "Translating back to English...")
 
-                    let! r2 = TranslationService.translateWithRetriesAsync intermediate targetCode sourceCode currentState.UseOfficialApi currentState.ApiKey currentState.MaxRetries UI.setStatus
+                    let! r2 = TranslationService.translateWithRetriesAsync intermediate targetCode sourceCode currentState.ProviderId currentState.ApiKey currentState.MaxRetries UI.setStatus
                     match r2 with
                     | FSharp.Core.Result.Error e2 ->
                         Logger.error (sprintf "Translation back to English failed: %s" e2)
@@ -1228,7 +1396,7 @@ module ApplicationLogic =
                 async {
                     match Program.FileOperations.loadTextFromFile filePath with
                     | FSharp.Core.Result.Ok text ->
-                        let! result = TranslationService.translateWithRetriesAsync text sourceCode targetCode currentState.UseOfficialApi currentState.ApiKey currentState.MaxRetries UI.setStatus
+                        let! result = TranslationService.translateWithRetriesAsync text sourceCode targetCode currentState.ProviderId currentState.ApiKey currentState.MaxRetries UI.setStatus
                         return result
                     | FSharp.Core.Result.Error e ->
                         Logger.error (sprintf "Failed to load file for batch processing: %s - %s" filePath e)
@@ -1265,13 +1433,13 @@ module Main =
             // Load initial settings into SharedState
             Logger.info "Loading settings..."
             SharedState.dispatch LoadSettings
-            // Initialize global cost tracker
-            Logger.info "Initializing cost tracker..."
-            CostTracker.initializeGlobalCostTracker()
 
             // Get the initial state after loading to initialize UI
             Logger.info "Getting initial state..."
             let initialState = SharedState.getState()
+            if initialState.CostTrackingEnabled then
+                Logger.info "Initializing cost tracker..."
+                CostTracker.initializeGlobalCostTracker()
 
             // Initialize UI controls
             Logger.info "Initializing UI controls..."

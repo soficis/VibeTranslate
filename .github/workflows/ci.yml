@@ -1,0 +1,209 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  PYTHONUTF8: "1"
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r TranslationFiestaPy/requirements.txt
+          pip install ruff
+
+      - name: Lint and compile Python
+        run: |
+          ruff check TranslationFiestaPy TranslationFiestaLocal
+          python -m compileall -q TranslationFiestaPy TranslationFiestaLocal
+
+      - name: Run Python tests
+        run: |
+          PYTHONPATH=. pytest -q -s TranslationFiestaLocal/tests
+          cd TranslationFiestaPy
+          pytest -q -s test_secure_storage.py test_theme.py
+
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: TranslationFiestaGo/frontend/package-lock.json
+
+      - name: Build Go frontend assets
+        run: |
+          cd TranslationFiestaGo/frontend
+          npm ci
+          npm run build
+
+      - name: Vet and test Go domain code
+        run: |
+          cd TranslationFiestaGo
+          go vet ./internal/... ./test/...
+          go test ./internal/... ./test/...
+
+  electron:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: TranslationFiestaElectron/package-lock.json
+
+      - name: Build and test Electron
+        run: |
+          cd TranslationFiestaElectron
+          npm ci
+          npx tsc --noEmit
+          npm run build
+          npm test
+
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux desktop build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Analyze, test, and build Flutter
+        run: |
+          flutter config --enable-linux-desktop
+          cd TranslationFiestaFlutter
+          flutter pub get
+          flutter analyze
+          flutter test
+          flutter build linux --release
+
+  dotnet-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Publish .NET desktop applications
+        shell: pwsh
+        run: |
+          $out = "$env:RUNNER_TEMP\ci-dotnet"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          dotnet publish TranslationFiestaCSharp/TranslationFiestaCSharp.csproj -c Release -r win-x64 --self-contained false -o "$out\TranslationFiestaCSharp"
+          dotnet publish TranslationFiestaFSharp/TranslationFiestaFSharp.fsproj -c Release -r win-x64 --self-contained false -o "$out\TranslationFiestaFSharp"
+          dotnet publish TranslationFiesta.WinUI/TranslationFiesta.WinUI.csproj -c Release -r win-x64 --self-contained false -p:WindowsPackageType=None -p:AppxPackage=false -p:GenerateAppxPackageOnBuild=false -o "$out\TranslationFiesta.WinUI"
+
+          $expected = @(
+            "$out\TranslationFiestaCSharp\TranslationFiestaCSharp.exe",
+            "$out\TranslationFiestaFSharp\TranslationFiestaFSharp.exe",
+            "$out\TranslationFiesta.WinUI\TranslationFiesta.WinUI.exe"
+          )
+
+          foreach ($file in $expected) {
+            if (!(Test-Path $file)) {
+              throw "Missing expected build output: $file"
+            }
+          }
+
+  ruby:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: TranslationFiestaRuby
+
+      - name: Lint and test Ruby
+        run: |
+          cd TranslationFiestaRuby
+          bundle exec rubocop
+          bundle exec rspec
+
+  swift:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and test Swift package
+        run: |
+          cd TranslationFiestaSwift
+          swift build -c release
+          swift test --parallel
+
+  repo-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject tracked bytecode artifacts
+        run: |
+          if git ls-files '*.pyc' | grep -q .; then
+            echo 'Tracked *.pyc files found';
+            git ls-files '*.pyc';
+            exit 1;
+          fi
+
+      - name: Reject disabled source files
+        run: |
+          if git ls-files '*.disabled' | grep -q .; then
+            echo 'Tracked *.disabled files found';
+            git ls-files '*.disabled';
+            exit 1;
+          fi
+
+      - name: Reject Python exception swallowing
+        run: |
+          if grep -RIn --include='*.py' 'except:[[:space:]]*pass' TranslationFiestaPy TranslationFiestaLocal; then
+            echo 'Found except: pass in Python sources';
+            exit 1;
+          fi
+
+      - name: Reject bare catch blocks in C#
+        run: |
+          if grep -RIn --include='*.cs' --exclude-dir=obj 'catch[[:space:]]*{' TranslationFiestaCSharp TranslationFiesta.WinUI; then
+            echo 'Found bare catch block in C# sources';
+            exit 1;
+          fi
+
+      - name: Reject legacy compatibility wrapper text
+        run: |
+          if grep -RIni --include='*.py' --include='*.cs' --include='*.fs' --include='*.go' --include='*.rb' --include='*.swift' 'legacy function for backward' TranslationFiestaPy TranslationFiestaCSharp TranslationFiestaFSharp TranslationFiestaGo TranslationFiestaRuby TranslationFiestaSwift TranslationFiesta.WinUI; then
+            echo 'Found legacy compatibility wrappers in source files';
+            exit 1;
+          fi

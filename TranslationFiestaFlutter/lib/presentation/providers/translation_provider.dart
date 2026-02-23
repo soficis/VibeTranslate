@@ -1,5 +1,3 @@
-/// Clean Code provider with Single Responsibility
-/// Following State Management principles and meaningful naming
 library;
 
 import 'package:flutter/material.dart';
@@ -36,9 +34,13 @@ class TranslationProvider extends ChangeNotifier {
   String _statusMessage = 'Ready';
   bool _isLoading = false;
   bool _isDarkTheme = false;
-  bool _useOfficialApi = false;
+  TranslationProviderId _providerId = TranslationProviderId.googleUnofficial;
   String _apiKey = '';
   OutputFormat _outputFormat = OutputFormat.html;
+  String _localServiceUrl = '';
+  String _localModelDir = '';
+  bool _localAutoStart = true;
+  String _localModelStatus = '';
 
   // Language state
   String _sourceLanguage = 'en';
@@ -51,9 +53,14 @@ class TranslationProvider extends ChangeNotifier {
   String get statusMessage => _statusMessage;
   bool get isLoading => _isLoading;
   bool get isDarkTheme => _isDarkTheme;
-  bool get useOfficialApi => _useOfficialApi;
+  TranslationProviderId get providerId => _providerId;
+  bool get useOfficialApi => _providerId.isOfficial;
   String get apiKey => _apiKey;
   OutputFormat get outputFormat => _outputFormat;
+  String get localServiceUrl => _localServiceUrl;
+  String get localModelDir => _localModelDir;
+  bool get localAutoStart => _localAutoStart;
+  String get localModelStatus => _localModelStatus;
 
   String get sourceLanguage => _sourceLanguage;
   String get targetLanguage => _targetLanguage;
@@ -62,8 +69,11 @@ class TranslationProvider extends ChangeNotifier {
 
   // Configuration
   ApiConfiguration get apiConfiguration => ApiConfiguration(
-        useOfficialApi: _useOfficialApi,
+        providerId: _providerId,
         apiKey: _apiKey.isNotEmpty ? _apiKey : null,
+        localServiceUrl: _localServiceUrl,
+        localModelDir: _localModelDir,
+        localAutoStart: _localAutoStart,
       );
 
   TranslationProvider() {
@@ -90,8 +100,16 @@ class TranslationProvider extends ChangeNotifier {
     try {
       final themeResult = await _preferencesRepository.getThemePreference();
       final apiKeyResult = await _preferencesRepository.getApiKeyPreference();
+      final providerIdResult =
+          await _preferencesRepository.getProviderIdPreference();
       final useOfficialResult =
           await _preferencesRepository.getUseOfficialApiPreference();
+      final localUrlResult =
+          await _preferencesRepository.getLocalServiceUrlPreference();
+      final localDirResult =
+          await _preferencesRepository.getLocalModelDirPreference();
+      final localAutoResult =
+          await _preferencesRepository.getLocalAutoStartPreference();
 
       themeResult.fold(
         (failure) => Logger.instance
@@ -105,10 +123,44 @@ class TranslationProvider extends ChangeNotifier {
         (key) => _apiKey = key ?? '',
       );
 
+      var hasProviderPreference = false;
+      providerIdResult.fold(
+        (failure) => Logger.instance
+            .error('Failed to load provider preference: ${failure.message}'),
+        (providerValue) {
+          hasProviderPreference = true;
+          _providerId = TranslationProviderIdX.fromStorage(providerValue);
+        },
+      );
+
       useOfficialResult.fold(
         (failure) => Logger.instance
             .error('Failed to load API preference: ${failure.message}'),
-        (useOfficial) => _useOfficialApi = useOfficial,
+        (useOfficial) {
+          if (!hasProviderPreference) {
+            _providerId = useOfficial
+                ? TranslationProviderId.googleOfficial
+                : TranslationProviderId.googleUnofficial;
+          }
+        },
+      );
+
+      localUrlResult.fold(
+        (failure) => Logger.instance
+            .error('Failed to load local URL: ${failure.message}'),
+        (url) => _localServiceUrl = url ?? '',
+      );
+
+      localDirResult.fold(
+        (failure) => Logger.instance
+            .error('Failed to load local model dir: ${failure.message}'),
+        (path) => _localModelDir = path ?? '',
+      );
+
+      localAutoResult.fold(
+        (failure) => Logger.instance
+            .error('Failed to load local autostart: ${failure.message}'),
+        (enabled) => _localAutoStart = enabled,
       );
 
       notifyListeners();
@@ -137,15 +189,23 @@ class TranslationProvider extends ChangeNotifier {
   }
 
   /// Update API configuration
-  Future<void> updateApiConfiguration(bool useOfficial, String apiKey) async {
-    _useOfficialApi = useOfficial;
+  Future<void> updateApiConfiguration(
+    TranslationProviderId providerId,
+    String apiKey,
+  ) async {
+    _providerId = providerId;
     _apiKey = apiKey;
     notifyListeners();
 
     final apiKeyResult =
         await _preferencesRepository.setApiKeyPreference(apiKey);
+    final providerResult = await _preferencesRepository.setProviderIdPreference(
+      providerId.storageValue,
+    );
     final useOfficialResult =
-        await _preferencesRepository.setUseOfficialApiPreference(useOfficial);
+        await _preferencesRepository.setUseOfficialApiPreference(
+      providerId.isOfficial,
+    );
 
     apiKeyResult.fold(
       (failure) =>
@@ -153,21 +213,81 @@ class TranslationProvider extends ChangeNotifier {
       (_) => Logger.instance.debug('API key saved'),
     );
 
+    providerResult.fold(
+      (failure) => Logger.instance
+          .error('Failed to save provider preference: ${failure.message}'),
+      (_) => Logger.instance
+          .debug('Provider preference saved: ${providerId.storageValue}'),
+    );
+
     useOfficialResult.fold(
       (failure) => Logger.instance
           .error('Failed to save API preference: ${failure.message}'),
-      (_) => Logger.instance.debug('API preference saved: $useOfficial'),
+      (_) => Logger.instance.debug(
+          'API preference saved: ${providerId.isOfficial}',),
     );
+  }
+
+  Future<void> updateLocalSettings({
+    required String serviceUrl,
+    required String modelDir,
+    required bool autoStart,
+  }) async {
+    _localServiceUrl = serviceUrl;
+    _localModelDir = modelDir;
+    _localAutoStart = autoStart;
+    notifyListeners();
+
+    await _preferencesRepository.setLocalServiceUrlPreference(serviceUrl);
+    await _preferencesRepository.setLocalModelDirPreference(modelDir);
+    await _preferencesRepository.setLocalAutoStartPreference(autoStart);
+  }
+
+  Future<void> refreshLocalModels() async {
+    final result = await _translationRepository.getLocalModelsStatus(apiConfiguration);
+    result.fold(
+      (failure) => _localModelStatus = failure.message,
+      (status) => _localModelStatus = status,
+    );
+    notifyListeners();
+  }
+
+  Future<void> verifyLocalModels() async {
+    final result = await _translationRepository.verifyLocalModels(apiConfiguration);
+    result.fold(
+      (failure) => _localModelStatus = failure.message,
+      (status) => _localModelStatus = status,
+    );
+    notifyListeners();
+  }
+
+  Future<void> removeLocalModels() async {
+    final result = await _translationRepository.removeLocalModels(apiConfiguration);
+    result.fold(
+      (failure) => _localModelStatus = failure.message,
+      (status) => _localModelStatus = status,
+    );
+    notifyListeners();
+  }
+
+  Future<void> installDefaultLocalModels() async {
+    final result = await _translationRepository.installDefaultLocalModels(apiConfiguration);
+    result.fold(
+      (failure) => _localModelStatus = failure.message,
+      (status) => _localModelStatus = status,
+    );
+    notifyListeners();
   }
 
   /// Perform backtranslation
   Future<void> performBackTranslation() async {
     Logger.instance.info('Starting performBackTranslation');
-    Logger.instance.info('Input text: "${_inputText}"');
+    Logger.instance.info('Input text: "$_inputText"');
     Logger.instance.info(
-        'Source language: $_sourceLanguage, Target language: $_targetLanguage');
+        'Source language: $_sourceLanguage, Target language: $_targetLanguage',);
     Logger.instance.info(
-        'API config: useOfficial=${_useOfficialApi}, hasApiKey=${_apiKey.isNotEmpty}');
+      'API config: provider=${_providerId.storageValue}, hasApiKey=${_apiKey.isNotEmpty}',
+    );
 
     if (_inputText.trim().isEmpty) {
       _updateStatus('Please enter text to translate');
@@ -192,7 +312,7 @@ class TranslationProvider extends ChangeNotifier {
       );
 
       Logger.instance.info(
-          'Translation result: ${result.isRight ? "Success" : "Failure"}');
+          'Translation result: ${result.isRight ? "Success" : "Failure"}',);
       if (result.isLeft) {
         Logger.instance.error('Translation failure: $result.left.message');
       }
@@ -327,7 +447,7 @@ class TranslationProvider extends ChangeNotifier {
     _finalText = result.finalTranslation.translatedText;
     _updateStatus('Backtranslation completed successfully');
     Logger.instance.info(
-        'Translation success: intermediate=$_intermediateText, final=$_finalText');
+        'Translation success: intermediate=$_intermediateText, final=$_finalText',);
     notifyListeners();
   }
 

@@ -186,12 +186,12 @@ struct BatchProcessingView: View {
                                 viewModel.extractedEpubText = text
                             }
                         } catch {
-                            await viewModel.showErrorMessage("Failed to import EPUB: \(error.localizedDescription)")
+                            viewModel.showErrorMessage("Failed to import EPUB: \(error.localizedDescription)")
                         }
                     }
                 }
             case .failure:
-                Task { await viewModel.showErrorMessage("EPUB selection failed") }
+                viewModel.showErrorMessage("EPUB selection failed")
             }
         }
         .alert("Error", isPresented: $viewModel.showError) {

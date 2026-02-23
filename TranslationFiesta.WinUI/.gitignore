@@ -37,6 +37,7 @@ output.log
 .vscode/settings.json
 
 # IDE files
+.vs/
 .vscode/
 .idea/
 *.swp

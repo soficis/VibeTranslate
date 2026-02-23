@@ -3,15 +3,16 @@ import Crypto
 import Logging
 
 /// Translation service implementation
-/// Following Clean Code: meaningful names, single responsibility
 public final class TranslationService: TranslationRepository {
     private let logger = Logger(label: "TranslationService")
     private let networkService: NetworkService
     private let secureStorage: SecureStorageRepository
+    private let localSettingsStore: LocalModelSettingsStore
     
     public init(networkService: NetworkService, secureStorage: SecureStorageRepository) {
         self.networkService = networkService
         self.secureStorage = secureStorage
+        self.localSettingsStore = LocalModelSettingsStore()
     }
     
     public func translate(
@@ -31,6 +32,14 @@ public final class TranslationService: TranslationRepository {
         let cost: TranslationCost?
         
         switch apiProvider {
+        case .localOffline:
+            translatedText = try await makeLocalClient().translate(
+                text: text,
+                source: sourceLanguage.rawValue,
+                target: targetLanguage.rawValue
+            )
+            cost = nil
+
         case .googleUnofficialAPI:
             translatedText = try await translateWithUnofficialAPI(
                 text: text,
@@ -64,6 +73,12 @@ public final class TranslationService: TranslationRepository {
             apiProvider: apiProvider,
             cost: cost
         )
+    }
+
+    private func makeLocalClient() -> LocalServiceClient {
+        let settings = localSettingsStore.load()
+        let config = LocalServiceConfiguration.fromSettings(settings)
+        return LocalServiceClient(session: URLSession.shared, configuration: config)
     }
     
     public func backTranslate(
@@ -124,9 +139,14 @@ public final class TranslationService: TranslationRepository {
         sourceLanguage: Language,
         targetLanguage: Language
     ) async throws -> String {
-        let url = URL(string: "https://translate.googleapis.com/translate_a/single")!
+        guard let url = URL(string: "https://translate.googleapis.com/translate_a/single") else {
+            throw TranslationError.invalidInput("Invalid base URL for unofficial API")
+        }
         
-        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            throw TranslationError.invalidInput("Failed to create URL components")
+        }
+        
         components.queryItems = [
             URLQueryItem(name: "client", value: "gtx"),
             URLQueryItem(name: "sl", value: sourceLanguage.rawValue),
@@ -136,20 +156,95 @@ public final class TranslationService: TranslationRepository {
         ]
         
         guard let requestURL = components.url else {
+            logger.error("Failed to construct full request URL", metadata: ["textLength": "\(text.count)"])
             throw TranslationError.invalidInput("Failed to create request URL")
         }
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "GET"
+        request.setValue("application/json,text/plain,*/*", forHTTPHeaderField: "Accept")
         
-        let response = try await networkService.performRequest(url: requestURL)
-        
-        // Parse the unofficial API response
-        guard let jsonArray = try JSONSerialization.jsonObject(with: response) as? [Any],
-              let translationsArray = jsonArray.first as? [Any],
-              let firstTranslation = translationsArray.first as? [Any],
-              let translatedText = firstTranslation.first as? String else {
-            throw TranslationError.invalidInput("Failed to parse translation response")
+        if let userAgent = ProcessInfo.processInfo.environment["TF_UNOFFICIAL_USER_AGENT"],
+           !userAgent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         }
-        
-        return translatedText
+
+        let maxAttempts = 3
+        var lastError: Error = TranslationError.networkError("Unknown error")
+
+        for attempt in 1...maxAttempts {
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse else {
+                    throw TranslationError.networkError("Invalid response type")
+                }
+
+                if http.statusCode == 429 {
+                    if attempt < maxAttempts {
+                        let delay = backoffDelay(attempt: attempt)
+                        logger.warning("Rate limited, retrying...", metadata: ["attempt": "\(attempt)", "delayMs": "\(delay / 1_000_000)"])
+                        try await Task.sleep(nanoseconds: delay)
+                        continue
+                    }
+                    throw TranslationError.rateLimited
+                }
+
+                if http.statusCode == 403 {
+                    logger.error("Access forbidden (403)", metadata: ["api": "unofficial"])
+                    throw TranslationError.blocked
+                }
+
+                guard 200...299 ~= http.statusCode else {
+                    throw TranslationError.invalidResponse("HTTP \(http.statusCode)")
+                }
+
+                guard let bodyString = String(data: data, encoding: .utf8), !bodyString.isEmpty else {
+                    throw TranslationError.invalidResponse("Empty response body")
+                }
+
+                let lowered = bodyString.lowercased()
+                if lowered.contains("<html") || lowered.contains("captcha") {
+                    logger.error("Response contains HTML or CAPTCHA", metadata: ["api": "unofficial"])
+                    throw TranslationError.blocked
+                }
+
+                // Parse the unofficial API response
+                guard let jsonArray = try JSONSerialization.jsonObject(with: data) as? [Any],
+                      let translationsArray = jsonArray.first as? [Any] else {
+                    throw TranslationError.invalidResponse("Unexpected JSON structure")
+                }
+
+                var output = ""
+                for item in translationsArray {
+                    if let segment = item as? [Any],
+                       let part = segment.first as? String {
+                        output.append(part)
+                    }
+                }
+
+                if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    throw TranslationError.invalidResponse("No translation segments found")
+                }
+
+                return output
+            } catch {
+                lastError = error
+                if attempt < maxAttempts, (error is TranslationError) {
+                    let delay = backoffDelay(attempt: attempt)
+                    try await Task.sleep(nanoseconds: delay)
+                    continue
+                }
+                throw error
+            }
+        }
+
+        throw lastError
+    }
+
+    private func backoffDelay(attempt: Int) -> UInt64 {
+        let baseMs = min(2000.0, 200.0 * pow(2.0, Double(attempt - 1)))
+        let jitter = Double.random(in: 0...200)
+        return UInt64((baseMs + jitter) * 1_000_000)
     }
     
     private func translateWithOfficialAPI(
@@ -158,7 +253,9 @@ public final class TranslationService: TranslationRepository {
         targetLanguage: Language,
         apiKey: String
     ) async throws -> String {
-        let url = URL(string: "https://translation.googleapis.com/language/translate/v2")!
+        guard let url = URL(string: "https://translation.googleapis.com/language/translate/v2") else {
+            throw TranslationError.invalidInput("Invalid official API URL")
+        }
         
         let requestBody: [String: Any] = [
             "q": text,
@@ -175,18 +272,18 @@ public final class TranslationService: TranslationRepository {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.httpBody = requestData
         
-        let response = try await networkService.performRequest(request: request)
+        let responseData = try await networkService.performRequest(request: request)
         
-        // Parse the official API response
-        guard let json = try JSONSerialization.jsonObject(with: response) as? [String: Any],
-              let data = json["data"] as? [String: Any],
-              let translations = data["translations"] as? [[String: Any]],
-              let firstTranslation = translations.first,
-              let translatedText = firstTranslation["translatedText"] as? String else {
-            throw TranslationError.invalidInput("Failed to parse translation response")
+        do {
+            let response = try JSONDecoder().decode(GoogleCloudTranslationResponse.self, from: responseData)
+            guard let translatedText = response.data.translations.first?.translatedText else {
+                throw TranslationError.invalidResponse("No translations in response")
+            }
+            return translatedText
+        } catch {
+            logger.error("Failed to decode official API response", metadata: ["error": "\(error)"])
+            throw TranslationError.invalidResponse("Decoding failed: \(error.localizedDescription)")
         }
-        
-        return translatedText
     }
     
     private func getAPIKey(for provider: APIProvider) async throws -> String {
@@ -200,10 +297,9 @@ public final class TranslationService: TranslationRepository {
         original: String,
         backTranslated: String
     ) async throws -> QualityAssessment {
-        // Simplified BLEU score calculation
-        let bleuScore = calculateSimpleBLEUScore(reference: original, candidate: backTranslated)
+        let bleuScore = QualityScorer.calculateSimpleBLEUScore(reference: original, candidate: backTranslated)
         
-        let recommendations = generateQualityRecommendations(
+        let recommendations = QualityScorer.generateQualityRecommendations(
             bleuScore: bleuScore,
             originalLength: original.count,
             backTranslatedLength: backTranslated.count
@@ -211,63 +307,20 @@ public final class TranslationService: TranslationRepository {
         
         return QualityAssessment(bleuScore: bleuScore, recommendations: recommendations)
     }
+}
+
+// MARK: - API Response Models
+
+private struct GoogleCloudTranslationResponse: Codable {
+    let data: TranslationData
     
-    private func calculateSimpleBLEUScore(reference: String, candidate: String) -> Double {
-        // Simplified BLEU score implementation
-        // In a production app, you'd use a more sophisticated algorithm
-        let referenceWords = reference.lowercased().components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-        let candidateWords = candidate.lowercased().components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-        
-        guard !referenceWords.isEmpty && !candidateWords.isEmpty else {
-            return 0.0
-        }
-        
-        let referenceSet = Set(referenceWords)
-        let candidateSet = Set(candidateWords)
-        let intersection = referenceSet.intersection(candidateSet)
-        
-        let precision = Double(intersection.count) / Double(candidateSet.count)
-        let recall = Double(intersection.count) / Double(referenceSet.count)
-        
-        guard precision + recall > 0 else { return 0.0 }
-        
-        let f1Score = 2 * (precision * recall) / (precision + recall)
-        
-        // Apply length penalty
-        let lengthRatio = Double(candidateWords.count) / Double(referenceWords.count)
-        let lengthPenalty = lengthRatio > 1.0 ? (1.0 / lengthRatio) : lengthRatio
-        
-        return f1Score * lengthPenalty
+    struct TranslationData: Codable {
+        let translations: [TranslationItem]
     }
     
-    private func generateQualityRecommendations(
-        bleuScore: Double,
-        originalLength: Int,
-        backTranslatedLength: Int
-    ) -> [String] {
-        var recommendations: [String] = []
-        
-        if bleuScore < 0.3 {
-            recommendations.append("Consider reviewing the translation for accuracy")
-            recommendations.append("The back-translation shows significant differences from the original")
-        }
-        
-        let lengthDifference = abs(originalLength - backTranslatedLength)
-        let lengthRatio = Double(lengthDifference) / Double(originalLength)
-        
-        if lengthRatio > 0.5 {
-            recommendations.append("Large difference in text length detected")
-            recommendations.append("This may indicate translation quality issues")
-        }
-        
-        if bleuScore > 0.7 {
-            recommendations.append("High quality translation detected")
-            recommendations.append("The meaning appears to be well preserved")
-        }
-        
-        return recommendations
+    struct TranslationItem: Codable {
+        let translatedText: String
+        let detectedSourceLanguage: String?
     }
 }
 
