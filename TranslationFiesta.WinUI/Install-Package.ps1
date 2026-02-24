@@ -22,7 +22,7 @@ if (-not $isAdmin) {
 }
 
 # Get the package path
-$packagePath = "bin\Release\net9.0-windows10.0.19041.0\win-x64\AppPackages\TranslationFiesta.WinUI_1.0.0.0_x64_Test\TranslationFiesta.WinUI_1.0.0.0_x64.msix"
+$packagePath = "bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\TranslationFiesta.WinUI_1.0.0.0_x64_Test\TranslationFiesta.WinUI_1.0.0.0_x64.msix"
 
 if (-not (Test-Path $packagePath)) {
     Write-Error "Package file not found: $packagePath"
@@ -43,7 +43,7 @@ if ($RemovePrevious) {
 
 # Install the certificate
 Write-Host "Installing package certificate..." -ForegroundColor Yellow
-$certPath = "$PSScriptRoot\bin\Release\net9.0-windows10.0.19041.0\win-x64\AppPackages\TranslationFiesta.WinUI_1.0.0.0_x64_Test\TranslationFiesta.WinUI_1.0.0.0_x64.cer"
+$certPath = "$PSScriptRoot\bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\TranslationFiesta.WinUI_1.0.0.0_x64_Test\TranslationFiesta.WinUI_1.0.0.0_x64.cer"
 
 if (Test-Path $certPath) {
     try {

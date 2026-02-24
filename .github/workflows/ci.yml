@@ -13,19 +13,19 @@ env:
 
 jobs:
   python:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r TranslationFiestaPy/requirements.txt
-          pip install ruff
+          pip install -r TranslationFiestaPy/requirements.lock
+          pip install ruff pytest
 
       - name: Lint and compile Python
         run: |
@@ -39,18 +39,18 @@ jobs:
           pytest -q -s test_unofficial_provider.py test_theme.py
 
   go:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: "1.23.x"
+          go-version: "1.26.x"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: "24"
+          cache: npm
           cache-dependency-path: TranslationFiestaGo/frontend/package-lock.json
 
       - name: Build Go frontend assets
@@ -66,14 +66,14 @@ jobs:
           go test ./internal/... ./test/...
 
   electron:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: "24"
+          cache: npm
           cache-dependency-path: TranslationFiestaElectron/package-lock.json
 
       - name: Build and test Electron
@@ -85,9 +85,9 @@ jobs:
           npm test
 
   flutter:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Linux desktop build dependencies
         run: |
@@ -108,23 +108,37 @@ jobs:
           flutter build linux --release
 
   dotnet-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
+    name: .NET Windows publish (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+            rid: win-x64
+            platform: x64
+          - arch: arm64
+            runner: windows-11-arm
+            rid: win-arm64
+            platform: arm64
 
-      - uses: actions/setup-dotnet@v4
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Publish .NET desktop applications
         shell: pwsh
         run: |
-          $out = "$env:RUNNER_TEMP\ci-dotnet"
+          $out = "$env:RUNNER_TEMP\ci-dotnet-${{ matrix.arch }}"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
 
-          dotnet publish TranslationFiestaCSharp/TranslationFiestaCSharp.csproj -c Release -r win-x64 --self-contained false -o "$out\TranslationFiestaCSharp"
-          dotnet publish TranslationFiestaFSharp/TranslationFiestaFSharp.fsproj -c Release -r win-x64 --self-contained false -o "$out\TranslationFiestaFSharp"
-          dotnet publish TranslationFiesta.WinUI/TranslationFiesta.WinUI.csproj -c Release -r win-x64 --self-contained false -p:WindowsPackageType=None -p:AppxPackage=false -p:GenerateAppxPackageOnBuild=false -o "$out\TranslationFiesta.WinUI"
+          dotnet publish TranslationFiestaCSharp/TranslationFiestaCSharp.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o "$out\TranslationFiestaCSharp"
+          dotnet publish TranslationFiestaFSharp/TranslationFiestaFSharp.fsproj -c Release -r ${{ matrix.rid }} --self-contained true -o "$out\TranslationFiestaFSharp"
+          dotnet publish TranslationFiesta.WinUI/TranslationFiesta.WinUI.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:Platform=${{ matrix.platform }} -p:RuntimeIdentifier=${{ matrix.rid }} -p:WindowsAppSDKSelfContained=true -p:WindowsPackageType=None -p:AppxPackage=false -p:GenerateAppxPackageOnBuild=false -o "$out\TranslationFiesta.WinUI"
 
           $expected = @(
             "$out\TranslationFiestaCSharp\TranslationFiestaCSharp.exe",
@@ -138,10 +152,219 @@ jobs:
             }
           }
 
-  ruby:
-    runs-on: ubuntu-latest
+  arm64-cross-platform-smoke:
+    name: ARM64 smoke (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows
+            runner: windows-11-arm
+            electron_platform: win32
+            go_platform: windows/arm64
+            flutter_target: windows
+          - target: linux
+            runner: ubuntu-24.04-arm
+            electron_platform: linux
+            go_platform: linux/arm64
+            flutter_target: linux
+          - target: macos
+            runner: macos-15
+            electron_platform: darwin
+            go_platform: darwin/arm64
+            flutter_target: macos
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            TranslationFiestaElectron/package-lock.json
+            TranslationFiestaGo/frontend/package-lock.json
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.x"
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: TranslationFiestaRuby
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install Linux build dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            liblzma-dev \
+            libwebkit2gtk-4.1-dev \
+            libsoup-3.0-dev
+
+      - name: Electron ARM64 smoke build
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          cd TranslationFiestaElectron
+          npm ci
+          npm run build
+          npx electron-packager . TranslationFiestaElectron --platform=win32 --arch=arm64 --out ..\dist\ci-smoke\electron --overwrite --prune=true
+
+      - name: Electron ARM64 smoke build (non-Windows)
+        if: matrix.target != 'windows'
+        shell: bash
+        run: |
+          cd TranslationFiestaElectron
+          npm ci
+          npm run build
+          npx electron-packager . TranslationFiestaElectron --platform=${{ matrix.electron_platform }} --arch=arm64 --out ../dist/ci-smoke/electron --overwrite --prune=true
+
+      - name: Go ARM64 smoke build
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          cd TranslationFiestaGo/frontend
+          npm ci
+          npm run build
+          cd ..
+          go test ./internal/... ./test/...
+
+      - name: Go ARM64 smoke build (non-Windows)
+        if: matrix.target != 'windows'
+        shell: bash
+        run: |
+          cd TranslationFiestaGo/frontend
+          npm ci
+          npm run build
+          cd TranslationFiestaGo
+          go test ./internal/... ./test/...
+
+      - name: Wails ARM64 smoke package
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          cd TranslationFiestaGo
+          go run github.com/wailsapp/wails/v2/cmd/wails@v2.11.0 build -platform "${{ matrix.go_platform }}" -clean -o TranslationFiestaGo
+
+      - name: Wails ARM64 smoke package (non-Windows)
+        if: matrix.target != 'windows'
+        shell: bash
+        run: |
+          cd TranslationFiestaGo
+          if [ "${{ matrix.target }}" = "linux" ]; then
+            go run github.com/wailsapp/wails/v2/cmd/wails@v2.11.0 build -platform "${{ matrix.go_platform }}" -tags webkit2_41 -clean -o TranslationFiestaGo
+          else
+            go run github.com/wailsapp/wails/v2/cmd/wails@v2.11.0 build -platform "${{ matrix.go_platform }}" -clean -o TranslationFiestaGo
+          fi
+
+      - name: Python ARM64 smoke build
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r TranslationFiestaPy/requirements.lock
+          pip install pyinstaller
+
+          cd TranslationFiestaPy
+          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaPy TranslationFiesta.py
+          cd ..
+          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaLocalService TranslationFiestaLocal/local_service.py
+
+      - name: Python ARM64 smoke build (non-Windows)
+        if: matrix.target != 'windows'
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r TranslationFiestaPy/requirements.lock
+          pip install pyinstaller
+
+          cd TranslationFiestaPy
+          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaPy TranslationFiesta.py
+          cd ..
+          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaLocalService TranslationFiestaLocal/local_service.py
+
+      - name: Flutter ARM64 smoke build
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          flutter config --enable-windows-desktop
+          cd TranslationFiestaFlutter
+          flutter pub get
+          flutter build windows --release
+
+      - name: Flutter ARM64 smoke build (non-Windows)
+        if: matrix.target != 'windows'
+        shell: bash
+        run: |
+          if [ "${{ matrix.flutter_target }}" = "linux" ]; then
+            flutter config --enable-linux-desktop
+            cd TranslationFiestaFlutter
+            flutter pub get
+            flutter build linux --release
+          else
+            flutter config --enable-macos-desktop
+            cd TranslationFiestaFlutter
+            flutter pub get
+            flutter build macos --release
+          fi
+
+      - name: Ruby ARM64 smoke build
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          cd TranslationFiestaRuby
+          bundle install --jobs 4 --retry 3
+          ruby -c bin/translation_fiesta
+
+      - name: Ruby ARM64 smoke build (non-Windows)
+        if: matrix.target != 'windows'
+        shell: bash
+        run: |
+          cd TranslationFiestaRuby
+          bundle install --jobs 4 --retry 3
+          bundle exec ruby -c bin/translation_fiesta
+
+      - name: Swift ARM64 smoke build
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          cd TranslationFiestaSwift
+          swift build -c release
+          swift test --parallel
+
+  swift:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build and test Swift package
+        run: |
+          cd TranslationFiestaSwift
+          swift build -c release
+          swift test --parallel
+
+  ruby:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -155,21 +378,10 @@ jobs:
           bundle exec rubocop --fail-level E
           bundle exec rspec
 
-  swift:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build and test Swift package
-        run: |
-          cd TranslationFiestaSwift
-          swift build -c release
-          swift test --parallel
-
   repo-hygiene:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Reject tracked bytecode artifacts
         run: |

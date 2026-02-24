@@ -18,8 +18,7 @@ module TranslationFiesta
           
           result = db.execute(
             'SELECT translated_text FROM translation_cache WHERE cache_key = ? AND expires_at > ?',
-            cache_key,
-            Time.now.to_i
+            [cache_key, Time.now.to_i]
           )
 
           result.first&.first
@@ -35,12 +34,7 @@ module TranslationFiesta
               (cache_key, source_text, from_lang, to_lang, translated_text, expires_at)
               VALUES (?, ?, ?, ?, ?, ?)
             SQL
-            cache_key,
-            source_text,
-            from_lang,
-            to_lang,
-            translated_text,
-            expires_at
+            [cache_key, source_text, from_lang, to_lang, translated_text, expires_at]
           )
         end
 
@@ -49,7 +43,7 @@ module TranslationFiesta
         end
 
         def cache_size
-          result = db.execute('SELECT COUNT(*) FROM translation_cache WHERE expires_at > ?', Time.now.to_i)
+          result = db.execute('SELECT COUNT(*) FROM translation_cache WHERE expires_at > ?', [Time.now.to_i])
           result.first.first
         end
 

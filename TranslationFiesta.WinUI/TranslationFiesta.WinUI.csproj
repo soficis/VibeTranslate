@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <UseWinUI>true</UseWinUI>
     <DisableXbfGeneration>false</DisableXbfGeneration>
@@ -9,25 +9,25 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>TranslationFiesta.WinUI</AssemblyName>
     <RootNamespace>TranslationFiesta.WinUI</RootNamespace>
-    <Platforms>x64</Platforms>
-    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <Platforms>x64;arm64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <EnableMsixTooling>true</EnableMsixTooling>
-    <Platform>x64</Platform>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
     <WindowsPackageType>None</WindowsPackageType>
     <AppxPackage>false</AppxPackage>
     <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
     <PackageCertificateThumbprint>7649E3F4A2580DDED0BF2D386BC67B59BA8275C6</PackageCertificateThumbprint>
-    <SelfContained>false</SelfContained>
-    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250310001" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.1" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260209005" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.3" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
-    <PackageReference Include="PdfSharp" Version="6.0.0" />
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.1.1" />
+    <PackageReference Include="PdfSharp" Version="6.2.4" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.manifest" />

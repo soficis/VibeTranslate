@@ -276,7 +276,6 @@ MANIFEST
 # Ruby / TranslationFiestaRuby
 .bundle/
 vendor/bundle/
-Gemfile.lock
 *.gem
 .yardoc
 yardoc/
@@ -342,6 +341,12 @@ DerivedData/
 *.lock
 *.lck
 
+# Keep dependency lockfiles versioned for reproducible builds.
+!TranslationFiestaPy/requirements.lock
+!TranslationFiestaFlutter/pubspec.lock
+!TranslationFiestaRuby/Gemfile.lock
+!TranslationFiestaFlutter/windows/runner/runner.exe.manifest
+
 # Additional test artifacts
 test-results/
 junit.xml
@@ -349,6 +354,9 @@ test_output.log
 *.testresult
 coverage/
 .nyc_output/
+
+# Local one-shot build scripts
+scripts/build_windows_x64_release.ps1
 
 # More personal/private files
 id_rsa
