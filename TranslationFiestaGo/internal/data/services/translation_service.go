@@ -2,13 +2,9 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/url"
-	"os"
 	"time"
 
-	"translationfiestago/internal/costtracker"
 	"translationfiestago/internal/domain/entities"
 	"translationfiestago/internal/utils"
 )
@@ -79,9 +75,6 @@ func (ts *TranslationService) retryTranslate(ctx context.Context, translateFunc 
 // Translate implements the TranslationRepository interface
 func (ts *TranslationService) Translate(ctx context.Context, request entities.TranslationRequest) (*entities.TranslationResult, error) {
 	providerID := entities.NormalizeProviderID(request.ProviderID)
-	if entities.IsOfficialProvider(providerID) && request.APIKey == "" {
-		return nil, fmt.Errorf("API key required for official translation")
-	}
 
 	// Check cache
 	translation, found := ts.tm.Lookup(request.Text, request.TargetLang, providerID)
@@ -118,8 +111,6 @@ func (ts *TranslationService) Translate(ctx context.Context, request entities.Tr
 		switch providerID {
 		case entities.ProviderLocal:
 			result, err = ts.TranslateLocal(ctx, request.Text, request.SourceLang, request.TargetLang)
-		case entities.ProviderGoogleOfficial:
-			result, err = ts.TranslateOfficial(ctx, request.Text, request.SourceLang, request.TargetLang, request.APIKey)
 		default:
 			result, err = ts.TranslateUnofficial(ctx, request.Text, request.SourceLang, request.TargetLang)
 		}
@@ -145,14 +136,13 @@ func (ts *TranslationService) Translate(ctx context.Context, request entities.Tr
 }
 
 // BackTranslate implements the BackTranslate method
-func (ts *TranslationService) BackTranslate(ctx context.Context, text, sourceLang, intermediateLang, providerID, apiKey string) (*entities.BackTranslation, error) {
+func (ts *TranslationService) BackTranslate(ctx context.Context, text, sourceLang, intermediateLang, providerID string) (*entities.BackTranslation, error) {
 	// First translation: source -> intermediate
 	firstResult, err := ts.Translate(ctx, entities.TranslationRequest{
 		Text:       text,
 		SourceLang: sourceLang,
 		TargetLang: intermediateLang,
 		ProviderID: providerID,
-		APIKey:     apiKey,
 	})
 	if err != nil {
 		return nil, err
@@ -164,37 +154,9 @@ func (ts *TranslationService) BackTranslate(ctx context.Context, text, sourceLan
 		SourceLang: intermediateLang,
 		TargetLang: sourceLang,
 		ProviderID: providerID,
-		APIKey:     apiKey,
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	// Track costs for backtranslation (two API calls)
-	if entities.IsOfficialProvider(providerID) && os.Getenv("TF_COST_TRACKING_ENABLED") == "1" {
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					ts.logger.Error("Failed to track backtranslation costs: %v", r)
-				}
-			}()
-			// Track cost for first translation (source -> intermediate)
-			costtracker.TrackTranslationCost(
-				len(firstResult.TranslatedText),
-				sourceLang,
-				intermediateLang,
-				"go",
-				"v2",
-			)
-			// Track cost for second translation (intermediate -> source)
-			costtracker.TrackTranslationCost(
-				len(secondResult.TranslatedText),
-				intermediateLang,
-				sourceLang,
-				"go",
-				"v2",
-			)
-		}()
 	}
 
 	return &entities.BackTranslation{
@@ -209,56 +171,4 @@ func (ts *TranslationService) GetTMStats() map[string]interface{} {
 
 func (ts *TranslationService) ClearTMCache() {
 	ts.tm.ClearCache()
-}
-
-// DetectLanguage detects the source language using the official API.
-func (ts *TranslationService) DetectLanguage(ctx context.Context, text, apiKey string) (string, error) {
-	if apiKey == "" {
-		return "", fmt.Errorf("official API key is required for language detection")
-	}
-
-	requestURL := fmt.Sprintf("https://translation.googleapis.com/language/translate/v2/detect?key=%s", url.QueryEscape(apiKey))
-
-	requestBody := map[string]interface{}{
-		"q": text,
-	}
-
-	resp, err := ts.httpClient.Post(ctx, requestURL, requestBody)
-	if err != nil {
-		ts.logger.Error("Language detection HTTP error: %v", err)
-		return "", fmt.Errorf("HTTP request failed: %w", err)
-	}
-
-	if resp.StatusCode() != 200 {
-		ts.logger.Error("Language detection API error: HTTP %d - %s", resp.StatusCode(), resp.String())
-		return "", fmt.Errorf("API returned status %d: %s", resp.StatusCode(), resp.String())
-	}
-
-	// Parse response
-	var response struct {
-		Data struct {
-			Translations []struct {
-				Language   string  `json:"language"`
-				Confidence float64 `json:"confidence"`
-			} `json:"translations"`
-		} `json:"data"`
-	}
-
-	if err := json.Unmarshal([]byte(resp.String()), &response); err != nil {
-		ts.logger.Error("Failed to parse language detection response: %v", err)
-		return "", fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if len(response.Data.Translations) == 0 {
-		return "", fmt.Errorf("no detection result")
-	}
-
-	detected := response.Data.Translations[0].Language
-	if detected == "" {
-		return "en", fmt.Errorf("empty detected language")
-	}
-
-	ts.logger.Info("Detected language: %s (confidence: %f)", detected, response.Data.Translations[0].Confidence)
-
-	return detected, nil
 }

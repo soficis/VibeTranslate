@@ -21,10 +21,8 @@ interface LocalServiceBridge {
 
 interface TranslationFiestaBridge {
   settings: {
-    load: () => Promise<{ providerId: string; apiKey?: string }>;
+    load: () => Promise<{ providerId: string }>;
     setProvider: (providerId: string) => Promise<{ ok: boolean; error?: string }>;
-    setApiKey: (apiKey: string) => Promise<{ ok: boolean; error?: string }>;
-    clearApiKey: () => Promise<{ ok: boolean; error?: string }>;
   };
   localService: LocalServiceBridge;
   files: {

@@ -2,11 +2,9 @@ using System;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Threading;
-using System.Text.RegularExpressions;
 using System.IO;
 using TranslationFiestaCSharp;
 
@@ -72,9 +70,8 @@ namespace TranslationFiestaCSharp
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            // Load settings and API key
+            // Load settings
             var settings = SettingsService.Load();
-            var savedApiKey = SecureStore.GetApiKey();
             var providerId = ProviderIds.Normalize(settings.ProviderId);
             ApplyLocalEnv(settings);
             var localModelsClient = new LocalServiceClient(new HttpClient());
@@ -134,8 +131,7 @@ namespace TranslationFiestaCSharp
             var providerOptions = new[]
             {
                 new ProviderOption { Id = ProviderIds.Local, Name = "Local (Offline)" },
-                new ProviderOption { Id = ProviderIds.GoogleUnofficial, Name = "Google Translate (Unofficial / Free)" },
-                new ProviderOption { Id = ProviderIds.GoogleOfficial, Name = "Google Cloud Translate (Official)" }
+                new ProviderOption { Id = ProviderIds.GoogleUnofficial, Name = "Google Translate (Unofficial / Free)" }
             };
             var lblProvider = new Label { Text = "Provider:", Left = margin + 330, Top = yTop + 5, Width = 70 };
             var cmbProvider = new ComboBox { Left = margin + 400, Top = yTop + 2, Width = 210, DropDownStyle = ComboBoxStyle.DropDownList };
@@ -143,8 +139,6 @@ namespace TranslationFiestaCSharp
             cmbProvider.DisplayMember = "Name";
             cmbProvider.ValueMember = "Id";
             cmbProvider.SelectedValue = providerId;
-            var lblKey = new Label { Text = "API Key:", Left = margin + 620, Top = yTop + 5, Width = 60 };
-            var txtApiKey = new TextBox { Left = margin + 680, Top = yTop + 2, Width = Math.Max(200, availableWidth - 690), UseSystemPasswordChar = true, Enabled = ProviderIds.IsOfficial(providerId), Text = savedApiKey ?? "" };
             var lblFile = new Label { Text = "", Left = margin, Top = yTop + 34, Width = availableWidth };
 
             var lblInput = new Label { Text = "Input (English):", Left = margin, Top = yTop + 60, Width = 200 };
@@ -165,7 +159,7 @@ namespace TranslationFiestaCSharp
             var btnCopy = new Button { Text = "Copy Back", Left = margin, Top = yTop + 742, Width = 100 };
             var btnSave = new Button { Text = "Save Back...", Left = margin + 110, Top = yTop + 742, Width = 120 };
 
-            form.Controls.AddRange(new Control[] { btnTheme, btnLoad, btnBatch, lblProvider, cmbProvider, lblKey, txtApiKey, lblFile, lblInput, txtInput, btnTranslate, btnCancel, lblStatus, progress, lblJa, txtJa, lblBack, txtBack, btnCopy, btnSave });
+            form.Controls.AddRange(new Control[] { btnTheme, btnLoad, btnBatch, lblProvider, cmbProvider, lblFile, lblInput, txtInput, btnTranslate, btnCancel, lblStatus, progress, lblJa, txtJa, lblBack, txtBack, btnCopy, btnSave });
 
             var dark = settings.DarkMode;
             // Apply initial theme
@@ -207,8 +201,6 @@ namespace TranslationFiestaCSharp
                 txtJa.ForeColor = fg;
                 txtBack.BackColor = dark ? System.Drawing.Color.FromArgb(30, 30, 30) : System.Drawing.Color.White;
                 txtBack.ForeColor = fg;
-                txtApiKey.BackColor = dark ? System.Drawing.Color.FromArgb(30, 30, 30) : System.Drawing.Color.White;
-                txtApiKey.ForeColor = fg;
             }
 
             btnTheme.Click += (s, e) =>
@@ -224,21 +216,7 @@ namespace TranslationFiestaCSharp
             // Provider selection
             cmbProvider.SelectedIndexChanged += (s, e) =>
             {
-                txtApiKey.Enabled = ProviderIds.IsOfficial(GetSelectedProviderId());
                 SettingsService.SaveCurrentSettings(dark, GetSelectedProviderId(), form.Width, form.Height, form.Location.X, form.Location.Y);
-            };
-
-            // API Key save handler
-            txtApiKey.TextChanged += (s, e) =>
-            {
-                if (!string.IsNullOrWhiteSpace(txtApiKey.Text))
-                {
-                    SecureStore.SaveApiKey(txtApiKey.Text);
-                }
-                else
-                {
-                    SecureStore.ClearApiKey();
-                }
             };
 
             // File import (enhanced to support .txt, .md, .html, .epub like F# version)
@@ -357,7 +335,6 @@ namespace TranslationFiestaCSharp
                 var margin = 10;
                 var availableWidth = form.ClientSize.Width - (2 * margin);
 
-                txtApiKey.Width = Math.Max(200, availableWidth - 690);
                 lblFile.Width = availableWidth;
                 txtInput.Width = availableWidth;
                 txtJa.Width = availableWidth;
@@ -395,8 +372,7 @@ namespace TranslationFiestaCSharp
             }
 
             // Initialize settings and log them
-            Logger.Debug($"Initial settings loaded: DarkMode={settings.DarkMode}, ProviderId={providerId}, UseOfficialApi={settings.UseOfficialApi}, WindowSize={settings.WindowWidth}x{settings.WindowHeight}, WindowPos=({settings.WindowX},{settings.WindowY}), LastFilePath='{settings.LastFilePath}', LastSavePath='{settings.LastSavePath}'");
-            Logger.Debug($"API Key loaded: {(string.IsNullOrEmpty(savedApiKey) ? "Not set" : "Set")}");
+            Logger.Debug($"Initial settings loaded: DarkMode={settings.DarkMode}, ProviderId={providerId}, WindowSize={settings.WindowWidth}x{settings.WindowHeight}, WindowPos=({settings.WindowX},{settings.WindowY}), LastFilePath='{settings.LastFilePath}', LastSavePath='{settings.LastSavePath}'");
 
             void ApplyLocalEnv(AppSettings appSettings)
             {
@@ -503,7 +479,6 @@ namespace TranslationFiestaCSharp
                 btnCopy.Enabled = !busy;
                 btnSave.Enabled = !busy;
                 cmbProvider.Enabled = !busy;
-                txtApiKey.Enabled = !busy && ProviderIds.IsOfficial(GetSelectedProviderId());
                 progress.Visible = busy;
             }
 
@@ -533,9 +508,6 @@ namespace TranslationFiestaCSharp
 
                     var selectedProvider = GetSelectedProviderId();
                     Translator.ProviderId = selectedProvider;
-                    Translator.OfficialApiKey = ProviderIds.IsOfficial(selectedProvider)
-                        ? (string.IsNullOrWhiteSpace(txtApiKey.Text) ? null : txtApiKey.Text)
-                        : null;
                     Logger.Debug($"Translation initiated. Input length: {input.Length} chars. ProviderId={selectedProvider}");
 
                     setStatus("Translating to Japanese...");
@@ -602,9 +574,6 @@ namespace TranslationFiestaCSharp
                 {
                     var selectedProvider = GetSelectedProviderId();
                     Translator.ProviderId = selectedProvider;
-                    Translator.OfficialApiKey = ProviderIds.IsOfficial(selectedProvider)
-                        ? (string.IsNullOrWhiteSpace(txtApiKey.Text) ? null : txtApiKey.Text)
-                        : null;
 
                     var batchProcessor = new BatchProcessor(Translator, (current, total) =>
                     {

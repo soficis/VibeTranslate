@@ -60,14 +60,6 @@ func (a *App) SetProviderID(providerID string) error {
 	return a.settingsRepo.SetProviderID(providerID)
 }
 
-func (a *App) GetHasAPIKey() bool {
-	return a.settingsRepo.GetAPIKey() != ""
-}
-
-func (a *App) SetAPIKey(apiKey string) error {
-	return a.settingsRepo.SetAPIKey(apiKey)
-}
-
 func (a *App) GetLocalServiceURL() string {
 	return a.settingsRepo.GetLocalServiceURL()
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Represents the result of a translation operation
+/// Represents the result of a translation operation.
 public struct TranslationResult: Equatable, Codable, Sendable {
     public let originalText: String
     public let translatedText: String
@@ -8,9 +8,8 @@ public struct TranslationResult: Equatable, Codable, Sendable {
     public let targetLanguage: Language
     public let timestamp: Date
     public let apiProvider: APIProvider
-    public let cost: TranslationCost?
     public let qualityScore: QualityScore?
-    
+
     public init(
         originalText: String,
         translatedText: String,
@@ -18,7 +17,6 @@ public struct TranslationResult: Equatable, Codable, Sendable {
         targetLanguage: Language,
         timestamp: Date = Date(),
         apiProvider: APIProvider,
-        cost: TranslationCost? = nil,
         qualityScore: QualityScore? = nil
     ) {
         self.originalText = originalText
@@ -27,12 +25,11 @@ public struct TranslationResult: Equatable, Codable, Sendable {
         self.targetLanguage = targetLanguage
         self.timestamp = timestamp
         self.apiProvider = apiProvider
-        self.cost = cost
         self.qualityScore = qualityScore
     }
 }
 
-/// Represents a back-translation result (English -> Japanese -> English)
+/// Represents a back-translation result (English -> Japanese -> English).
 public struct BackTranslationResult: Equatable, Codable, Identifiable, Sendable {
     public let id: UUID
     public let originalEnglish: String
@@ -41,8 +38,7 @@ public struct BackTranslationResult: Equatable, Codable, Identifiable, Sendable 
     public let forwardTranslation: TranslationResult
     public let backwardTranslation: TranslationResult
     public let qualityAssessment: QualityAssessment
-    public let totalCost: TranslationCost
-    
+
     public init(
         id: UUID = UUID(),
         originalEnglish: String,
@@ -50,8 +46,7 @@ public struct BackTranslationResult: Equatable, Codable, Identifiable, Sendable 
         backTranslatedEnglish: String,
         forwardTranslation: TranslationResult,
         backwardTranslation: TranslationResult,
-        qualityAssessment: QualityAssessment,
-        totalCost: TranslationCost
+        qualityAssessment: QualityAssessment
     ) {
         self.id = id
         self.originalEnglish = originalEnglish
@@ -60,24 +55,23 @@ public struct BackTranslationResult: Equatable, Codable, Identifiable, Sendable 
         self.forwardTranslation = forwardTranslation
         self.backwardTranslation = backwardTranslation
         self.qualityAssessment = qualityAssessment
-        self.totalCost = totalCost
     }
 }
 
-/// Supported languages for translation
+/// Supported languages for translation.
 public enum Language: String, CaseIterable, Codable, Identifiable, Sendable {
     case english = "en"
     case japanese = "ja"
-    
+
     public var id: Self { self }
-    
+
     public var displayName: String {
         switch self {
         case .english: return "English"
         case .japanese: return "Japanese"
         }
     }
-    
+
     public var flag: String {
         switch self {
         case .english: return "🇺🇸"
@@ -86,12 +80,11 @@ public enum Language: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 }
 
-/// API providers for translation services
+/// Translation providers available in the app.
 public enum APIProvider: String, CaseIterable, Codable, Identifiable, Sendable {
     case localOffline = "local"
     case googleUnofficialAPI = "google_unofficial"
-    case googleCloudAPI = "google_official"
-    
+
     public var id: Self { self }
 
     public init(from decoder: Decoder) throws {
@@ -117,54 +110,17 @@ public enum APIProvider: String, CaseIterable, Codable, Identifiable, Sendable {
         switch self {
         case .localOffline: return "Local (Offline)"
         case .googleUnofficialAPI: return "Google Translate (Unofficial / Free)"
-        case .googleCloudAPI: return "Google Cloud Translate (Official)"
-        }
-    }
-    
-    public var requiresAPIKey: Bool {
-        switch self {
-        case .localOffline: return false
-        case .googleUnofficialAPI: return false
-        case .googleCloudAPI: return true
-        }
-    }
-    
-    public var hasCostTracking: Bool {
-        switch self {
-        case .localOffline: return false
-        case .googleUnofficialAPI: return false
-        case .googleCloudAPI: return true
         }
     }
 }
 
-/// Cost information for translation
-public struct TranslationCost: Equatable, Codable, Sendable {
-    public let characterCount: Int
-    public let costInUSD: Double
-    public let apiProvider: APIProvider
-    public let timestamp: Date
-    
-    public init(characterCount: Int, costInUSD: Double, apiProvider: APIProvider, timestamp: Date = Date()) {
-        self.characterCount = characterCount
-        self.costInUSD = costInUSD
-        self.apiProvider = apiProvider
-        self.timestamp = timestamp
-    }
-    
-    /// Google Cloud Translation API pricing: $20 per 1 million characters
-    public static func calculateGoogleCloudCost(characterCount: Int) -> Double {
-        return Double(characterCount) * 20.0 / 1_000_000.0
-    }
-}
-
-/// Quality assessment for translations
+/// Quality assessment for translations.
 public struct QualityAssessment: Equatable, Codable, Sendable {
     public let bleuScore: Double
     public let confidenceLevel: ConfidenceLevel
     public let starRating: StarRating
     public let recommendations: [String]
-    
+
     public init(bleuScore: Double, recommendations: [String] = []) {
         self.bleuScore = bleuScore
         self.confidenceLevel = ConfidenceLevel.fromBLEUScore(bleuScore)
@@ -173,25 +129,25 @@ public struct QualityAssessment: Equatable, Codable, Sendable {
     }
 }
 
-/// Quality score for individual translations
+/// Quality score for individual translations.
 public struct QualityScore: Equatable, Codable, Sendable {
     public let score: Double
     public let confidenceLevel: ConfidenceLevel
-    
+
     public init(score: Double) {
         self.score = score
         self.confidenceLevel = ConfidenceLevel.fromBLEUScore(score)
     }
 }
 
-/// Five-tier confidence level system
+/// Five-tier confidence level system.
 public enum ConfidenceLevel: String, CaseIterable, Codable, Sendable {
     case high = "high"
     case mediumHigh = "medium_high"
     case medium = "medium"
     case lowMedium = "low_medium"
     case low = "low"
-    
+
     public var displayName: String {
         switch self {
         case .high: return "High"
@@ -201,7 +157,7 @@ public enum ConfidenceLevel: String, CaseIterable, Codable, Sendable {
         case .low: return "Low"
         }
     }
-    
+
     public static func fromBLEUScore(_ score: Double) -> ConfidenceLevel {
         switch score {
         case 0.7...: return .high
@@ -213,20 +169,20 @@ public enum ConfidenceLevel: String, CaseIterable, Codable, Sendable {
     }
 }
 
-/// Star rating system (1-5 stars)
+/// Star rating system (1-5 stars).
 public enum StarRating: Int, CaseIterable, Codable, Sendable {
     case oneStar = 1
     case twoStars = 2
     case threeStars = 3
     case fourStars = 4
     case fiveStars = 5
-    
+
     public var displayString: String {
         let filledStars = String(repeating: "★", count: rawValue)
         let emptyStars = String(repeating: "☆", count: 5 - rawValue)
         return filledStars + emptyStars
     }
-    
+
     public static func fromBLEUScore(_ score: Double) -> StarRating {
         switch score {
         case 0.8...: return .fiveStars

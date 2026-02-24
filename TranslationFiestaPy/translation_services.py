@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Translation providers and translation orchestration (unofficial Google, Google Cloud, local service),
+Translation providers and translation orchestration (unofficial Google and local service),
 including retry/backoff, error mapping, and structured logging.
 """
 
@@ -18,10 +18,8 @@ from typing import Callable, Optional
 import requests
 from rapidfuzz import fuzz
 
-from cost_tracker import track_translation_cost
 from enhanced_logger import get_logger
 from exceptions import (
-    ApiKeyRequiredError,
     BlockedError,
     ConnectionError,
     HttpError,
@@ -35,7 +33,6 @@ from exceptions import (
 )
 from local_service_client import LocalServiceClient
 from provider_ids import (
-    PROVIDER_GOOGLE_OFFICIAL,
     PROVIDER_LOCAL,
     normalize_provider_id,
 )
@@ -319,103 +316,6 @@ class TranslationService:
         except Exception as e:
             return Failure(TranslationFiestaError(f"Unexpected error in unofficial translation: {e}"))
 
-    def _translate_official(
-        self,
-        session: requests.Session,
-        api_key: str,
-        request: TranslationRequest
-    ) -> Result[str, TranslationFiestaError]:
-        """Translate using official Google Cloud Translation API"""
-        if not api_key:
-            return Failure(ApiKeyRequiredError())
-
-        if not request.text or request.text.isspace():
-            return Success("")
-
-        try:
-            start_time = time.time()
-
-            # Google Translation API v2 endpoint
-            url = "https://translation.googleapis.com/language/translate/v2"
-            params = {
-                "key": api_key,
-                "q": request.text,
-                "source": request.source_language,
-                "target": request.target_language,
-                "format": "text",
-            }
-
-            response = session.post(url, params=params, timeout=15)
-            duration = time.time() - start_time
-
-            # Log API call
-            self.logger.log_api_call(
-                endpoint="translation.googleapis.com/language/translate/v2",
-                method="POST",
-                status_code=response.status_code,
-                duration_ms=duration * 1000,
-                success=response.status_code < 400
-            )
-
-            if response.status_code >= 400:
-                error_msg = f"HTTP {response.status_code}"
-                if response.text:
-                    error_msg += f": {response.text[:200]}"
-                return Failure(HttpError(response.status_code, error_msg, response.text, response.headers))
-
-            try:
-                payload = response.json()
-            except json.JSONDecodeError as e:
-                return Failure(InvalidTranslationResponseError(f"Failed to parse JSON response: {e}"))
-
-            # Parse official API response
-            if not isinstance(payload, dict):
-                return Failure(InvalidTranslationResponseError("Response is not a valid object"))
-
-            data = payload.get("data")
-            if not isinstance(data, dict):
-                return Failure(InvalidTranslationResponseError("Missing data field in response"))
-
-            translations = data.get("translations")
-            if not isinstance(translations, list) or not translations:
-                return Failure(NoTranslationFoundError())
-
-            first_translation = translations[0]
-            if not isinstance(first_translation, dict):
-                return Failure(InvalidTranslationResponseError("Invalid translation format"))
-
-            translated_text = first_translation.get("translatedText", "")
-            if not isinstance(translated_text, str):
-                return Failure(InvalidTranslationResponseError("Translated text is not a string"))
-
-            if not translated_text:
-                return Failure(NoTranslationFoundError())
-
-            if os.getenv("TF_COST_TRACKING_ENABLED") == "1":
-                try:
-                    track_translation_cost(
-                        characters=len(translated_text),
-                        source_lang=request.source_language,
-                        target_lang=request.target_language,
-                        implementation="python",
-                        api_version="v2",
-                    )
-                except Exception as e:
-                    self.logger.warning(f"Failed to track translation cost: {e}")
-
-            return Success(translated_text)
-
-        except requests.exceptions.Timeout:
-            return Failure(TimeoutError("Official API request timed out"))
-        except requests.exceptions.ConnectionError:
-            return Failure(ConnectionError("Failed to connect to official API"))
-        except requests.exceptions.SSLError as e:
-            return Failure(SSLError(f"SSL certificate error: {e}"))
-        except requests.RequestException as e:
-            return Failure(NetworkError(f"Official API network error: {e}"))
-        except Exception as e:
-            return Failure(TranslationFiestaError(f"Unexpected error in official translation: {e}"))
-
     def translate_text(
         self,
         session: Optional[requests.Session],
@@ -424,8 +324,6 @@ class TranslationService:
         target_lang: str,
         *,
         provider_id: Optional[str] = None,
-        use_official_api: bool = False,
-        api_key: Optional[str] = None,
         max_attempts: int = 4,
         status_callback: Optional[Callable[[str], None]] = None,
     ) -> TranslationResult:
@@ -441,8 +339,7 @@ class TranslationService:
             return Failure(TranslationFiestaError(f"Invalid request parameters: {e}"))
 
         session = session or self.session
-        resolved_provider_id = normalize_provider_id(provider_id, use_official_api)
-        is_official = resolved_provider_id == PROVIDER_GOOGLE_OFFICIAL
+        resolved_provider_id = normalize_provider_id(provider_id)
 
         # Check cache before API call
         cache_result = self.tm.lookup(text, target_lang)
@@ -463,10 +360,7 @@ class TranslationService:
             # Execute with retry if cache miss
             retry_result = None
             for attempt in range(max_attempts):
-                if resolved_provider_id == PROVIDER_GOOGLE_OFFICIAL:
-                    retry_result = self._translate_official(session, api_key or "", request)
-                else:
-                    retry_result = self._translate_unofficial(session, request)
+                retry_result = self._translate_unofficial(session, request)
 
                 if retry_result.is_success():
                     self.rate_limiter.success()
@@ -499,7 +393,6 @@ class TranslationService:
                 source_lang=source_lang,
                 target_lang=target_lang,
                 text_length=len(text),
-                use_official=is_official,
                 attempt=max_attempts,  # Final attempt
                 success=False,
                 error=str(error),
@@ -517,7 +410,6 @@ class TranslationService:
             source_lang=source_lang,
             target_lang=target_lang,
             text_length=len(text),
-            use_official=is_official,
             attempt=1,  # Assume success on first attempt for logging
             success=True,
             provider_id=resolved_provider_id,
@@ -545,9 +437,7 @@ class TranslationService:
 
         provider_id = normalize_provider_id(
             api_config.get("provider_id"),
-            api_config.get("use_official_api", False),
         )
-        api_key = api_config.get("api_key")
 
         # First translation: source -> intermediate
         first_result = self.translate_text(
@@ -556,7 +446,6 @@ class TranslationService:
             source_lang="en",
             target_lang=intermediate_language,
             provider_id=provider_id,
-            api_key=api_key,
             status_callback=status_callback
         )
 
@@ -572,7 +461,6 @@ class TranslationService:
             source_lang=intermediate_language,
             target_lang="en",
             provider_id=provider_id,
-            api_key=api_key,
             status_callback=status_callback
         )
 
@@ -580,25 +468,6 @@ class TranslationService:
             return Failure(second_result.error)  # type: ignore
 
         final_text = second_result.value  # type: ignore
-
-        if provider_id == PROVIDER_GOOGLE_OFFICIAL and api_key and os.getenv("TF_COST_TRACKING_ENABLED") == "1":
-            try:
-                track_translation_cost(
-                    characters=len(intermediate_text),
-                    source_lang="en",
-                    target_lang=intermediate_language,
-                    implementation="python",
-                    api_version="v2",
-                )
-                track_translation_cost(
-                    characters=len(final_text),
-                    source_lang=intermediate_language,
-                    target_lang="en",
-                    implementation="python",
-                    api_version="v2",
-                )
-            except Exception as e:
-                self.logger.warning(f"Failed to track backtranslation costs: {e}")
 
         # Log successful backtranslation
         self.logger.log_backtranslation_completed(

@@ -35,7 +35,6 @@ class TranslationProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isDarkTheme = false;
   TranslationProviderId _providerId = TranslationProviderId.googleUnofficial;
-  String _apiKey = '';
   OutputFormat _outputFormat = OutputFormat.html;
   String _localServiceUrl = '';
   String _localModelDir = '';
@@ -54,8 +53,6 @@ class TranslationProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isDarkTheme => _isDarkTheme;
   TranslationProviderId get providerId => _providerId;
-  bool get useOfficialApi => _providerId.isOfficial;
-  String get apiKey => _apiKey;
   OutputFormat get outputFormat => _outputFormat;
   String get localServiceUrl => _localServiceUrl;
   String get localModelDir => _localModelDir;
@@ -70,7 +67,6 @@ class TranslationProvider extends ChangeNotifier {
   // Configuration
   ApiConfiguration get apiConfiguration => ApiConfiguration(
         providerId: _providerId,
-        apiKey: _apiKey.isNotEmpty ? _apiKey : null,
         localServiceUrl: _localServiceUrl,
         localModelDir: _localModelDir,
         localAutoStart: _localAutoStart,
@@ -99,11 +95,8 @@ class TranslationProvider extends ChangeNotifier {
   Future<void> loadPreferences() async {
     try {
       final themeResult = await _preferencesRepository.getThemePreference();
-      final apiKeyResult = await _preferencesRepository.getApiKeyPreference();
       final providerIdResult =
           await _preferencesRepository.getProviderIdPreference();
-      final useOfficialResult =
-          await _preferencesRepository.getUseOfficialApiPreference();
       final localUrlResult =
           await _preferencesRepository.getLocalServiceUrlPreference();
       final localDirResult =
@@ -117,32 +110,11 @@ class TranslationProvider extends ChangeNotifier {
         (isDark) => _isDarkTheme = isDark,
       );
 
-      apiKeyResult.fold(
-        (failure) =>
-            Logger.instance.error('Failed to load API key: ${failure.message}'),
-        (key) => _apiKey = key ?? '',
-      );
-
-      var hasProviderPreference = false;
       providerIdResult.fold(
         (failure) => Logger.instance
             .error('Failed to load provider preference: ${failure.message}'),
-        (providerValue) {
-          hasProviderPreference = true;
-          _providerId = TranslationProviderIdX.fromStorage(providerValue);
-        },
-      );
-
-      useOfficialResult.fold(
-        (failure) => Logger.instance
-            .error('Failed to load API preference: ${failure.message}'),
-        (useOfficial) {
-          if (!hasProviderPreference) {
-            _providerId = useOfficial
-                ? TranslationProviderId.googleOfficial
-                : TranslationProviderId.googleUnofficial;
-          }
-        },
+        (providerValue) =>
+            _providerId = TranslationProviderIdX.fromStorage(providerValue),
       );
 
       localUrlResult.fold(
@@ -191,26 +163,12 @@ class TranslationProvider extends ChangeNotifier {
   /// Update API configuration
   Future<void> updateApiConfiguration(
     TranslationProviderId providerId,
-    String apiKey,
   ) async {
     _providerId = providerId;
-    _apiKey = apiKey;
     notifyListeners();
 
-    final apiKeyResult =
-        await _preferencesRepository.setApiKeyPreference(apiKey);
     final providerResult = await _preferencesRepository.setProviderIdPreference(
       providerId.storageValue,
-    );
-    final useOfficialResult =
-        await _preferencesRepository.setUseOfficialApiPreference(
-      providerId.isOfficial,
-    );
-
-    apiKeyResult.fold(
-      (failure) =>
-          Logger.instance.error('Failed to save API key: ${failure.message}'),
-      (_) => Logger.instance.debug('API key saved'),
     );
 
     providerResult.fold(
@@ -218,13 +176,6 @@ class TranslationProvider extends ChangeNotifier {
           .error('Failed to save provider preference: ${failure.message}'),
       (_) => Logger.instance
           .debug('Provider preference saved: ${providerId.storageValue}'),
-    );
-
-    useOfficialResult.fold(
-      (failure) => Logger.instance
-          .error('Failed to save API preference: ${failure.message}'),
-      (_) => Logger.instance.debug(
-          'API preference saved: ${providerId.isOfficial}',),
     );
   }
 
@@ -286,7 +237,7 @@ class TranslationProvider extends ChangeNotifier {
     Logger.instance.info(
         'Source language: $_sourceLanguage, Target language: $_targetLanguage',);
     Logger.instance.info(
-      'API config: provider=${_providerId.storageValue}, hasApiKey=${_apiKey.isNotEmpty}',
+      'API config: provider=${_providerId.storageValue}',
     );
 
     if (_inputText.trim().isEmpty) {

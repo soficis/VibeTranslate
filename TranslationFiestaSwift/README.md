@@ -5,16 +5,14 @@ A comprehensive English ↔ Japanese translation application built with Swift an
 ## 🌟 Features
 
 ### Core Translation
-- **Bidirectional Translation**: English ↔ Japanese with multiple API support
+- **Bidirectional Translation**: English ↔ Japanese with local/offline and unofficial provider support
 - **Back-Translation Validation**: Automatically validate translations by translating back to source language
 - **Quality Assessment**: Built-in BLEU scoring for translation quality measurement
-- **Dual API Support**: Support for multiple translation service providers
+- **Provider Switching**: Quickly switch between local and unofficial providers
 
 ### Advanced Capabilities
 - **Batch Processing**: Process multiple files simultaneously with progress tracking
 - **Translation Memory**: LRU cache-based translation memory with fuzzy matching
-- **Cost Tracking**: Comprehensive budget management and usage analytics
-- **Secure Storage**: Keychain-based secure storage for API keys and sensitive data
 - **Multiple Export Formats**: JSON, CSV, XML, and plain text export options
 - **EPUB Processing**: Native support for EPUB file translation and processing
 
@@ -22,7 +20,7 @@ A comprehensive English ↔ Japanese translation application built with Swift an
 - **Native macOS Interface**: Built with SwiftUI for modern, responsive design
 - **Dark/Light Theme Support**: Automatic theme switching based on system preferences
 - **Real-time Progress**: Live progress tracking for all operations
-- **Comprehensive Analytics**: Detailed cost analysis and usage statistics
+- **Comprehensive Analytics**: Translation memory and usage statistics
 
 ## 🏗️ Architecture
 
@@ -82,14 +80,14 @@ This application follows **Clean Architecture** principles with clear separation
    - In Xcode: `⌘ + R`
    - Or via command line: `swift run TranslationFiestaSwift`
 
-### API Configuration
+### Provider Configuration
 
 1. **Open the application**
 2. **Navigate to Settings** (gear icon in toolbar)
-3. **Configure API Keys**:
-   - Add your translation service API keys
-   - Keys are securely stored in macOS Keychain
-   - Support for multiple providers
+3. **Select a Provider**:
+   - Use local offline translation
+   - Or use the unofficial Google Translate endpoint
+   - No API key setup required
 
 ## 📱 Usage Guide
 
@@ -120,13 +118,6 @@ This application follows **Clean Architecture** principles with clear separation
 3. **Search Entries**: Use the search bar to find specific translations
 4. **Manage Cache**: Clear or optimize translation memory
 
-### Cost Tracking
-
-1. **Set Budget**: Configure monthly/daily budgets in Settings
-2. **Monitor Usage**: View real-time cost tracking in the dashboard
-3. **Analytics**: Access detailed cost reports and usage patterns
-4. **Alerts**: Receive notifications when approaching budget limits
-
 ### Export & Import
 
 1. **Export Translations**:
@@ -136,7 +127,7 @@ This application follows **Clean Architecture** principles with clear separation
 
 2. **Import Settings**:
    - Import translation memory from previous sessions
-   - Restore API configurations and preferences
+   - Restore local preferences
 
 ## 🔧 Advanced Features
 
@@ -154,12 +145,12 @@ This application follows **Clean Architecture** principles with clear separation
 - **Persistent Storage**: Translation memory persists between application sessions
 - **Import/Export**: Share translation memories between users or applications
 
-### Security Features
+### Reliability Features
 
-- **Keychain Integration**: All API keys stored securely in macOS Keychain
-- **Data Encryption**: Sensitive translation data encrypted at rest
+- **Input Validation**: Defensive checks at service boundaries
+- **Retry Logic**: Network retries for transient provider failures
 - **Privacy Controls**: Configurable data retention and privacy settings
-- **Secure Deletion**: Proper cleanup of sensitive data when removed
+- **Secure Deletion**: Proper cleanup of temporary translation artifacts
 
 ## 🛠️ Development
 
@@ -187,7 +178,6 @@ TranslationFiestaSwift/
 
 - **Swift Collections**: Advanced data structures for translation memory
 - **Swift Algorithms**: Efficient algorithms for text processing
-- **Swift Crypto**: Cryptographic operations for secure storage
 - **Swift Log**: Structured logging throughout the application
 
 ### Building for Different Platforms
@@ -237,11 +227,6 @@ swift test --enable-code-coverage
 
 ## 🔐 Security Considerations
 
-### API Key Management
-- All API keys stored in macOS Keychain
-- No plain text storage of sensitive credentials
-- Automatic key rotation support
-
 ### Data Privacy
 - Local processing when possible
 - Configurable data retention policies
@@ -271,12 +256,10 @@ swift test --enable-code-coverage
 **Runtime Errors**:
 - If `swift run` fails with exit code 127, verify the executable was built successfully
 - Check for missing dynamic libraries or framework dependencies
-- Ensure all required API keys are configured in Settings before running
 - For exit code 130 (SIGINT), the process was interrupted; restart if needed
 - Monitor system resources; insufficient memory may cause runtime failures
 
 **API Connection Issues**:
-- Verify API keys in Settings are valid and not expired
 - Check network connectivity and firewall settings
 - Review API service status pages for outages
 - Test API endpoints manually using curl or Postman
@@ -295,7 +278,6 @@ Enable debug logging in Settings to get detailed information about:
 - Translation API requests and responses (including headers and payloads)
 - Translation memory operations (cache hits, misses, and evictions)
 - File processing status (progress, errors, and completion times)
-- Cost tracking calculations (API usage, budget monitoring, and alerts)
 - Network connectivity issues and retry attempts
 
 ### Additional Support
@@ -322,7 +304,7 @@ This project is licensed under the MIT License - see the [LICENSE](../LICENSE) f
 - **Swift Community**: For excellent documentation and Swift Package Manager
 - **Apple**: For SwiftUI and comprehensive development tools
 - **Translation Services**: For providing robust translation APIs
-- **Open Source Libraries**: Swift Collections, Algorithms, Crypto, and Logging
+- **Open Source Libraries**: Swift Collections, Algorithms, and Logging
 
 ## 🔗 Related Projects
 

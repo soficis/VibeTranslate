@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -17,13 +16,8 @@ namespace TranslationFiestaCSharp
     public class TranslationClient
     {
         private readonly HttpClient _http;
-        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
 
         public string ProviderId { get; set; } = ProviderIds.GoogleUnofficial;
-        public string? OfficialApiKey { get; set; }
         public int MaxRetries { get; set; } = 4;
         public TimeSpan BaseRetryDelay { get; set; } = TimeSpan.FromMilliseconds(300);
 
@@ -70,14 +64,6 @@ namespace TranslationFiestaCSharp
                 case ProviderIds.Local:
                     Logger.Debug("Using local provider for translation.");
                     translatedText = await TranslateWithLocalServiceAsync(text, source, target, cancellationToken).ConfigureAwait(false);
-                    break;
-                case ProviderIds.GoogleOfficial:
-                    if (string.IsNullOrWhiteSpace(OfficialApiKey))
-                    {
-                        throw new InvalidOperationException("API key required for official translation.");
-                    }
-                    Logger.Debug("Using official API for translation.");
-                    translatedText = await TranslateWithOfficialApiAsync(text, source, target, cancellationToken).ConfigureAwait(false);
                     break;
                 default:
                     Logger.Debug("Using unofficial API for translation.");
@@ -187,71 +173,6 @@ namespace TranslationFiestaCSharp
             return await _localClient.TranslateAsync(text, source, target, cancellationToken).ConfigureAwait(false);
         }
 
-        private async Task<string> TranslateWithOfficialApiAsync(string text, string source, string target, CancellationToken cancellationToken)
-        {
-            var stopwatch = Stopwatch.StartNew();
-            Logger.Debug($"Starting official API translation for text length {text.Length}");
-            // Google Cloud Translation v2: https://translation.googleapis.com/language/translate/v2
-            // Body: { q: string, source: string, target: string, format?: "text" }
-            var url = $"https://translation.googleapis.com/language/translate/v2?key={OfficialApiKey}";
-
-            var payload = new
-            {
-                q = text,
-                source = source,
-                target = target,
-                format = "text"
-            };
-
-            int attempt = 0;
-            while (true)
-            {
-                attempt++;
-                try
-                {
-                    using var response = await _http.PostAsJsonAsync(url, payload, _jsonOptions, cancellationToken).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
-                    using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-                    using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-                    var translatedText = ParseOfficialResponse(doc);
-                    stopwatch.Stop();
-                    Logger.Performance($"Official API translation successful after {attempt} attempts", stopwatch.Elapsed);
-
-                    if (SettingsService.Load().EnableCostTracking)
-                    {
-                        try
-                        {
-                            CostTracker.TrackTranslationCost(
-                                translatedText.Length,
-                                source,
-                                target,
-                                "csharp",
-                                "v2"
-                            );
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Warn($"Failed to track translation cost: {ex.Message}");
-                        }
-                    }
-
-                    return translatedText;
-                }
-                catch (Exception ex) when (attempt <= MaxRetries && IsTransient(ex))
-                {
-                    var delay = ComputeBackoffDelay(attempt);
-                    Logger.Error($"Official API attempt {attempt} failed. Retrying in {delay.TotalMilliseconds:F2} ms.", ex);
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    stopwatch.Stop();
-                    Logger.Error($"Official API translation failed after {attempt} attempts", ex);
-                    throw;
-                }
-            }
-        }
-
         private static string ParseUnofficialResponse(string body)
         {
             using var doc = JsonDocument.Parse(body);
@@ -265,25 +186,6 @@ namespace TranslationFiestaCSharp
                 if (sentence.ValueKind == JsonValueKind.Array && sentence.GetArrayLength() > 0)
                 {
                     var part = sentence[0].GetString();
-                    if (!string.IsNullOrEmpty(part)) builder.Append(part);
-                }
-            }
-            return builder.ToString();
-        }
-
-        private static string ParseOfficialResponse(JsonDocument doc)
-        {
-            // Expected shape: { data: { translations: [ { translatedText: "..." }, ... ] } }
-            if (!doc.RootElement.TryGetProperty("data", out var data)) return string.Empty;
-            if (!data.TryGetProperty("translations", out var translations)) return string.Empty;
-            if (translations.ValueKind != JsonValueKind.Array) return string.Empty;
-
-            var builder = new StringBuilder();
-            foreach (var tr in translations.EnumerateArray())
-            {
-                if (tr.TryGetProperty("translatedText", out var textProp))
-                {
-                    var part = textProp.GetString();
                     if (!string.IsNullOrEmpty(part)) builder.Append(part);
                 }
             }

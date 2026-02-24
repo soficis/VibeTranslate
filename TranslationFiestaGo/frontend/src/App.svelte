@@ -3,16 +3,13 @@
 
   const providers = [
     { id: 'local', label: 'Local (Offline)' },
-    { id: 'google_unofficial', label: 'Google Translate (Unofficial / Free)' },
-    { id: 'google_official', label: 'Google Cloud Translate (Official)' }
+    { id: 'google_unofficial', label: 'Google Translate (Unofficial / Free)' }
   ];
 
   let inputText = '';
   let resultText = '';
   let intermediateText = '';
   let providerId = 'google_unofficial';
-  let apiKey = '';
-  let apiKeySaved = false;
   let status = '';
   let localServiceUrl = '';
   let localModelDir = '';
@@ -22,9 +19,6 @@
   onMount(async () => {
     if (window?.go?.main?.App?.GetProviderID) {
       providerId = await window.go.main.App.GetProviderID();
-    }
-    if (window?.go?.main?.App?.GetHasAPIKey) {
-      apiKeySaved = await window.go.main.App.GetHasAPIKey();
     }
     if (window?.go?.main?.App?.GetLocalServiceURL) {
       localServiceUrl = await window.go.main.App.GetLocalServiceURL();
@@ -43,26 +37,6 @@
     if (window?.go?.main?.App?.SetProviderID) {
       await window.go.main.App.SetProviderID(providerId);
     }
-  }
-
-  async function saveApiKey() {
-    if (!window?.go?.main?.App?.SetAPIKey) {
-      return;
-    }
-    await window.go.main.App.SetAPIKey(apiKey);
-    apiKey = '';
-    if (window?.go?.main?.App?.GetHasAPIKey) {
-      apiKeySaved = await window.go.main.App.GetHasAPIKey();
-    }
-  }
-
-  async function clearApiKey() {
-    if (!window?.go?.main?.App?.SetAPIKey) {
-      return;
-    }
-    await window.go.main.App.SetAPIKey('');
-    apiKey = '';
-    apiKeySaved = false;
   }
 
   async function translate() {
@@ -144,27 +118,6 @@
       </select>
     </div>
   </header>
-
-  {#if providerId === 'google_official'}
-    <section class="panel">
-      <div class="panel-row">
-        <div>
-          <label for="api-key">API key</label>
-          <input
-            id="api-key"
-            type="password"
-            bind:value={apiKey}
-            placeholder={apiKeySaved ? 'API key stored' : 'Enter API key'}
-          />
-          <p class="hint">Saved: {apiKeySaved ? 'yes' : 'no'}</p>
-        </div>
-        <div class="actions">
-          <button class="btn secondary" on:click={saveApiKey}>Save</button>
-          <button class="btn ghost" on:click={clearApiKey}>Clear</button>
-        </div>
-      </div>
-    </section>
-  {/if}
 
   {#if providerId === 'local'}
     <section class="panel">

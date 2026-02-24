@@ -34,8 +34,6 @@ func (r *TranslationRepositoryImpl) Translate(ctx context.Context, request entit
 	switch providerID {
 	case entities.ProviderLocal:
 		result, err = r.translationService.TranslateLocal(ctx, request.Text, request.SourceLang, request.TargetLang)
-	case entities.ProviderGoogleOfficial:
-		result, err = r.translationService.TranslateOfficial(ctx, request.Text, request.SourceLang, request.TargetLang, request.APIKey)
 	default:
 		result, err = r.translationService.TranslateUnofficial(ctx, request.Text, request.SourceLang, request.TargetLang)
 	}
@@ -67,22 +65,8 @@ func (r *TranslationRepositoryImpl) TranslateUnofficial(ctx context.Context, tex
 	return result, nil
 }
 
-// TranslateOfficial performs translation using the official Google Cloud Translation API
-func (r *TranslationRepositoryImpl) TranslateOfficial(ctx context.Context, text, sourceLang, targetLang, apiKey string) (*entities.TranslationResult, error) {
-	result, err := r.translationService.TranslateOfficial(ctx, text, sourceLang, targetLang, apiKey)
-	if err != nil {
-		return nil, err
-	}
-
-	result.OriginalText = text
-	result.SourceLang = sourceLang
-	result.TargetLang = targetLang
-
-	return result, nil
-}
-
 // BackTranslate performs a full back-translation (source -> intermediate -> source)
-func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sourceLang, intermediateLang, providerID, apiKey string) (*entities.BackTranslation, error) {
+func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sourceLang, intermediateLang, providerID string) (*entities.BackTranslation, error) {
 	r.logger.Info("Starting back-translation: %s -> %s -> %s", sourceLang, intermediateLang, sourceLang)
 
 	startTime := time.Now()
@@ -103,7 +87,6 @@ func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sou
 		SourceLang: sourceLang,
 		TargetLang: intermediateLang,
 		ProviderID: providerID,
-		APIKey:     apiKey,
 	})
 
 	if err != nil {
@@ -123,7 +106,6 @@ func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sou
 		SourceLang: intermediateLang,
 		TargetLang: sourceLang,
 		ProviderID: providerID,
-		APIKey:     apiKey,
 	})
 
 	if err != nil {
@@ -149,9 +131,4 @@ func (r *TranslationRepositoryImpl) BackTranslate(ctx context.Context, text, sou
 		len(text), len(backTranslation.Intermediate), len(backTranslation.Result), backTranslation.Duration)
 
 	return backTranslation, nil
-}
-
-// DetectLanguage implements the DetectLanguage method
-func (r *TranslationRepositoryImpl) DetectLanguage(ctx context.Context, text string, apiKey string) (string, error) {
-	return r.translationService.DetectLanguage(ctx, text, apiKey)
 }

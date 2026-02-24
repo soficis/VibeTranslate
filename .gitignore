@@ -232,7 +232,6 @@ output.log
 tm_cache.json
 translationfiesta.log
 settings.json
-secure_storage/
 _ct2_tmp/
 _pack_tmp/
 flutter_output.log
@@ -392,11 +391,9 @@ docs/clean-code-dotnet-master.md
 docs/Assumptions.md
 docs/CleanCodePython.md
 docs/cleancodeTS.md
-docs/COST_TRACKING_README.md
 docs/GoCleanCode.md
 docs/translation_contract.md
 docs/UnofficialGoogleProvider.md
-docs/CostTracking.md
 docs/GuiModernization.md
 docs/OfflineModels.md
 docs/antigravity mcp.json

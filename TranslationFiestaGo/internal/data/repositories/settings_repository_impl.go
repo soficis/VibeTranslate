@@ -10,12 +10,10 @@ import (
 	"translationfiestago/internal/utils"
 )
 
-// Settings represents the application settings (API key stored securely)
+// Settings represents the application settings.
 type Settings struct {
 	Theme                string `json:"theme"`
 	ProviderID           string `json:"provider_id"`
-	UseOfficialAPI       bool   `json:"use_official_api"`
-	CostTrackingEnabled  bool   `json:"cost_tracking_enabled"`
 	SourceLanguage       string `json:"source_language"`
 	TargetLanguage       string `json:"target_language"`
 	IntermediateLanguage string `json:"intermediate_language"`
@@ -30,10 +28,9 @@ type Settings struct {
 
 // SettingsRepositoryImpl implements the SettingsRepository interface
 type SettingsRepositoryImpl struct {
-	settingsFile  string
-	settings      *Settings
-	secureStorage repositories.SecureStorage
-	logger        *utils.Logger
+	settingsFile string
+	settings     *Settings
+	logger       *utils.Logger
 }
 
 // NewSettingsRepository creates a new settings repository
@@ -43,8 +40,6 @@ func NewSettingsRepository(settingsFile string) repositories.SettingsRepository 
 		settings: &Settings{
 			Theme:                "light",
 			ProviderID:           entities.ProviderGoogleUnofficial,
-			UseOfficialAPI:       false,
-			CostTrackingEnabled:  false,
 			SourceLanguage:       "en",
 			TargetLanguage:       "ja",
 			IntermediateLanguage: "ja",
@@ -56,8 +51,7 @@ func NewSettingsRepository(settingsFile string) repositories.SettingsRepository 
 			WindowX:              100,
 			WindowY:              100,
 		},
-		secureStorage: NewSecureStorage("TranslationFiestaGo"),
-		logger:        utils.GetLogger(),
+		logger: utils.GetLogger(),
 	}
 
 	// Load existing settings
@@ -125,12 +119,6 @@ func (r *SettingsRepositoryImpl) saveSettings() {
 }
 
 func (r *SettingsRepositoryImpl) applyLocalEnvironment() {
-	if r.settings.CostTrackingEnabled {
-		_ = os.Setenv("TF_COST_TRACKING_ENABLED", "1")
-	} else {
-		_ = os.Setenv("TF_COST_TRACKING_ENABLED", "0")
-	}
-
 	if strings.TrimSpace(r.settings.LocalServiceURL) == "" {
 		_ = os.Unsetenv("TF_LOCAL_URL")
 	} else {
@@ -165,9 +153,6 @@ func (r *SettingsRepositoryImpl) SetTheme(theme string) error {
 func (r *SettingsRepositoryImpl) GetProviderID() string {
 	raw := strings.TrimSpace(r.settings.ProviderID)
 	if raw == "" {
-		if r.settings.UseOfficialAPI {
-			return entities.ProviderGoogleOfficial
-		}
 		return entities.ProviderGoogleUnofficial
 	}
 	return entities.NormalizeProviderID(raw)
@@ -176,63 +161,6 @@ func (r *SettingsRepositoryImpl) GetProviderID() string {
 func (r *SettingsRepositoryImpl) SetProviderID(providerID string) error {
 	normalized := entities.NormalizeProviderID(providerID)
 	r.settings.ProviderID = normalized
-	r.settings.UseOfficialAPI = normalized == entities.ProviderGoogleOfficial
-	r.saveSettings()
-	return nil
-}
-
-func (r *SettingsRepositoryImpl) GetUseOfficialAPI() bool {
-	return r.settings.UseOfficialAPI
-}
-
-func (r *SettingsRepositoryImpl) SetUseOfficialAPI(useOfficial bool) error {
-	r.settings.UseOfficialAPI = useOfficial
-	if useOfficial {
-		r.settings.ProviderID = entities.ProviderGoogleOfficial
-	} else if strings.TrimSpace(r.settings.ProviderID) == "" || r.settings.ProviderID == entities.ProviderGoogleOfficial {
-		r.settings.ProviderID = entities.ProviderGoogleUnofficial
-	}
-	r.saveSettings()
-	return nil
-}
-
-func (r *SettingsRepositoryImpl) GetAPIKey() string {
-	apiKey, err := r.secureStorage.GetAPIKey("main_api_key")
-	if err != nil {
-		r.logger.Debug("Failed to get API key from secure storage: %v", err)
-		return ""
-	}
-	return apiKey
-}
-
-func (r *SettingsRepositoryImpl) SetAPIKey(apiKey string) error {
-	if apiKey == "" {
-		// Delete the API key if empty
-		err := r.secureStorage.DeleteAPIKey("main_api_key")
-		if err != nil {
-			r.logger.Error("Failed to delete API key from secure storage: %v", err)
-			return err
-		}
-		return nil
-	}
-
-	err := r.secureStorage.StoreAPIKey("main_api_key", apiKey)
-	if err != nil {
-		r.logger.Error("Failed to store API key in secure storage: %v", err)
-		return err
-	}
-
-	r.logger.Info("API key stored securely")
-	return nil
-}
-
-func (r *SettingsRepositoryImpl) GetCostTrackingEnabled() bool {
-	return r.settings.CostTrackingEnabled
-}
-
-func (r *SettingsRepositoryImpl) SetCostTrackingEnabled(enabled bool) error {
-	r.settings.CostTrackingEnabled = enabled
-	r.applyLocalEnvironment()
 	r.saveSettings()
 	return nil
 }

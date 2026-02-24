@@ -5,15 +5,14 @@ module TranslationFiesta
     module Entities
       class TranslationResult
         attr_reader :original_text, :first_translation, :back_translation,
-                    :api_type, :cost, :bleu_score, :timestamp
+                    :api_type, :bleu_score, :timestamp
 
         def initialize(original_text:, first_translation:, back_translation:,
-                      api_type:, cost: 0.0, bleu_score: nil, timestamp: Time.now)
+                      api_type:, bleu_score: nil, timestamp: Time.now)
           @original_text = original_text
           @first_translation = first_translation
           @back_translation = back_translation
           @api_type = api_type
-          @cost = cost
           @bleu_score = bleu_score
           @timestamp = timestamp
         end
@@ -37,7 +36,6 @@ module TranslationFiesta
             first_translation: first_translation,
             back_translation: back_translation,
             api_type: api_type,
-            cost: cost,
             bleu_score: bleu_score,
             quality_rating: quality_rating,
             timestamp: timestamp

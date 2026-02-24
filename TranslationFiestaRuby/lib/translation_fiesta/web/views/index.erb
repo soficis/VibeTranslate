@@ -82,7 +82,6 @@
         <select id="api-type" class="form-control select">
           <option value="local">Local (Offline)</option>
           <option value="google_unofficial">Google Translate (Unofficial / Free)</option>
-          <option value="google_official">Google Cloud Translate (Official)</option>
         </select>
       </div>
 
@@ -133,12 +132,6 @@
             <div class="metric-value" id="quality-rating">--</div>
             <div class="metric-label">Quality</div>
           </div>
-          <% if ENV['TF_COST_TRACKING_ENABLED'] == '1' %>
-            <div class="metric-card">
-              <div class="metric-value" id="translation-cost">$0.0000</div>
-              <div class="metric-label">Cost</div>
-            </div>
-          <% end %>
           <div class="metric-card">
             <div class="metric-value" id="character-count">--</div>
             <div class="metric-label">Characters</div>
@@ -209,60 +202,6 @@
 <!-- Analytics Tab -->
 <div id="analytics-tab" class="tab-content">
   <div class="grid grid-cols-1 gap-6">
-    <% if ENV['TF_COST_TRACKING_ENABLED'] == '1' %>
-    <!-- Cost Tracking Dashboard -->
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Cost Tracking Dashboard</h2>
-        <p class="card-description">Monitor your translation API usage and costs</p>
-      </div>
-
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-value" id="monthly-cost">$0.00</div>
-          <div class="metric-label">This Month</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value" id="budget-remaining">$10.00</div>
-          <div class="metric-label">Budget Remaining</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value" id="budget-usage">0%</div>
-          <div class="metric-label">Budget Used</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value" id="total-characters">0</div>
-          <div class="metric-label">Characters</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <div class="flex justify-between mb-2">
-          <span class="text-sm font-medium">Monthly Budget Usage</span>
-        </div>
-        <div class="progress">
-          <div class="progress-bar" id="budget-progress-bar" style="width: 0%"></div>
-        </div>
-        <div class="mt-2">
-          <div id="budget-warning" class="alert alert-warning hidden">
-            You've used over 80% of your monthly budget
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <div class="metric-card">
-          <div class="metric-value" id="unofficial-usage">0</div>
-          <div class="metric-label">Unofficial API Calls</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value" id="official-usage">$0.00</div>
-          <div class="metric-label">Official API Cost</div>
-        </div>
-      </div>
-    </div>
-    <% end %>
-
     <!-- Translation Memory Stats -->
     <div class="card">
       <div class="card-header">
@@ -278,10 +217,6 @@
         <div class="metric-card">
           <div class="metric-value" id="cache-hit-rate">0%</div>
           <div class="metric-label">Hit Rate</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value" id="cache-savings">$0.00</div>
-          <div class="metric-label">Cost Savings</div>
         </div>
         <div class="metric-card">
           <div class="metric-value" id="cache-size">0 KB</div>
@@ -313,7 +248,6 @@
         <select id="default-api" class="form-control select">
           <option value="local">Local (Offline)</option>
           <option value="google_unofficial">Google Translate (Unofficial / Free)</option>
-          <option value="google_official">Google Cloud Translate (Official)</option>
         </select>
       </div>
 
@@ -326,28 +260,6 @@
       <div class="form-group">
         <button class="btn btn-primary" onclick="saveSettings()">
           Save Settings
-        </button>
-      </div>
-    </div>
-
-    <!-- API Configuration -->
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">API Configuration</h2>
-        <p class="card-description">Configure Google Cloud Translation API</p>
-      </div>
-
-      <div class="alert alert-warning">
-        <strong>Note:</strong> API keys are stored securely on the server. The unofficial API is free but rate-limited.
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Google Cloud Translation API</label>
-        <div class="text-sm text-muted mb-2">
-          To use the official API, set the GOOGLE_APPLICATION_CREDENTIALS environment variable to point to your service account JSON file.
-        </div>
-        <button class="btn btn-secondary btn-sm" onclick="testApiConnection()">
-          Test API Connection
         </button>
       </div>
     </div>
@@ -486,8 +398,7 @@
           <h3 class="card-title">${item.filename}</h3>
           <p class="card-description">
             Quality: ${item.result.quality_rating} | 
-            BLEU: ${item.result.bleu_score ? formatPercentage(item.result.bleu_score * 100) : 'N/A'} | 
-            Cost: ${formatCurrency(item.result.cost)}
+            BLEU: ${item.result.bleu_score ? formatPercentage(item.result.bleu_score * 100) : 'N/A'}
           </p>
         </div>
         <div class="result-text">${item.result.back_translation}</div>
@@ -542,8 +453,6 @@
     document.getElementById('bleu-score').textContent = result.bleu_score ? 
       formatPercentage(result.bleu_score * 100) : 'N/A';
     document.getElementById('quality-rating').textContent = result.quality_rating || 'N/A';
-    const costEl = document.getElementById('translation-cost');
-    if (costEl) costEl.textContent = formatCurrency(result.cost || 0);
     document.getElementById('character-count').textContent = result.original_text.length.toLocaleString();
   }
 
@@ -607,25 +516,10 @@
   async function loadAnalytics() {
     try {
       const data = await apiCall('/api/analytics');
-      const ct = data.cost_tracking;
       const tm = data.translation_memory;
-      
-      if (ct) {
-        document.getElementById('monthly-cost').textContent = formatCurrency(ct.monthly_cost);
-        document.getElementById('budget-remaining').textContent = formatCurrency(ct.budget_remaining);
-        document.getElementById('budget-usage').textContent = formatPercentage(ct.budget_usage);
-        document.getElementById('total-characters').textContent = ct.total_characters.toLocaleString();
-        document.getElementById('unofficial-usage').textContent = ct.unofficial_usage.toString();
-        document.getElementById('official-usage').textContent = formatCurrency(ct.official_cost);
-        document.getElementById('budget-progress-bar').style.width = `${ct.budget_usage}%`;
-        if (ct.budget_usage > 80) {
-          document.getElementById('budget-warning').classList.remove('hidden');
-        }
-      }
       
       document.getElementById('cache-entries').textContent = tm.cache_entries.toString();
       document.getElementById('cache-hit-rate').textContent = formatPercentage(tm.hit_rate);
-      document.getElementById('cache-savings').textContent = formatCurrency(tm.savings);
       document.getElementById('cache-size').textContent = `${tm.cache_size_kb} KB`;
     } catch (error) {
       console.error('Failed to load analytics:', error);
@@ -696,13 +590,6 @@
     } catch (error) {
       updateLocalModelStatus(error.message);
     }
-  }
-
-  function testApiConnection() {
-    showNotification('API connection test started...', 'success');
-    setTimeout(() => {
-      showNotification('API connection successful!', 'success');
-    }, 2000);
   }
 
   function clearTranslationMemory() {

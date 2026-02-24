@@ -17,14 +17,12 @@ class ControlPanel extends StatefulWidget {
 }
 
 class _ControlPanelState extends State<ControlPanel> {
-  late TextEditingController _apiKeyController;
   late TextEditingController _localUrlController;
   late TextEditingController _localDirController;
 
   @override
   void initState() {
     super.initState();
-    _apiKeyController = TextEditingController();
     _localUrlController = TextEditingController();
     _localDirController = TextEditingController();
   }
@@ -33,14 +31,12 @@ class _ControlPanelState extends State<ControlPanel> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final provider = context.read<TranslationProvider>();
-    _apiKeyController.text = provider.apiKey;
     _localUrlController.text = provider.localServiceUrl;
     _localDirController.text = provider.localModelDir;
   }
 
   @override
   void dispose() {
-    _apiKeyController.dispose();
     _localUrlController.dispose();
     _localDirController.dispose();
     super.dispose();
@@ -81,33 +77,9 @@ class _ControlPanelState extends State<ControlPanel> {
                         ? null
                         : (value) {
                             if (value != null) {
-                              provider.updateApiConfiguration(
-                                value,
-                                provider.apiKey,
-                              );
+                              provider.updateApiConfiguration(value);
                             }
                           },
-                  ),
-                ),
-
-                const SizedBox(width: 16),
-
-                // API Key Input
-                Expanded(
-                  child: TextField(
-                    controller: _apiKeyController,
-                    onChanged: (value) => provider.updateApiConfiguration(
-                      provider.providerId,
-                      value,
-                    ),
-                    obscureText: true,
-                    enabled:
-                        provider.providerId.isOfficial && !provider.isLoading,
-                    decoration: const InputDecoration(
-                      labelText: 'API Key',
-                      hintText: 'Enter Google Cloud API key',
-                      border: OutlineInputBorder(),
-                    ),
                   ),
                 ),
               ],

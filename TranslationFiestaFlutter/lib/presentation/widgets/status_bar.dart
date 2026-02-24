@@ -49,7 +49,6 @@ class StatusBar extends StatelessWidget {
           const SizedBox(width: 12),
           _ApiStatusIndicator(
             providerId: provider.providerId,
-            hasApiKey: provider.apiKey.isNotEmpty,
           ),
         ],
       ),
@@ -60,11 +59,9 @@ class StatusBar extends StatelessWidget {
 /// API status indicator widget
 class _ApiStatusIndicator extends StatelessWidget {
   final TranslationProviderId providerId;
-  final bool hasApiKey;
 
   const _ApiStatusIndicator({
     required this.providerId,
-    required this.hasApiKey,
   });
 
   @override
@@ -93,25 +90,16 @@ class _ApiStatusIndicator extends StatelessWidget {
   }
 
   Color _getStatusColor() {
-    if (providerId == TranslationProviderId.googleOfficial && !hasApiKey) {
-      return Colors.orange;
-    }
     return Colors.green;
   }
 
   IconData _getStatusIcon() {
-    if (providerId == TranslationProviderId.googleOfficial && !hasApiKey) {
-      return Icons.warning;
-    }
     return Icons.check_circle;
   }
 
   String _getStatusText() {
     if (providerId == TranslationProviderId.local) {
       return 'Local (Offline)';
-    }
-    if (providerId == TranslationProviderId.googleOfficial) {
-      return hasApiKey ? 'Official API' : 'API Key Required';
     }
     return 'Unofficial API';
   }

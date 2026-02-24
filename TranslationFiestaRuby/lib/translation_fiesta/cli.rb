@@ -30,12 +30,11 @@ module TranslationFiesta
         opts.separator "  translate TEXT           Translate text and show results"
         opts.separator "  file FILE_PATH           Process a single file"
         opts.separator "  batch DIRECTORY          Process all files in directory"
-        opts.separator "  cost                     Show cost summary"
         opts.separator ""
         opts.separator "Options:"
 
-        opts.on('-a', '--api API_TYPE', ['unofficial', 'official', 'local'],
-                'API type to use (unofficial, official, local)') do |api|
+        opts.on('-a', '--api API_TYPE', ['unofficial', 'local'],
+                'API type to use (unofficial, local)') do |api|
           @options[:api_type] = api.to_sym
         end
 
@@ -83,8 +82,6 @@ module TranslationFiesta
         process_file_command
       when 'batch'
         batch_process_command
-      when 'cost'
-        show_cost_command
       else
         puts "Unknown command: #{command}"
         show_help
@@ -158,25 +155,6 @@ module TranslationFiesta
       end
     end
 
-    def show_cost_command
-      summary = container.cost_tracker.get_monthly_summary
-      
-      puts "Cost Summary for #{Date.today.strftime('%B %Y')}:"
-      puts "─" * 40
-      puts "Total Cost: $#{summary[:total_cost].round(4)}"
-      puts "Budget Used: #{summary[:budget_used_percentage]}%"
-      puts "Budget Remaining: $#{summary[:budget_remaining].round(4)}"
-      puts "Total Characters: #{summary[:total_characters]}"
-      puts "Total Entries: #{summary[:entries_count]}"
-      
-      if summary[:api_breakdown].any?
-        puts "\nBreakdown by API:"
-        summary[:api_breakdown].each do |breakdown|
-          puts "  #{breakdown[:api_type]}: $#{breakdown[:total_cost].round(4)} (#{breakdown[:total_characters]} chars)"
-        end
-      end
-    end
-
     def display_translation_result(result)
       puts "\n" + "─" * 60
       puts "TRANSLATION RESULT"
@@ -195,7 +173,6 @@ module TranslationFiesta
       puts "  BLEU Score: #{result.bleu_score ? (result.bleu_score * 100).round(2) : 'N/A'}%"
       puts "  Quality Rating: #{result.quality_rating}"
       puts "  API Used: #{result.api_type.to_s.capitalize}"
-      puts "  Cost: $#{result.cost.round(4)}"
       puts "  Timestamp: #{result.timestamp}"
       puts "─" * 60
     end
@@ -213,7 +190,6 @@ module TranslationFiesta
       puts "  #{$0} translate 'Hello world'"
       puts "  #{$0} file sample.txt"
       puts "  #{$0} batch /path/to/directory"
-      puts "  #{$0} cost"
       puts ""
       puts "For more options, use: #{$0} --help"
     end

@@ -22,7 +22,6 @@ type TranslationRequest struct {
 	SourceLang string
 	TargetLang string
 	ProviderID string
-	APIKey     string
 }
 
 // TranslationResult represents the result of a translation operation

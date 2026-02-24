@@ -1,4 +1,4 @@
-export type ProviderId = "local" | "google_unofficial" | "google_official";
+export type ProviderId = "local" | "google_unofficial";
 
 type Entry = {
   key: string;

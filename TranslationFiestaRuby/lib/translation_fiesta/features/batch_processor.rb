@@ -136,7 +136,6 @@ module TranslationFiesta
           - BLEU Score: #{result.bleu_score ? (result.bleu_score * 100).round(2) : 'N/A'}%
           - Quality Rating: #{result.quality_rating}
           - API Used: #{result.api_type.to_s.capitalize}
-          - Cost: $#{result.cost.round(4)}
           - Timestamp: #{result.timestamp}
         CONTENT
       end

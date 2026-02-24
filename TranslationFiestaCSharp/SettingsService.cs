@@ -8,8 +8,6 @@ namespace TranslationFiestaCSharp
     {
         public bool DarkMode { get; set; } = false;
         public string ProviderId { get; set; } = ProviderIds.GoogleUnofficial;
-        public bool UseOfficialApi { get; set; } = false;
-        public bool EnableCostTracking { get; set; } = false;
         public string LocalServiceUrl { get; set; } = "";
         public string LocalModelDir { get; set; } = "";
         public bool LocalAutoStart { get; set; } = true;
@@ -45,11 +43,11 @@ namespace TranslationFiestaCSharp
                 _cached = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
                 if (string.IsNullOrWhiteSpace(_cached.ProviderId))
                 {
-                    _cached.ProviderId = _cached.UseOfficialApi ? ProviderIds.GoogleOfficial : ProviderIds.GoogleUnofficial;
+                    _cached.ProviderId = ProviderIds.GoogleUnofficial;
                 }
                 _cached.ProviderId = ProviderIds.Normalize(_cached.ProviderId);
                 Logger.Info("Settings loaded successfully.");
-                Logger.Debug($"Loaded settings: DarkMode={_cached.DarkMode}, ProviderId={_cached.ProviderId}, UseOfficialApi={_cached.UseOfficialApi}, WindowSize={_cached.WindowWidth}x{_cached.WindowHeight}");
+                Logger.Debug($"Loaded settings: DarkMode={_cached.DarkMode}, ProviderId={_cached.ProviderId}, WindowSize={_cached.WindowWidth}x{_cached.WindowHeight}");
                 return _cached;
             }
             catch (Exception ex)
@@ -74,7 +72,7 @@ namespace TranslationFiestaCSharp
                 File.WriteAllText(SettingsPath, json);
                 _cached = settings;
                 Logger.Info("Settings saved successfully.");
-                Logger.Debug($"Saved settings: DarkMode={settings.DarkMode}, ProviderId={settings.ProviderId}, UseOfficialApi={settings.UseOfficialApi}, WindowSize={settings.WindowWidth}x{settings.WindowHeight}");
+                Logger.Debug($"Saved settings: DarkMode={settings.DarkMode}, ProviderId={settings.ProviderId}, WindowSize={settings.WindowWidth}x{settings.WindowHeight}");
             }
             catch (Exception ex)
             {
@@ -88,7 +86,6 @@ namespace TranslationFiestaCSharp
             var normalizedProvider = ProviderIds.Normalize(providerId);
             current.DarkMode = darkMode;
             current.ProviderId = normalizedProvider;
-            current.UseOfficialApi = ProviderIds.IsOfficial(normalizedProvider);
             current.WindowWidth = width;
             current.WindowHeight = height;
             current.WindowX = x;
@@ -96,12 +93,6 @@ namespace TranslationFiestaCSharp
             current.LastFilePath = lastFilePath;
             current.LastSavePath = lastSavePath;
             Save(current);
-        }
-
-        public static void SaveCurrentSettings(bool darkMode, bool useOfficialApi, int width, int height, int x, int y, string lastFilePath = "", string lastSavePath = "")
-        {
-            var providerId = useOfficialApi ? ProviderIds.GoogleOfficial : ProviderIds.GoogleUnofficial;
-            SaveCurrentSettings(darkMode, providerId, width, height, x, y, lastFilePath, lastSavePath);
         }
     }
 }

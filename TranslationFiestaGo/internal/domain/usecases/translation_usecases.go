@@ -25,7 +25,7 @@ func NewTranslationUseCases(translationRepo repositories.TranslationRepository, 
 }
 
 // Translate performs a single translation
-func (uc *TranslationUseCases) Translate(ctx context.Context, text, sourceLang, targetLang, providerID, apiKey string) (*entities.TranslationResult, error) {
+func (uc *TranslationUseCases) Translate(ctx context.Context, text, sourceLang, targetLang, providerID string) (*entities.TranslationResult, error) {
 	if text == "" {
 		return nil, fmt.Errorf("text cannot be empty")
 	}
@@ -42,7 +42,7 @@ func (uc *TranslationUseCases) Translate(ctx context.Context, text, sourceLang, 
 
 	if sourceLang == "" {
 		var err error
-		sourceLang, err = uc.DetectLanguage(ctx, text, normalizedProvider, apiKey)
+		sourceLang, err = uc.DetectLanguage(ctx, text)
 		if err != nil {
 			return nil, fmt.Errorf("failed to detect language: %w", err)
 		}
@@ -53,7 +53,6 @@ func (uc *TranslationUseCases) Translate(ctx context.Context, text, sourceLang, 
 		SourceLang: sourceLang,
 		TargetLang: targetLang,
 		ProviderID: normalizedProvider,
-		APIKey:     apiKey,
 	}
 
 	return uc.translationRepo.Translate(ctx, request)
@@ -76,12 +75,9 @@ func (uc *TranslationUseCases) validateLanguage(lang string) bool {
 	return true
 }
 
-// DetectLanguage delegates to the repository
-func (uc *TranslationUseCases) DetectLanguage(ctx context.Context, text, providerID, apiKey string) (string, error) {
-	if !entities.IsOfficialProvider(providerID) {
-		return "en", nil
-	}
-	return uc.translationRepo.DetectLanguage(ctx, text, apiKey)
+// DetectLanguage returns the default source language.
+func (uc *TranslationUseCases) DetectLanguage(_ context.Context, _ string) (string, error) {
+	return "en", nil
 }
 
 // BackTranslate performs a full back-translation
@@ -101,11 +97,10 @@ func (uc *TranslationUseCases) BackTranslate(ctx context.Context, text string) (
 	}
 
 	providerID := uc.settingsRepo.GetProviderID()
-	apiKey := uc.settingsRepo.GetAPIKey()
 
 	startTime := time.Now()
 
-	result, err := uc.translationRepo.BackTranslate(ctx, text, sourceLang, intermediateLang, providerID, apiKey)
+	result, err := uc.translationRepo.BackTranslate(ctx, text, sourceLang, intermediateLang, providerID)
 
 	if result != nil {
 		result.Duration = time.Since(startTime)

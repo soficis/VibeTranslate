@@ -52,13 +52,6 @@ class TranslationFailure extends Failure {
     );
   }
 
-  factory TranslationFailure.apiKeyRequired() {
-    return TranslationFailure(
-      message: 'API key required for official endpoint',
-      code: 'API_KEY_REQUIRED',
-    );
-  }
-
   factory TranslationFailure.localProviderUnavailable(String details) {
     return TranslationFailure(
       message: 'Local provider unavailable: $details',

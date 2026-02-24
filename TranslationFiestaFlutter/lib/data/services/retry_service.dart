@@ -22,13 +22,12 @@ class RetryService {
     required String operationName,
     required void Function(String) statusCallback,
   }) async {
-    if (!config.isValid) {
-      return Left(TranslationFailure.apiKeyRequired());
-    }
+    final maxAttempts = config.maxRetries < 1 ? 1 : config.maxRetries;
 
     return _executeWithRetryLoop(
       operation,
-      4,
+      maxAttempts,
+      maxAttempts,
       operationName,
       statusCallback,
     );
@@ -38,11 +37,11 @@ class RetryService {
   Future<Result<T>> _executeWithRetryLoop<T>(
     Future<Result<T>> Function() operation,
     int remainingAttempts,
+    int maxAttempts,
     String operationName,
     void Function(String) statusCallback,
   ) async {
-    final attemptNumber =
-        4 - remainingAttempts + 1; // Using default max retries
+    final attemptNumber = maxAttempts - remainingAttempts + 1;
 
     try {
       final result = await operation();
@@ -62,7 +61,7 @@ class RetryService {
 
       statusCallback(
         'Error. Retrying in ${delaySeconds.toStringAsFixed(1)}s '
-        '(attempt $attemptNumber/${4})',
+        '(attempt $attemptNumber/$maxAttempts)',
       );
 
       await Future.delayed(delay);
@@ -70,6 +69,7 @@ class RetryService {
       return _executeWithRetryLoop(
         operation,
         remainingAttempts - 1,
+        maxAttempts,
         operationName,
         statusCallback,
       );
@@ -87,7 +87,7 @@ class RetryService {
 
       statusCallback(
         'Error. Retrying in ${delaySeconds.toStringAsFixed(1)}s '
-        '(attempt $attemptNumber/${4})',
+        '(attempt $attemptNumber/$maxAttempts)',
       );
 
       await Future.delayed(delay);
@@ -95,6 +95,7 @@ class RetryService {
       return _executeWithRetryLoop(
         operation,
         remainingAttempts - 1,
+        maxAttempts,
         operationName,
         statusCallback,
       );

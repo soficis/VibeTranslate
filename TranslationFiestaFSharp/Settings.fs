@@ -15,8 +15,6 @@ module Settings =
     type AppSettings = {
         IsDarkTheme: bool
         ProviderId: string
-        UseOfficialApi: bool
-        CostTrackingEnabled: bool
         LocalServiceUrl: string
         LocalModelDir: string
         LocalAutoStart: bool
@@ -47,7 +45,7 @@ module Settings =
                 | settings ->
                     let normalized =
                         if String.IsNullOrWhiteSpace settings.ProviderId then
-                            if settings.UseOfficialApi then ProviderIds.GoogleOfficial else ProviderIds.GoogleUnofficial
+                            ProviderIds.GoogleUnofficial
                         else
                             ProviderIds.normalize settings.ProviderId
                     let serviceUrl =
@@ -59,7 +57,6 @@ module Settings =
                     Success {
                         settings with
                             ProviderId = normalized
-                            UseOfficialApi = ProviderIds.isOfficial normalized
                             LocalServiceUrl = serviceUrl
                             LocalModelDir = modelDir
                     }
@@ -68,8 +65,6 @@ module Settings =
                 Success {
                     IsDarkTheme = false
                     ProviderId = ProviderIds.GoogleUnofficial
-                    UseOfficialApi = false
-                    CostTrackingEnabled = false
                     LocalServiceUrl = ""
                     LocalModelDir = ""
                     LocalAutoStart = true

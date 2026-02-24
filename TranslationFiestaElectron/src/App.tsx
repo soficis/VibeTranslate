@@ -1,15 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { translateUnofficialGoogle } from "./providers/googleUnofficial";
-import { translateOfficialGoogle } from "./providers/googleOfficial";
 import { translateLocal } from "./providers/local";
 import * as tm from "./translationMemory";
 
-type ProviderId = "local" | "google_unofficial" | "google_official";
+type ProviderId = "local" | "google_unofficial";
 
 const providerOptions: { id: ProviderId; label: string }[] = [
   { id: "local", label: "Local (Offline)" },
-  { id: "google_unofficial", label: "Google Translate (Unofficial / Free)" },
-  { id: "google_official", label: "Google Cloud Translate (Official)" }
+  { id: "google_unofficial", label: "Google Translate (Unofficial / Free)" }
 ];
 
 const translateWithProvider = async (
@@ -17,14 +15,11 @@ const translateWithProvider = async (
   text: string,
   source: string,
   target: string,
-  apiKey: string,
   signal?: AbortSignal
 ) => {
   switch (providerId) {
     case "local":
       return translateLocal(text, source, target, { signal });
-    case "google_official":
-      return translateOfficialGoogle(text, source, target, apiKey, { signal });
     default:
       return translateUnofficialGoogle(text, source, target, { signal });
   }
@@ -32,8 +27,6 @@ const translateWithProvider = async (
 
 const App: React.FC = () => {
   const [providerId, setProviderId] = useState<ProviderId>("google_unofficial");
-  const [apiKey, setApiKey] = useState("");
-  const [savedApiKey, setSavedApiKey] = useState("");
   const [inputText, setInputText] = useState("");
   const [intermediateText, setIntermediateText] = useState("");
   const [outputText, setOutputText] = useState("");
@@ -57,10 +50,6 @@ const App: React.FC = () => {
         const settings = await bridge.load();
         if (providerOptions.some((option) => option.id === settings.providerId)) {
           setProviderId(settings.providerId as ProviderId);
-        }
-        if (settings.apiKey) {
-          setApiKey(settings.apiKey);
-          setSavedApiKey(settings.apiKey);
         }
         return;
       }
@@ -91,32 +80,6 @@ const App: React.FC = () => {
     if (providerId !== "local") return;
     void refreshLocalModels();
   }, [providerId, refreshLocalModels]);
-
-  const handleSaveApiKey = useCallback(async () => {
-    if (!window.translationFiesta?.settings) {
-      setSavedApiKey(apiKey);
-      return;
-    }
-    const result = await window.translationFiesta.settings.setApiKey(apiKey);
-    if (!result.ok) {
-      setStatus(result.error ?? "Failed to save API key");
-      return;
-    }
-    setSavedApiKey(apiKey);
-    setStatus("API key saved");
-  }, [apiKey]);
-
-  const handleClearApiKey = useCallback(async () => {
-    setApiKey("");
-    setSavedApiKey("");
-    if (!window.translationFiesta?.settings) return;
-    const result = await window.translationFiesta.settings.clearApiKey();
-    if (!result.ok) {
-      setStatus(result.error ?? "Failed to clear API key");
-    } else {
-      setStatus("API key cleared");
-    }
-  }, []);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();
@@ -186,7 +149,6 @@ const App: React.FC = () => {
           file.content,
           "en",
           "ja",
-          apiKey,
           batchAbortRef.current?.signal
         );
         const back = await translateWithProvider(
@@ -194,7 +156,6 @@ const App: React.FC = () => {
           forward,
           "ja",
           "en",
-          apiKey,
           batchAbortRef.current?.signal
         );
         results.push({ path: file.path, intermediate: forward, output: back });
@@ -209,7 +170,7 @@ const App: React.FC = () => {
 
     setBatchResults(results);
     setBatchStatus(batchAbortRef.current?.signal.aborted ? "Batch cancelled" : "Batch completed");
-  }, [apiKey, batchFiles, providerId]);
+  }, [batchFiles, providerId]);
 
   const handleBatchExport = useCallback(async () => {
     if (!window.translationFiesta?.files) return;
@@ -268,14 +229,14 @@ const App: React.FC = () => {
     try {
       const cachedForward = tm.lookup(providerId, "en", "ja", inputText);
       const forward =
-        cachedForward ?? (await translateWithProvider(providerId, inputText, "en", "ja", apiKey, abortRef.current.signal));
+        cachedForward ?? (await translateWithProvider(providerId, inputText, "en", "ja", abortRef.current.signal));
       if (!cachedForward) tm.store(providerId, "en", "ja", inputText, forward);
       if (runId !== runIdRef.current) return;
       setIntermediateText(forward);
       setStatus("Translating back to English...");
       const cachedBack = tm.lookup(providerId, "ja", "en", forward);
       const back =
-        cachedBack ?? (await translateWithProvider(providerId, forward, "ja", "en", apiKey, abortRef.current.signal));
+        cachedBack ?? (await translateWithProvider(providerId, forward, "ja", "en", abortRef.current.signal));
       if (!cachedBack) tm.store(providerId, "ja", "en", forward, back);
       if (runId !== runIdRef.current) return;
       setOutputText(back);
@@ -290,7 +251,7 @@ const App: React.FC = () => {
     } finally {
       setIsBusy(false);
     }
-  }, [apiKey, inputText, providerId]);
+  }, [inputText, providerId]);
 
   return (
     <div className="app">
@@ -314,27 +275,6 @@ const App: React.FC = () => {
           </select>
         </div>
       </header>
-
-      <section className="panel">
-        <label htmlFor="apiKey">API key (official only)</label>
-        <div className="actions">
-          <input
-            id="apiKey"
-            type="password"
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-            disabled={providerId !== "google_official"}
-            placeholder={providerId === "google_official" ? "Enter API key" : "Not required"}
-          />
-          <button onClick={handleSaveApiKey} disabled={providerId !== "google_official" || apiKey === savedApiKey}>
-            Save
-          </button>
-          <button onClick={handleClearApiKey} disabled={providerId !== "google_official" || (!apiKey && !savedApiKey)}>
-            Clear
-          </button>
-        </div>
-      </section>
-
       {providerId === "local" && (
         <section className="panel">
           <h2>Local Model Status</h2>

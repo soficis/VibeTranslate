@@ -36,7 +36,7 @@ jobs:
         run: |
           PYTHONPATH=. pytest -q -s TranslationFiestaLocal/tests
           cd TranslationFiestaPy
-          pytest -q -s test_secure_storage.py test_theme.py
+          pytest -q -s test_unofficial_provider.py test_theme.py
 
   go:
     runs-on: ubuntu-latest

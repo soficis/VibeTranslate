@@ -9,8 +9,7 @@ module TranslationFiesta
       DEFAULTS = {
         'local_service_url' => '',
         'local_model_dir' => '',
-        'local_auto_start' => true,
-        'cost_tracking_enabled' => false
+        'local_auto_start' => true
       }.freeze
 
       def initialize(path = nil)
@@ -38,7 +37,6 @@ module TranslationFiesta
         url = settings['local_service_url'].to_s.strip
         model_dir = settings['local_model_dir'].to_s.strip
         auto_start = settings.fetch('local_auto_start', true)
-        cost_tracking = settings.fetch('cost_tracking_enabled', false)
 
         ENV['TF_LOCAL_URL'] = url unless url.empty?
         ENV.delete('TF_LOCAL_URL') if url.empty?
@@ -47,7 +45,6 @@ module TranslationFiesta
         ENV.delete('TF_LOCAL_MODEL_DIR') if model_dir.empty?
 
         ENV['TF_LOCAL_AUTOSTART'] = auto_start ? '1' : '0'
-        ENV['TF_COST_TRACKING_ENABLED'] = cost_tracking ? '1' : '0'
       end
     end
   end

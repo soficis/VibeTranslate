@@ -188,25 +188,13 @@ module TranslationFiesta
       end
 
       get '/api/analytics' do
-        # Mock analytics data - in real implementation, this would come from the database
         payload = {
           translation_memory: {
             cache_entries: 78,
             hit_rate: 32.0,
-            savings: 1.23,
             cache_size_kb: 245
           }
         }
-        if ENV['TF_COST_TRACKING_ENABLED'] == '1'
-          payload[:cost_tracking] = {
-            monthly_cost: 2.45,
-            budget_remaining: 7.55,
-            budget_usage: 24.5,
-            total_characters: 125750,
-            unofficial_usage: 143,
-            official_cost: 2.45
-          }
-        end
         json(payload)
       end
 
@@ -219,8 +207,7 @@ module TranslationFiesta
         saved = local_settings_store.save(
           'local_service_url' => payload['local_service_url'].to_s,
           'local_model_dir' => payload['local_model_dir'].to_s,
-          'local_auto_start' => payload.fetch('local_auto_start', true),
-          'cost_tracking_enabled' => payload.fetch('cost_tracking_enabled', false)
+          'local_auto_start' => payload.fetch('local_auto_start', true)
         )
         apply_local_settings(saved)
         json(saved)
@@ -283,7 +270,6 @@ module TranslationFiesta
           bleu_score: r.bleu_score,
           quality_rating: r.quality_rating,
           api_type: r.api_type,
-          cost: ENV['TF_COST_TRACKING_ENABLED'] == '1' ? r.cost : nil,
           timestamp: r.timestamp
         }
       end

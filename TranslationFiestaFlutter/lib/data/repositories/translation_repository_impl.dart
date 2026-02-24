@@ -1,8 +1,6 @@
 library;
 
-import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../core/constants/app_constants.dart';
 import '../../core/errors/either.dart';
 import '../../core/errors/failure.dart';
 import '../../core/utils/logger.dart';
@@ -15,7 +13,6 @@ import '../services/retry_service.dart';
 /// Single Responsibility: Coordinate translation operations with services
 class TranslationRepositoryImpl implements TranslationRepository {
   final UnofficialGoogleTranslateService _unofficialService;
-  final OfficialGoogleTranslateService _officialService;
   final LocalTranslationService _localService;
   final RetryService _retryService;
   final http.Client _httpClient;
@@ -23,7 +20,6 @@ class TranslationRepositoryImpl implements TranslationRepository {
 
   TranslationRepositoryImpl(this._httpClient)
       : _unofficialService = UnofficialGoogleTranslateService(_httpClient),
-        _officialService = OfficialGoogleTranslateService(_httpClient),
         _localService = LocalTranslationService(_httpClient),
         _retryService = RetryService();
 
@@ -70,8 +66,6 @@ class TranslationRepositoryImpl implements TranslationRepository {
     switch (providerId) {
       case TranslationProviderId.local:
         return _localService;
-      case TranslationProviderId.googleOfficial:
-        return _officialService;
       case TranslationProviderId.googleUnofficial:
         return _unofficialService;
     }
@@ -153,63 +147,12 @@ class TranslationRepositoryImpl implements TranslationRepository {
   @override
   Future<Result<String>> detectLanguage(
     String text,
-    ApiConfiguration config,
+    ApiConfiguration _config,
   ) async {
     if (text.trim().isEmpty) {
       return Left(AppFailure(message: 'Text is empty'));
     }
-
-    if (config.providerId != TranslationProviderId.googleOfficial ||
-        config.apiKey == null ||
-        config.apiKey!.isEmpty) {
-      return Left(
-        AppFailure(message: 'Official API and key required for detection'),
-      );
-    }
-
-    final url = Uri.parse(
-      '${AppConstants.officialTranslateBaseUrl}/detect?key=${config.apiKey}',
-    );
-    final payload = {
-      'q': text,
-    };
-
-    try {
-      final response = await _httpClient
-          .post(
-            url,
-            headers: {'Content-Type': AppConstants.jsonContentType},
-            body: json.encode(payload),
-          )
-          .timeout(config.timeout);
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return Left(
-          NetworkFailure.fromHttpError(response.statusCode, response.body),
-        );
-      }
-
-      final jsonResponse = json.decode(response.body);
-      final data = jsonResponse['data'];
-      if (data == null) {
-        return Left(TranslationFailure.invalidResponse('Missing data field'));
-      }
-
-      final translations = data['translations'] as List<dynamic>?;
-      if (translations == null || translations.isEmpty) {
-        return Left(TranslationFailure.noTranslationFound());
-      }
-
-      final detected =
-          translations[0]['detectedSourceLanguage']?.toString() ?? 'en';
-      if (detected.isEmpty) {
-        return Left(TranslationFailure.noTranslationFound());
-      }
-
-      return Right(detected);
-    } catch (e) {
-      return Left(NetworkFailure(message: 'Detection error: $e'));
-    }
+    return const Right('en');
   }
 
   Future<Result<String>> getLocalModelsStatus(ApiConfiguration config) async {

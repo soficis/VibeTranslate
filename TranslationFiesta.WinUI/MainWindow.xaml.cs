@@ -40,15 +40,6 @@ namespace TranslationFiesta.WinUI
             _settings = SettingsService.Load();
             ApplyLocalSettings(_settings);
 
-            CostTrackingPanel.Visibility = _settings.CostTrackingEnabled && _settings.ShowCostInUI
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-
-            if (_settings.CostTrackingEnabled)
-            {
-                _translator.CostTracker.SetMonthlyBudget(_settings.MonthlyBudget);
-            }
-
             InitializeProviderSelector();
 
             // Wire up event handlers
@@ -78,9 +69,6 @@ namespace TranslationFiesta.WinUI
            // Initialize format selector
            InitializeFormatSelector();
 
-            // Initialize cost display
-            UpdateCostDisplay();
-
             _templateManager = new TemplateManager();
             _ = LoadTemplatesAsync();
 
@@ -93,7 +81,6 @@ namespace TranslationFiesta.WinUI
         {
             LocalServiceClient.ApplyEnvironment(settings.LocalServiceUrl, settings.LocalModelDir, settings.LocalAutoStart);
             _translator.ApplyLocalSettings(settings.LocalServiceUrl, settings.LocalModelDir, settings.LocalAutoStart);
-            Environment.SetEnvironmentVariable("TF_COST_TRACKING_ENABLED", settings.CostTrackingEnabled ? "1" : "0");
             _modelsClient = new LocalServiceClient(_localHttp);
         }
 
@@ -297,7 +284,6 @@ namespace TranslationFiesta.WinUI
                     if (TargetTextBox != null)
                         TargetTextBox.Text = translation;
                     UpdatePreview(translation);
-                    UpdateCostDisplay();
                 });
 
                 Logger.Info("Backtranslation completed successfully");
@@ -755,49 +741,6 @@ namespace TranslationFiesta.WinUI
         {
             SourceCharCount.Text = $"Characters: {SourceTextBox.Text?.Length ?? 0}";
             TargetCharCount.Text = $"Characters: {TargetTextBox.Text?.Length ?? 0}";
-        }
-
-        private void UpdateCostDisplay()
-        {
-            try
-            {
-                if (!_settings.CostTrackingEnabled || !_settings.ShowCostInUI)
-                {
-                    return;
-                }
-
-                var monthlyStats = _translator.CostTracker.GetCurrentMonthStats();
-                var budget = _translator.CostTracker.GetMonthlyBudget();
-                var remaining = budget - monthlyStats.TotalCost;
-
-                // Update monthly cost and character count
-                MonthlyCostText.Text = $"This Month: ${monthlyStats.TotalCost:F2}";
-                MonthlyCharText.Text = $"Chars: {monthlyStats.TotalCharacters:N0}";
-
-                // Update budget status
-                if (remaining >= 0)
-                {
-                    BudgetStatusText.Text = $"Budget: ${remaining:F2} remaining";
-                    BudgetStatusText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                        Microsoft.UI.Colors.Green);
-                }
-                else
-                {
-                    BudgetStatusText.Text = $"Budget: ${Math.Abs(remaining):F2} over budget";
-                    BudgetStatusText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                        Microsoft.UI.Colors.Red);
-                }
-
-                // Update average cost per translation
-                CostPerTranslationText.Text = $"Avg Cost: ${monthlyStats.AverageCostPerTranslation:F4}";
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Failed to update cost display: {ex.Message}", ex);
-                MonthlyCostText.Text = "Cost tracking unavailable";
-                BudgetStatusText.Text = "Budget status unavailable";
-                CostPerTranslationText.Text = "Avg Cost: N/A";
-            }
         }
 
         private async void KeyboardShortcutsMenuItem_Click(object sender, RoutedEventArgs e)

@@ -41,9 +41,6 @@
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                     <TextBlock Text="Provider:" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <ComboBox x:Name="ProviderCombo" Width="260" Margin="0,0,10,0" />
-                    <PasswordBox x:Name="ApiKeyBox" Width="260" PlaceholderText="API key (official only)" />
-                    <Button x:Name="ApiKeySaveButton" Content="Save Key" Margin="10,0,0,0" />
-                    <Button x:Name="ApiKeyClearButton" Content="Clear" Margin="6,0,0,0" />
                     <Button x:Name="LocalModelsButton" Content="Local Models..." Margin="10,0,0,0" />
                 </StackPanel>
 
@@ -51,29 +48,6 @@
                     <TextBlock x:Name="SourceCharCount" Text="Source: 0 chars" Margin="0,0,20,0" />
                     <TextBlock x:Name="TargetCharCount" Text="Target: 0 chars" />
                 </StackPanel>
-
-                <Border x:Name="CostTrackingPanel"
-                        BorderBrush="{ThemeResource SystemControlForegroundBaseMediumBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Margin="0,0,0,10"
-                        Padding="10"
-                        Visibility="Collapsed">
-                    <StackPanel>
-                        <TextBlock Text="Cost Tracking" FontWeight="SemiBold" Margin="0,0,0,8" />
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                            <TextBlock x:Name="MonthlyCostText" Text="This Month: $0.00" Margin="0,0,15,0" />
-                            <TextBlock x:Name="MonthlyCharText" Text="Chars: 0" />
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                            <TextBlock x:Name="BudgetStatusText" Text="Budget: $50.00 remaining" />
-                        </StackPanel>
-
-                        <TextBlock x:Name="CostPerTranslationText" Text="Avg Cost: $0.00" FontSize="12" Opacity="0.7" />
-                    </StackPanel>
-                </Border>
 
                 <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, safeStorage, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -10,8 +10,8 @@ const defaultBaseUrl = "http://127.0.0.1:5055";
 const defaultScriptPath = "TranslationFiestaLocal/local_service.py";
 let localServiceStarted = false;
 
-type ProviderId = "local" | "google_unofficial" | "google_official";
-type SettingsData = { providerId: ProviderId; apiKeyEncrypted?: string };
+type ProviderId = "local" | "google_unofficial";
+type SettingsData = { providerId: ProviderId };
 
 const defaultSettings: SettingsData = { providerId: "google_unofficial" };
 
@@ -22,10 +22,7 @@ const readSettings = (): SettingsData => {
     const raw = fs.readFileSync(getSettingsPath(), "utf-8");
     const parsed = JSON.parse(raw) as Partial<SettingsData>;
     const providerId = (parsed.providerId ?? defaultSettings.providerId) as ProviderId;
-    return {
-      providerId,
-      apiKeyEncrypted: parsed.apiKeyEncrypted
-    };
+    return { providerId };
   } catch {
     return { ...defaultSettings };
   }
@@ -34,24 +31,6 @@ const readSettings = (): SettingsData => {
 const writeSettings = (settings: SettingsData) => {
   fs.mkdirSync(app.getPath("userData"), { recursive: true });
   fs.writeFileSync(getSettingsPath(), JSON.stringify(settings, null, 2), "utf-8");
-};
-
-const decryptApiKey = (settings: SettingsData) => {
-  if (!settings.apiKeyEncrypted) return "";
-  try {
-    const buffer = Buffer.from(settings.apiKeyEncrypted, "base64");
-    if (!safeStorage.isEncryptionAvailable()) return "";
-    return safeStorage.decryptString(buffer);
-  } catch {
-    return "";
-  }
-};
-
-const encryptApiKey = (apiKey: string) => {
-  if (!apiKey) return undefined;
-  if (!safeStorage.isEncryptionAvailable()) return undefined;
-  const encrypted = safeStorage.encryptString(apiKey);
-  return encrypted.toString("base64");
 };
 
 const getBaseUrl = () => {
@@ -141,8 +120,7 @@ app.whenReady().then(() => {
   ipcMain.handle("settings-load", async () => {
     const settings = readSettings();
     return {
-      providerId: settings.providerId,
-      apiKey: decryptApiKey(settings) || undefined
+      providerId: settings.providerId
     };
   });
 
@@ -154,30 +132,6 @@ app.whenReady().then(() => {
       return { ok: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save provider";
-      return { ok: false, error: message };
-    }
-  });
-
-  ipcMain.handle("settings-set-api-key", async (_event, payload: { apiKey: string }) => {
-    try {
-      const settings = readSettings();
-      settings.apiKeyEncrypted = encryptApiKey(payload.apiKey);
-      writeSettings(settings);
-      return { ok: true };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to save API key";
-      return { ok: false, error: message };
-    }
-  });
-
-  ipcMain.handle("settings-clear-api-key", async () => {
-    try {
-      const settings = readSettings();
-      delete settings.apiKeyEncrypted;
-      writeSettings(settings);
-      return { ok: true };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to clear API key";
       return { ok: false, error: message };
     }
   });

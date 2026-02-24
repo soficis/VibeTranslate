@@ -22,16 +22,14 @@ class BatchProcessor:
         self,
         directory_path,
         provider_id=None,
-        api_key=None,
         source_lang=None,
         target_lang="ja",
-        use_official_api: bool = False,
     ):
         self.is_running = True
         files_to_process = [f for f in os.listdir(directory_path) if f.endswith(('.txt', '.md', '.html'))]
         total_files = len(files_to_process)
         self.logger.info(f"Starting batch processing for {total_files} files in {directory_path}")
-        resolved_provider_id = normalize_provider_id(provider_id, use_official_api)
+        resolved_provider_id = normalize_provider_id(provider_id)
 
         for i, filename in enumerate(files_to_process):
             if not self.is_running:
@@ -48,7 +46,6 @@ class BatchProcessor:
                     translated_content = self.back_translate_content(
                         content,
                         resolved_provider_id,
-                        api_key,
                         source_lang,
                         target_lang,
                     )
@@ -69,12 +66,10 @@ class BatchProcessor:
         self,
         content,
         provider_id,
-        api_key,
         source_lang=None,
         target_lang="ja",
-        use_official_api: bool = False,
     ):
-        resolved_provider_id = normalize_provider_id(provider_id, use_official_api)
+        resolved_provider_id = normalize_provider_id(provider_id)
         if not content or content.isspace():
             return ""
 
@@ -101,7 +96,6 @@ class BatchProcessor:
             source_lang,
             target_lang,
             provider_id=resolved_provider_id,
-            api_key=api_key,
         )
         if first_result.is_success():
             intermediate = first_result.value
@@ -112,7 +106,6 @@ class BatchProcessor:
                 target_lang,
                 source_lang,
                 provider_id=resolved_provider_id,
-                api_key=api_key,
             )
             if second_result.is_success():
                 backtranslated = second_result.value

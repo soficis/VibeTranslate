@@ -6,8 +6,6 @@ class AppConstants {
   // API Configuration
   static const String unofficialTranslateBaseUrl =
       'https://translate.googleapis.com/translate_a/single';
-  static const String officialTranslateBaseUrl =
-      'https://translation.googleapis.com/language/translate/v2';
   static const String localTranslateBaseUrl = 'http://127.0.0.1:5055';
   static const String unofficialApiClient = 'gtx';
 
@@ -34,8 +32,6 @@ class AppConstants {
 
   // Theme Configuration
   static const String themePreferenceKey = 'isDarkTheme';
-  static const String apiKeyPreferenceKey = 'apiKey';
-  static const String useOfficialApiPreferenceKey = 'useOfficialApi';
   static const String providerIdPreferenceKey = 'providerId';
   static const String localServiceUrlPreferenceKey = 'localServiceUrl';
   static const String localModelDirPreferenceKey = 'localModelDir';

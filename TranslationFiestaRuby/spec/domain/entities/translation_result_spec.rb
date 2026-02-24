@@ -9,7 +9,6 @@ RSpec.describe TranslationFiesta::Domain::Entities::TranslationResult do
       first_translation: 'こんにちは世界',
       back_translation: 'Hello world',
       api_type: :unofficial,
-      cost: 0.0,
       bleu_score: 0.95
     )
   end

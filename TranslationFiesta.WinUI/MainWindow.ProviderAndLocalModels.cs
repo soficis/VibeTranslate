@@ -14,8 +14,7 @@ namespace TranslationFiesta.WinUI
             var providers = new List<ProviderOption>
             {
                 new ProviderOption { Id = ProviderIds.Local, Name = "Local (Offline)" },
-                new ProviderOption { Id = ProviderIds.GoogleUnofficial, Name = "Google Translate (Unofficial / Free)" },
-                new ProviderOption { Id = ProviderIds.GoogleOfficial, Name = "Google Cloud Translate (Official)" }
+                new ProviderOption { Id = ProviderIds.GoogleUnofficial, Name = "Google Translate (Unofficial / Free)" }
             };
 
             ProviderCombo.ItemsSource = providers;
@@ -24,31 +23,19 @@ namespace TranslationFiesta.WinUI
 
             var providerId = ProviderIds.Normalize(_settings.ProviderId);
             _settings.ProviderId = providerId;
-            _settings.UseOfficialApi = ProviderIds.IsOfficial(providerId);
             ProviderCombo.SelectedValue = providerId;
 
             ProviderCombo.SelectionChanged += ProviderCombo_SelectionChanged;
-            ApiKeySaveButton.Click += ApiKeySaveButton_Click;
-            ApiKeyClearButton.Click += ApiKeyClearButton_Click;
-
-            var savedKey = SecureStore.GetApiKey();
-            if (!string.IsNullOrWhiteSpace(savedKey))
-            {
-                ApiKeyBox.PlaceholderText = "API key stored";
-            }
 
             ApplyProviderSelection();
-            UpdateProviderUi();
         }
 
         private void ProviderCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var providerId = ProviderIds.Normalize(ProviderCombo.SelectedValue?.ToString());
             _settings.ProviderId = providerId;
-            _settings.UseOfficialApi = ProviderIds.IsOfficial(providerId);
             SettingsService.Save(_settings);
             ApplyProviderSelection();
-            UpdateProviderUi();
         }
 
         private async void LocalModelsButton_Click(object sender, RoutedEventArgs e)
@@ -150,62 +137,10 @@ namespace TranslationFiesta.WinUI
             await UpdateStatusAsync(_modelsClient.GetModelsStatusAsync);
         }
 
-        private void ApiKeySaveButton_Click(object sender, RoutedEventArgs e)
-        {
-            var apiKey = ApiKeyBox.Password ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(apiKey))
-            {
-                return;
-            }
-
-            if (!SecureStore.SaveApiKey(apiKey))
-            {
-                ApiKeyBox.PlaceholderText = "Failed to store API key";
-                return;
-            }
-            ApiKeyBox.Password = string.Empty;
-            ApiKeyBox.PlaceholderText = "API key stored";
-            ApplyProviderSelection();
-        }
-
-        private void ApiKeyClearButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (!SecureStore.ClearApiKey())
-            {
-                ApiKeyBox.PlaceholderText = "Failed to clear API key";
-                return;
-            }
-            ApiKeyBox.Password = string.Empty;
-            ApiKeyBox.PlaceholderText = "API key (official only)";
-            ApplyProviderSelection();
-        }
-
         private void ApplyProviderSelection()
         {
             var providerId = ProviderIds.Normalize(ProviderCombo.SelectedValue?.ToString());
             _translator.ProviderId = providerId;
-            if (ProviderIds.IsOfficial(providerId))
-            {
-                var key = ApiKeyBox.Password;
-                if (string.IsNullOrWhiteSpace(key))
-                {
-                    key = SecureStore.GetApiKey();
-                }
-                _translator.OfficialApiKey = string.IsNullOrWhiteSpace(key) ? null : key;
-            }
-            else
-            {
-                _translator.OfficialApiKey = null;
-            }
-        }
-
-        private void UpdateProviderUi()
-        {
-            var providerId = ProviderIds.Normalize(ProviderCombo.SelectedValue?.ToString());
-            var isOfficial = ProviderIds.IsOfficial(providerId);
-            ApiKeyBox.IsEnabled = isOfficial;
-            ApiKeySaveButton.IsEnabled = isOfficial;
-            ApiKeyClearButton.IsEnabled = isOfficial;
         }
     }
 }

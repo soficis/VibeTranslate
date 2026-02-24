@@ -370,9 +370,6 @@ struct ExportView: View {
 /// Settings view
 struct SettingsView: View {
     @EnvironmentObject var appContainer: AppContainer
-    @State private var googleCloudAPIKey = ""
-    @State private var showAPIKeyAlert = false
-    @State private var apiKeyMessage = ""
     @State private var localServiceUrl = ""
     @State private var localModelDir = ""
     @State private var localAutoStart = true
@@ -389,58 +386,6 @@ struct SettingsView: View {
                 
                 Spacer()
             }
-            
-            // API Configuration
-            VStack(alignment: .leading, spacing: 12) {
-                Text("API Configuration")
-                    .font(.headline)
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Google Cloud Translation API Key")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    HStack {
-                        SecureField("Enter API key...", text: $googleCloudAPIKey)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                        
-                        Button("Save") {
-                            Task {
-                                await saveAPIKey()
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(googleCloudAPIKey.isEmpty)
-                    }
-                    
-                    Text("The Google Cloud Translation API key is securely stored in the system keychain.")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding()
-            .background(Color.blue.opacity(0.1))
-            .cornerRadius(12)
-
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Optional Features")
-                    .font(.headline)
-
-                Toggle(
-                    "Enable cost tracking (official only)",
-                    isOn: Binding(
-                        get: { appContainer.costTrackingEnabled },
-                        set: { appContainer.setCostTrackingEnabled($0) }
-                    )
-                )
-
-                Text("Cost tracking is opt-in and only applies to the official provider.")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-            .padding()
-            .background(Color.purple.opacity(0.1))
-            .cornerRadius(12)
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Local Model Manager")
@@ -520,9 +465,7 @@ struct SettingsView: View {
                     FeatureRow(feature: "English ↔ Japanese Back-translation", implemented: true)
                     FeatureRow(feature: "Batch Processing", implemented: true)
                     FeatureRow(feature: "BLEU Quality Scoring", implemented: true)
-                    FeatureRow(feature: "Cost Tracking & Budget Management (opt-in)", implemented: true)
                     FeatureRow(feature: "Translation Memory with Fuzzy Matching", implemented: true)
-                    FeatureRow(feature: "Secure API Key Storage", implemented: true)
                     FeatureRow(feature: "Multiple Export Formats", implemented: true)
                     FeatureRow(feature: "EPUB Processing", implemented: true)
                 }
@@ -534,39 +477,8 @@ struct SettingsView: View {
             Spacer()
         }
         .padding()
-        .alert("API Key", isPresented: $showAPIKeyAlert) {
-            Button("OK") { }
-        } message: {
-            Text(apiKeyMessage)
-        }
         .onAppear {
-            loadAPIKey()
             loadLocalSettings()
-        }
-    }
-    
-    private func saveAPIKey() async {
-        do {
-            try await appContainer.secureStorageRepository.storeAPIKey(googleCloudAPIKey, for: .googleCloudAPI)
-            apiKeyMessage = "API key saved successfully!"
-            showAPIKeyAlert = true
-            googleCloudAPIKey = ""
-        } catch {
-            apiKeyMessage = "Failed to save API key: \(error.localizedDescription)"
-            showAPIKeyAlert = true
-        }
-    }
-    
-    private func loadAPIKey() {
-        Task {
-            do {
-                if (try await appContainer.secureStorageRepository.getAPIKey(for: .googleCloudAPI)) != nil {
-                    // Don't show the actual key, just indicate it exists
-                    googleCloudAPIKey = String(repeating: "•", count: 20)
-                }
-            } catch {
-                // Key doesn't exist or couldn't be loaded
-            }
         }
     }
 

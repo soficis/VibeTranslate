@@ -103,14 +103,6 @@ class PerformBackTranslationUseCase {
       return Left(AppFailure(message: 'Text is empty'));
     }
 
-    if (!config.useOfficialApi ||
-        config.apiKey == null ||
-        config.apiKey!.isEmpty) {
-      return Left(
-        AppFailure(message: 'Official API and key required for detection'),
-      );
-    }
-
     return _repository.detectLanguage(text, config);
   }
 }

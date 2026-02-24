@@ -39,13 +39,11 @@ from exceptions import get_user_friendly_message
 from file_utils import load_text_from_path
 from local_service_client import LocalServiceClient, LocalServiceConfig
 from provider_ids import (
-    PROVIDER_GOOGLE_OFFICIAL,
     PROVIDER_GOOGLE_UNOFFICIAL,
     PROVIDER_LABELS,
     PROVIDER_LOCAL,
     normalize_provider_id,
 )
-from secure_storage import get_secure_storage
 from settings_storage import get_settings_storage
 from translation_services import TranslationService
 
@@ -63,8 +61,6 @@ class TranslationFiesta:
 
         # Initialize storage modules
         self.settings = get_settings_storage()
-        self.secure_storage = get_secure_storage()
-        self._apply_cost_tracking_settings()
 
         # Load window geometry from settings
         geometry = self.settings.get_window_geometry()
@@ -99,22 +95,9 @@ class TranslationFiesta:
         self.provider_labels = [
             PROVIDER_LABELS[PROVIDER_LOCAL],
             PROVIDER_LABELS[PROVIDER_GOOGLE_UNOFFICIAL],
-            PROVIDER_LABELS[PROVIDER_GOOGLE_OFFICIAL],
         ]
         self.provider_label_to_id = {label: pid for pid, label in PROVIDER_LABELS.items()}
         self.provider_var = tk.StringVar(value=provider_label)
-
-        # Load API key from secure storage
-        api_key_result = self.secure_storage.get_api_key("google_translate")
-        if api_key_result.is_success():
-            api_key = api_key_result.value or ""  # type: ignore[union-attr]
-        else:
-            self.logger.warning(
-                "Secure storage unavailable; API key auto-load skipped",
-                extra={"error": str(api_key_result.error)},  # type: ignore[union-attr]
-            )
-            api_key = ""
-        self.api_key_var = tk.StringVar(value=api_key)
 
         # Threading/UI state
         self.translation_thread = None
@@ -207,7 +190,7 @@ class TranslationFiesta:
         )
         self.lbl_file_info.grid(row=0, column=4, sticky="ew")
 
-        # Provider selection and API key
+        # Provider selection
         tk.Label(
             toolbar_frame,
             text="Provider:",
@@ -226,25 +209,6 @@ class TranslationFiesta:
         self.cmb_provider.grid(row=1, column=1, sticky="w", pady=(6, 0))
         self.cmb_provider.bind("<<ComboboxSelected>>", lambda _event: self.on_provider_changed())
 
-        tk.Label(
-            toolbar_frame,
-            text="API Key:",
-            bg=theme['bg'],
-            fg=theme['fg'],
-            font=("Arial", self.scale_font(9)),
-        ).grid(row=1, column=2, sticky="e", pady=(6, 0))
-
-        self.entry_api_key = tk.Entry(
-            toolbar_frame,
-            textvariable=self.api_key_var,
-            show='*',
-            width=40,
-            bg=theme['text_bg'],
-            fg=theme['text_fg'],
-            insertbackground=theme['text_fg'],
-        )
-        self.entry_api_key.grid(row=1, column=3, columnspan=2, sticky="ew", pady=(6, 0))
-        self.entry_api_key.config(state="disabled")
         self.on_provider_changed()
 
         # Input section
@@ -460,7 +424,6 @@ class TranslationFiesta:
             return ""
 
         provider_id = self.get_selected_provider_id()
-        api_key = self.api_key_var.get() if provider_id == PROVIDER_GOOGLE_OFFICIAL else None
 
         result = self.translation_service.translate_text(
             session=self.session,
@@ -468,7 +431,6 @@ class TranslationFiesta:
             source_lang=source_lang,
             target_lang=target_lang,
             provider_id=provider_id,
-            api_key=(api_key or None),
         )
 
         if result.is_success():
@@ -594,18 +556,13 @@ class TranslationFiesta:
         return self.provider_label_to_id.get(label, PROVIDER_GOOGLE_UNOFFICIAL)
 
     def on_provider_changed(self) -> None:
-        """Enable/disable API key entry based on provider selection."""
+        """Persist provider selection and update status."""
         provider_id = self.get_selected_provider_id()
         self.settings.set_provider_id(provider_id)
-        if provider_id == PROVIDER_GOOGLE_OFFICIAL:
-            self.entry_api_key.config(state="normal")
-            self.set_status("Official API enabled. Provide API key.", "orange")
+        if provider_id == PROVIDER_LOCAL:
+            self.set_status("Using local offline provider.", "blue")
         else:
-            self.entry_api_key.config(state="disabled")
-            if provider_id == PROVIDER_LOCAL:
-                self.set_status("Using local offline provider.", "blue")
-            else:
-                self.set_status("Using unofficial provider.", "blue")
+            self.set_status("Using unofficial provider.", "blue")
 
     def set_status(self, text: str, color: str = "blue"):
         self.lbl_status.config(text=text, fg=color)
@@ -717,13 +674,6 @@ class TranslationFiesta:
         settings_menu = tk.Menu(menubar, tearoff=0)
         settings_menu.add_command(label="Toggle Provider (Ctrl+P)", command=self.toggle_api_shortcut)
         settings_menu.add_command(label="Local Models...", command=self.show_model_manager)
-        settings_menu.add_separator()
-        self._cost_tracking_var = tk.BooleanVar(value=self.settings.get_cost_tracking_enabled())
-        settings_menu.add_checkbutton(
-            label="Enable Cost Tracking (Official Only)",
-            variable=self._cost_tracking_var,
-            command=self.toggle_cost_tracking,
-        )
         menubar.add_cascade(label="Settings", menu=settings_menu)
 
         self.root.config(menu=menubar)
@@ -753,15 +703,6 @@ class TranslationFiesta:
                 model_dir=model_dir or None,
             ),
         )
-
-    def _apply_cost_tracking_settings(self):
-        enabled = self.settings.get_cost_tracking_enabled()
-        os.environ["TF_COST_TRACKING_ENABLED"] = "1" if enabled else "0"
-
-    def toggle_cost_tracking(self):
-        enabled = bool(self._cost_tracking_var.get())
-        self.settings.set_cost_tracking_enabled(enabled)
-        self._apply_cost_tracking_settings()
 
     def _refresh_local_client(self):
         self._apply_local_settings()
@@ -853,30 +794,6 @@ class TranslationFiesta:
         self.root.bind('<Control-P>', lambda event: self.toggle_api_shortcut())
         self.root.bind('<Control-Shift-C>', lambda event: self.copy_results())
 
-        # Bind API key entry changes to save automatically
-        self.api_key_var.trace_add("write", self.on_api_key_changed)
-
-    def on_api_key_changed(self, *args):
-        """Handle API key changes and save to secure storage."""
-        api_key = self.api_key_var.get().strip()
-        if api_key:
-            result = self.secure_storage.store_api_key("google_translate", api_key)
-            if result.is_success():
-                self.logger.info("API key saved to secure storage")
-            else:
-                self.logger.error("Failed to save API key to secure storage", extra={
-                    "error": str(result.error)  # type: ignore[union-attr]
-                })
-        else:
-            # If API key is empty, remove it from storage
-            result = self.secure_storage.delete_api_key("google_translate")
-            if result.is_failure():
-                self.logger.warning("Failed to remove API key from secure storage", extra={
-                    "error": str(result.error)  # type: ignore[union-attr]
-                })
-            else:
-                self.logger.info("API key removed from secure storage")
-
     def on_closing(self):
         """Handle window closing - save settings."""
         try:
@@ -962,7 +879,7 @@ class TranslationFiesta:
         self.batch_processor = BatchProcessor(self.translation_service, self.update_batch_progress)
         thread = threading.Thread(
             target=self.batch_processor.process_directory,
-            args=(directory, self.get_selected_provider_id(), self.api_key_var.get())
+            args=(directory, self.get_selected_provider_id())
         )
         thread.daemon = True
         thread.start()

@@ -49,8 +49,7 @@ func (p *BatchProcessor) ProcessDirectory(ctx context.Context, path string, sour
 		}
 
 		if sourceLang == "" {
-			providerID := p.settingsRepo.GetProviderID()
-			detected, err := p.translationUseCases.DetectLanguage(ctx, fileInfo.Content, providerID, p.settingsRepo.GetAPIKey())
+			detected, err := p.translationUseCases.DetectLanguage(ctx, fileInfo.Content)
 			if err != nil {
 				sourceLang = "en"
 			} else {
@@ -62,14 +61,13 @@ func (p *BatchProcessor) ProcessDirectory(ctx context.Context, path string, sour
 		}
 		intermediateLang := targetLang
 		providerID := p.settingsRepo.GetProviderID()
-		apiKey := p.settingsRepo.GetAPIKey()
 
-		translationResult, err := p.translationUseCases.Translate(ctx, fileInfo.Content, sourceLang, intermediateLang, providerID, apiKey)
+		translationResult, err := p.translationUseCases.Translate(ctx, fileInfo.Content, sourceLang, intermediateLang, providerID)
 		if err != nil {
 			continue
 		}
 
-		backTranslationResult, err := p.translationUseCases.Translate(ctx, translationResult.TranslatedText, intermediateLang, sourceLang, providerID, apiKey)
+		backTranslationResult, err := p.translationUseCases.Translate(ctx, translationResult.TranslatedText, intermediateLang, sourceLang, providerID)
 		if err != nil {
 			continue
 		}

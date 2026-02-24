@@ -114,25 +114,6 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
     return setBoolPreference(AppConstants.themePreferenceKey, isDark);
   }
 
-  /// Convenience methods for API preferences
-  Future<Result<String?>> getApiKeyPreference() async {
-    return getStringPreference(AppConstants.apiKeyPreferenceKey);
-  }
-
-  Future<Result<void>> setApiKeyPreference(String apiKey) async {
-    return setStringPreference(AppConstants.apiKeyPreferenceKey, apiKey);
-  }
-
-  Future<Result<bool>> getUseOfficialApiPreference() async {
-    return getBoolPreference(AppConstants.useOfficialApiPreferenceKey,
-        defaultValue: false,);
-  }
-
-  Future<Result<void>> setUseOfficialApiPreference(bool useOfficial) async {
-    return setBoolPreference(
-        AppConstants.useOfficialApiPreferenceKey, useOfficial,);
-  }
-
   Future<Result<String?>> getProviderIdPreference() async {
     return getStringPreference(AppConstants.providerIdPreferenceKey);
   }

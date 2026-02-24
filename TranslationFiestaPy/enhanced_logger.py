@@ -154,7 +154,6 @@ class StructuredLogger:
         source_lang: str,
         target_lang: str,
         text_length: int,
-        use_official: bool,
         attempt: int,
         success: bool,
         error: Optional[str] = None,
@@ -166,7 +165,6 @@ class StructuredLogger:
             "source_language": source_lang,
             "target_language": target_lang,
             "text_length": text_length,
-            "use_official_api": use_official,
             "attempt": attempt,
             "success": success,
         }

@@ -3,9 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 contextBridge.exposeInMainWorld("translationFiesta", {
   settings: {
     load: () => ipcRenderer.invoke("settings-load"),
-    setProvider: (providerId: string) => ipcRenderer.invoke("settings-set-provider", { providerId }),
-    setApiKey: (apiKey: string) => ipcRenderer.invoke("settings-set-api-key", { apiKey }),
-    clearApiKey: () => ipcRenderer.invoke("settings-clear-api-key")
+    setProvider: (providerId: string) => ipcRenderer.invoke("settings-set-provider", { providerId })
   },
   localService: {
     health: () => ipcRenderer.invoke("local-health"),

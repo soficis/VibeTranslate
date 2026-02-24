@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'easy_translate'
-require 'google/cloud/translate/v2'
 require 'net/http'
 require 'uri'
 require 'json'
@@ -14,10 +12,8 @@ module TranslationFiesta
         LOCAL_HEALTH_PATH = '/health'
         LOCAL_TRANSLATE_PATH = '/translate'
 
-        def initialize(api_type = :unofficial, api_key = nil)
+        def initialize(api_type = :unofficial)
           @api_type = api_type
-          @api_key = api_key
-          setup_client
         end
 
         def translate_text(text, from_language, to_language, api_type)
@@ -25,8 +21,6 @@ module TranslationFiesta
           case normalized
           when :unofficial
             translate_unofficial(text, from_language, to_language)
-          when :official
-            translate_official(text, from_language, to_language)
           when :local
             translate_local(text, from_language, to_language)
           else
@@ -35,27 +29,15 @@ module TranslationFiesta
         end
 
         def detect_language(text)
-          case normalize_api_type(@api_type)
-          when :unofficial
-            EasyTranslate.detect(text, key: @api_key)
-          when :official
-            return 'en' unless @official_client
-            
-            result = @official_client.detect(text)
-            result.language
-          when :local
-            raise TranslationError, 'Language detection is not supported for local provider'
-          end
-        rescue StandardError => e
-          raise TranslationError, "Language detection failed: #{e.message}"
+          raise TranslationError, 'Text cannot be empty' if text.nil? || text.strip.empty?
+
+          'en'
         end
 
         def available?
           case normalize_api_type(@api_type)
           when :unofficial
-            true # Easy translate doesn't require API key for basic functionality
-          when :official
-            !@api_key.nil? && !@api_key.empty?
+            true
           when :local
             local_service_available?
           end
@@ -63,20 +45,7 @@ module TranslationFiesta
 
         private
 
-        attr_reader :api_type, :api_key, :official_client
-
-        def setup_client
-          case normalize_api_type(@api_type)
-          when :official
-            setup_official_client if @api_key
-          end
-        end
-
-        def setup_official_client
-          @official_client = Google::Cloud::Translate::V2.new(key: @api_key)
-        rescue StandardError => e
-          raise APIError, "Failed to initialize Google Cloud Translate client: #{e.message}"
-        end
+        attr_reader :api_type
 
         def translate_unofficial(text, from_language, to_language)
           return '' if text.nil? || text.strip.empty?
@@ -146,15 +115,6 @@ module TranslationFiesta
           raise(last_error || TranslationError.new('network_error: unofficial translation failed'))
         end
 
-        def translate_official(text, from_language, to_language)
-          raise APIError, 'Official API client not available' unless @official_client
-
-          result = @official_client.translate(text, from: from_language, to: to_language)
-          result.text
-        rescue StandardError => e
-          raise TranslationError, "Official translation failed: #{e.message}"
-        end
-
         def translate_local(text, from_language, to_language)
           return '' if text.nil? || text.strip.empty?
           ensure_local_service
@@ -192,8 +152,6 @@ module TranslationFiesta
           case value
           when 'google_unofficial', 'unofficial'
             :unofficial
-          when 'google_official', 'official'
-            :official
           when 'local'
             :local
           else

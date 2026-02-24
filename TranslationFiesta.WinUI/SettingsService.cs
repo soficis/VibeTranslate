@@ -10,7 +10,6 @@ namespace TranslationFiesta.WinUI
         public string? LastTarget { get; set; }
         public bool DarkMode { get; set; }
         public string ProviderId { get; set; } = ProviderIds.GoogleUnofficial;
-        public bool UseOfficialApi { get; set; }
         public string? LastFilePath { get; set; }
         public string? LastSavePath { get; set; }
         public string LocalServiceUrl { get; set; } = string.Empty;
@@ -20,12 +19,6 @@ namespace TranslationFiesta.WinUI
         public int WindowHeight { get; set; } = 800;
         public int WindowX { get; set; } = -1;
         public int WindowY { get; set; } = -1;
-
-        // Cost tracking settings
-        public decimal MonthlyBudget { get; set; } = 50.0M;
-        public bool CostTrackingEnabled { get; set; } = false;
-        public bool EnableCostAlerts { get; set; } = true;
-        public bool ShowCostInUI { get; set; } = false;
     }
 
     public static class SettingsService
@@ -43,10 +36,9 @@ namespace TranslationFiesta.WinUI
                 _cached = JsonSerializer.Deserialize<AppSettings>(txt) ?? new AppSettings();
                 if (string.IsNullOrWhiteSpace(_cached.ProviderId))
                 {
-                    _cached.ProviderId = _cached.UseOfficialApi ? ProviderIds.GoogleOfficial : ProviderIds.GoogleUnofficial;
+                    _cached.ProviderId = ProviderIds.GoogleUnofficial;
                 }
                 _cached.ProviderId = ProviderIds.Normalize(_cached.ProviderId);
-                _cached.UseOfficialApi = ProviderIds.IsOfficial(_cached.ProviderId);
                 return _cached;
             }
             catch (JsonException ex)

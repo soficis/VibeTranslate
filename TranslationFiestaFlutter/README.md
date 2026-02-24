@@ -2,7 +2,7 @@
 
 **Repository**: [https://github.com/soficis/VibeTranslate](https://github.com/soficis/VibeTranslate)
 
-A Flutter port of the TranslationFiestaFSharp application, implementing Clean Code principles and Clean Architecture. This application provides backtranslation functionality using Google Translate APIs with a modern, responsive UI.
+A Flutter port of the TranslationFiestaFSharp application, implementing Clean Code principles and Clean Architecture. This application provides backtranslation functionality using local and unofficial providers with a modern, responsive UI.
 
 ## Overview
 
@@ -12,9 +12,9 @@ TranslationFiestaFlutter is a complete rewrite of the TranslationFiestaFSharp Wi
 
 ### 🎯 Core Functionality
 - **Backtranslation**: English → Japanese → English translation pipeline
-- **Dual API Support**:
+- **Provider Support**:
   - Unofficial Google Translate (free, immediate setup)
-  - Official Google Cloud Translation API (enterprise-grade)
+  - Local Offline provider
 - **Retry Logic**: Exponential backoff with configurable attempts
 - **File Operations**: Import from .txt, .md, .html files with text extraction
 - **Export Results**: Save backtranslation results to files
@@ -120,9 +120,9 @@ lib/
 
 1. **Launch**: Run `flutter run` in the project directory
 2. **Input Text**: Type or paste English text in the input area
-3. **Configure API**:
+3. **Configure Provider**:
    - Use unofficial API (default, no setup)
-   - Or enable "Use Official API" and enter Google Cloud API key
+   - Or switch to the local offline provider
 4. **Translate**: Click "Backtranslate" button
 5. **Monitor Progress**: Watch status updates and progress indicators
 6. **Review Results**:
@@ -136,15 +136,6 @@ lib/
 2. Select supported file (.txt, .md, .html)
 3. Content loads automatically into input area
 4. Proceed with translation
-
-#### Official API Setup
-1. **Get API Key**:
-   - Visit [Google Cloud Console](https://console.cloud.google.com/)
-   - Enable Cloud Translation API
-   - Create API key
-2. **Enable Official API**: Check "Use Official API"
-3. **Enter API Key**: Paste key in the API key field
-4. **Translate**: Proceed with enhanced reliability
 
 #### Theme Switching
 - Click theme toggle button (moon/sun icon)
@@ -179,7 +170,6 @@ class Logger {
 ### API Configuration
 
 - **Unofficial Endpoint**: `https://translate.googleapis.com/translate_a/single`
-- **Official Endpoint**: `https://translation.googleapis.com/language/translate/v2`
 - **Timeout**: 30 seconds per request
 - **Retry Strategy**: Exponential backoff (1s, 2s, 4s, 8s)
 
@@ -316,7 +306,7 @@ Solution: Install Flutter SDK from flutter.dev
 #### Translation Failures
 ```
 Error: HTTP 429 (Rate Limited)
-Solution: Switch to official API or wait and retry
+Solution: Wait and retry, or switch to local provider
 ```
 
 #### File Import Issues
@@ -325,16 +315,9 @@ Error: Access denied
 Solution: Check file permissions and ensure supported format
 ```
 
-#### Official API Errors
-```
-Error: API key invalid
-Solution: Verify API key has Translation API enabled
-```
-
 ### Debug Information
 - **Log File**: Check `TranslationFiestaFlutter.log` for detailed error information
 - **Network Issues**: Verify internet connectivity
-- **API Limits**: Monitor Google Cloud quota usage
 - **File Permissions**: Ensure read/write access to working directory
 
 ## Contributing
@@ -388,5 +371,4 @@ Educational and development purposes. Google Translate API usage subject to Goog
 - [Original TranslationFiestaFSharp](../TranslationFiestaFSharp/README.md)
 - [Flutter Documentation](https://flutter.dev/docs)
 - [Dart Language](https://dart.dev/)
-- [Google Cloud Translation API](https://cloud.google.com/translate/docs)
 - [Clean Code by Robert C. Martin](../cleancode.md)

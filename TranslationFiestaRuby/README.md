@@ -1,24 +1,22 @@
 # TranslationFiesta Ruby
 
-A professional Ruby implementation featuring a modern Sinatra web UI with dark mode (default), comprehensive file import/export, batch processing, cost tracking analytics, and full feature parity with other TranslationFiesta implementations.
+A professional Ruby implementation featuring a modern Sinatra web UI with dark mode (default), comprehensive file import/export, batch processing, and full feature parity with other TranslationFiesta implementations.
 
-A comprehensive Ruby implementation of the TranslationFiesta application for English ↔ Japanese back-translation with quality assessment and cost tracking.
+A comprehensive Ruby implementation of the TranslationFiesta application for English ↔ Japanese back-translation with quality assessment.
 
 ## 🌟 Features
 
 ### Core Translation Features
-- **Back-translation**: English → Japanese → English using Google Translate APIs
-- **Dual API Support**: Both unofficial (free) and official Google Cloud Translation API
+- **Back-translation**: English → Japanese → English using local or unofficial providers
+- **Provider Support**: Local (offline) and Google Translate (unofficial/free)
 - **Quality Assessment**: BLEU score calculation for translation quality metrics
-- **Translation Memory**: Intelligent caching system to reduce API calls and costs
+- **Translation Memory**: Intelligent caching system to reduce repeated API calls
 
 ### Advanced Features
 - **Batch Processing**: Process entire directories of files with multi-threading support
-- **Cost Tracking**: Comprehensive cost monitoring with monthly budgets and warnings
 - **Advanced Export**: Export results to PDF, DOCX, HTML, and text formats
-- **Secure Storage**: Platform-specific secure storage for API keys using keyring
 - **File Support**: Process .txt, .md, .html, and .epub files
-- **GUI Interface**: Modern Tk-based graphical user interface
+- **Web Interface**: Modern Sinatra interface for desktop and mobile browsers
 - **CLI Interface**: Full command-line interface for automation and scripting
 
 ## 🏗️ Architecture
@@ -36,7 +34,7 @@ lib/translation_fiesta/
 │   └── repositories/        # Concrete repository implementations
 ├── features/                # Feature-specific modules
 ├── infrastructure/          # Cross-cutting concerns
-└── gui/                     # User interface components
+└── web/                     # Sinatra UI components
 ```
 
 ## 🚀 Installation
@@ -111,8 +109,8 @@ TF_USE_MOCK=1 ruby bin/translation_fiesta
 - 📊 **Quality Metrics**: Real-time BLEU scoring and quality assessment
 - 💾 **Export Options**: Export to PDF, DOCX, HTML, TXT formats
 - 🔄 **Batch Processing**: Process multiple files simultaneously with progress tracking
-- 📈 **Analytics Dashboard**: Cost tracking, budget monitoring, translation memory stats
-- 🎛️ **Settings**: Configurable API preferences and budget management
+- 📈 **Analytics Dashboard**: Translation memory and activity stats
+- 🎛️ **Settings**: Configurable provider and local service preferences
 - 📱 **Responsive Design**: Works on desktop and mobile devices
 
 **Environment Variables:**
@@ -133,7 +131,7 @@ TF_USE_MOCK=1 ruby bin/translation_fiesta
 | GET | /api/result/:id | Fetch stored result |
 | POST | /api/export/:id | Export result (JSON: { format }) |
 | POST | /api/batch | Batch process files (JSON: { files, api_type, threads }) |
-| GET | /api/analytics | Get cost tracking and analytics data |
+| GET | /api/analytics | Get analytics data |
 | GET | /health | Health check |
 
 **Example API Usage:**
@@ -189,7 +187,7 @@ rake cli translate "Hello, world!"
 
 **Process a single file**:
 ```bash
-rake cli file sample.txt --api official --output result.pdf
+rake cli file sample.txt --api local --output result.pdf
 ```
 
 **Batch process directory**:
@@ -197,13 +195,8 @@ rake cli file sample.txt --api official --output result.pdf
 rake cli batch ./documents --threads 8 --format pdf
 ```
 
-**View cost summary**:
-```bash
-rake cli cost
-```
-
 ### CLI Options
-- `--api [unofficial|official]`: Choose API type (default: unofficial)
+- `--api [unofficial|local]`: Choose API type (default: unofficial)
 - `--output FILE`: Specify output file for results
 - `--format [txt|pdf|docx|html]`: Export format
 - `--threads COUNT`: Number of threads for batch processing
@@ -213,24 +206,9 @@ rake cli cost
 
 Edit `config/config.yml` to customize:
 - Default API settings
-- Cost tracking budgets
 - Batch processing options
 - Export preferences
 - UI themes
-
-## 🔐 API Keys
-
-For official Google Translate API:
-1. Get API key from Google Cloud Console
-2. Use the Settings dialog in GUI or store securely using the CLI
-3. Keys are stored using platform-specific secure storage (keyring)
-
-## 📊 Cost Tracking
-
-- **Monthly Budgets**: Set spending limits
-- **Real-time Monitoring**: Track costs as you translate
-- **Budget Warnings**: Alerts at 80% of budget
-- **Detailed Reports**: Cost breakdown by API type and time period
 
 ## 🧪 Testing
 
@@ -276,7 +254,7 @@ BLEU scores are calculated and interpreted as:
 
 - Automatic caching of translation pairs
 - 30-day TTL for cached entries
-- Reduces API costs and improves performance
+- Reduces repeated translation requests and improves performance
 - SQLite-based storage for persistence
 
 ## 🚀 Development

@@ -5,7 +5,6 @@ go 1.23
 require (
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/wailsapp/wails/v2 v2.10.2
-	github.com/zalando/go-keyring v0.2.6
 	golang.org/x/net v0.35.0
 	golang.org/x/text v0.22.0
 )

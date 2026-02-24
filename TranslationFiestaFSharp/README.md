@@ -12,9 +12,8 @@ A clean, modern Windows Forms application for backtranslation testing built with
 - **Text Import**: Load content from .txt files for batch processing
 - **Real-time Progress**: Visual feedback only when translation is active
 
-### 🔌 Dual Translation APIs
+### 🔌 Translation Providers
 - **Unofficial Google Translate**: Free, no setup required (default)
-- **Official Google Cloud Translation API**: Enterprise-grade with API key
 
 ### 💾 File Operations
 - **Import files**: Load content from .txt, .md, and .html files
@@ -79,15 +78,6 @@ dotnet run
    - **Text files**: Direct content loading
 4. **Proceed with backtranslation** as normal
 
-### Using Official Google Cloud API
-1. **Get API Key**: 
-   - Visit [Google Cloud Console](https://console.cloud.google.com/)
-   - Enable Cloud Translation API
-   - Create an API key
-2. **Enable Official API**: Check "Use Official API"
-3. **Enter API Key**: Paste your key in the password field
-4. **Translate**: Proceed normally with enhanced reliability
-
 ### Theme & Preferences
 - **Dark Mode**: Toggle for comfortable viewing
 - **Menu Options**: Access File operations via menu bar
@@ -132,7 +122,6 @@ TranslationFiestaFSharp/
 
 #### **Translation Engine**
 - `translateUnofficialAsync`: Google Translate unofficial API
-- `translateOfficialAsync`: Google Cloud Translation API
 - `translateWithRetriesAsync`: Retry logic with exponential backoff
 
 #### **UI Management**
@@ -151,7 +140,6 @@ TranslationFiestaFSharp/
 
 ### API Settings
 - **Default**: Unofficial Google Translate (no setup)
-- **Enterprise**: Google Cloud Translation API (requires key)
 - **Retry Logic**: 4 attempts with exponential backoff
 - **Timeout Handling**: Graceful failure with user feedback
 
@@ -168,13 +156,7 @@ TranslationFiestaFSharp/
 #### **Translation Failures**
 ```
 Error: Translation failed: HTTP 429
-Solution: Rate limited - wait and retry, or use official API
-```
-
-#### **API Key Issues**
-```
-Error: API key required for official endpoint
-Solution: Verify API key is correct and has Translation API access
+Solution: Rate limited - wait and retry
 ```
 
 #### **File Import Problems**
@@ -267,7 +249,6 @@ dotnet publish -c Release -r win-x64 --self-contained false
 This project is provided for educational and development purposes. Usage of translation APIs should comply with respective terms of service:
 
 - **Unofficial Google Translate**: Personal, non-commercial use
-- **Google Cloud Translation API**: Per your Google Cloud agreement
 
 ## 🔗 Related Projects
 
@@ -280,7 +261,6 @@ This project is provided for educational and development purposes. Usage of tran
 ### Getting Help
 - **Check logs**: `fsharptranslate.log` for detailed error information
 - **Verify network**: Ensure stable internet connection
-- **API limits**: Consider official API for heavy usage
 - **GitHub Issues**: Report bugs and request features
 
 ### FAQ
@@ -292,7 +272,7 @@ A: Simplified for focused backtranslation testing. Japanese provides good lingui
 A: Yes, modify `defaultIntermediateLanguageCode` and update UI labels accordingly.
 
 **Q: Is this production-ready?**
-A: Yes for testing and evaluation. For production translation workflows, consider the official Google Cloud Translation API.
+A: Yes for testing and evaluation.
 
 ---
 

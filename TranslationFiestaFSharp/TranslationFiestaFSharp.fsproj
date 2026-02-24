@@ -10,11 +10,9 @@
 
   <ItemGroup>
     <Compile Include="Logger.fs" />
-    <Compile Include="SecureStore.fs" />
     <Compile Include="ProviderIds.fs" />
     <Compile Include="Settings.fs" />
     <Compile Include="LocalServiceClient.fs" />
-    <Compile Include="CostTracker.fs" />
     <Compile Include="BLEUScorer.fs" />
     <Compile Include="BatchProcessor.fs" />
     <Compile Include="ExportManager.fs" />

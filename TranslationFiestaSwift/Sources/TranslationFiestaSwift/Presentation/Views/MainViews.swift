@@ -42,15 +42,6 @@ struct ContentView: View {
                         BatchProcessingView()
                     case .translationMemory:
                         TranslationMemoryView()
-                    case .costTracking:
-                        if appContainer.costTrackingEnabled {
-                            CostTrackingView()
-                        } else {
-                            PlaceholderView(
-                                title: "Cost tracking is disabled",
-                                message: "Enable cost tracking in Settings to view cost analytics."
-                            )
-                        }
                     case .export:
                         ExportView()
                     case .settings:
@@ -84,7 +75,6 @@ private enum SidebarTab: Int, CaseIterable, Identifiable {
     case translation
     case batch
     case translationMemory
-    case costTracking
     case export
     case settings
 
@@ -92,7 +82,6 @@ private enum SidebarTab: Int, CaseIterable, Identifiable {
 }
 
 private struct Sidebar: View {
-    @EnvironmentObject var appContainer: AppContainer
     @Binding var selectedTab: SidebarTab?
 
     var body: some View {
@@ -106,11 +95,6 @@ private struct Sidebar: View {
             Label("Translation Memory", systemImage: "brain.head.profile")
                 .tag(SidebarTab.translationMemory as SidebarTab?)
 
-            if appContainer.costTrackingEnabled {
-                Label("Cost Tracking", systemImage: "dollarsign.circle")
-                    .tag(SidebarTab.costTracking as SidebarTab?)
-            }
-
             Label("Export", systemImage: "square.and.arrow.up")
                 .tag(SidebarTab.export as SidebarTab?)
 
@@ -119,19 +103,6 @@ private struct Sidebar: View {
         }
         .listStyle(.sidebar)
         .navigationTitle("Translation Fiesta")
-    }
-}
-
-private struct PlaceholderView: View {
-    let title: String
-    let message: String
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Text(title).font(.title2).fontWeight(.semibold)
-            Text(message).foregroundColor(.secondary).multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -153,11 +124,6 @@ struct TranslationView: View {
 
                 Spacer()
 
-                if appContainer.costTrackingEnabled, let result = viewModel.translationResult {
-                    Text("Cost: $" + String(format: "%.4f", result.totalCost.costInUSD))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
             }
 
             VStack(alignment: .leading, spacing: 8) {

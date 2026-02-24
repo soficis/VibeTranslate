@@ -19,7 +19,6 @@ from exceptions import (
     ValidationError,
 )
 from provider_ids import (
-    PROVIDER_GOOGLE_OFFICIAL,
     PROVIDER_GOOGLE_UNOFFICIAL,
     normalize_provider_id,
 )
@@ -54,9 +53,7 @@ class SettingsStorage:
         return {
             "theme": "light",
             "window_geometry": "820x640",
-            "use_official_api": False,
             "provider_id": PROVIDER_GOOGLE_UNOFFICIAL,
-            "cost_tracking_enabled": False,
             "local_service_url": "",
             "local_model_dir": "",
             "local_autostart": True,
@@ -314,10 +311,9 @@ class SettingsStorage:
         return normalize_provider_id(self.get("provider_id", PROVIDER_GOOGLE_UNOFFICIAL))
 
     def set_provider_id(self, provider_id: str) -> bool:
-        """Set provider selection and keep API flags in sync."""
+        """Set provider selection."""
         normalized = normalize_provider_id(provider_id)
         self._settings["provider_id"] = normalized
-        self._settings["use_official_api"] = normalized == PROVIDER_GOOGLE_OFFICIAL
         return self._save_settings_enhanced().is_success()
 
     def add_recent_file(self, file_path: str, max_recent: int = 10) -> bool:
@@ -354,13 +350,6 @@ class SettingsStorage:
 
     def set_local_autostart(self, enabled: bool) -> bool:
         return self.set("local_autostart", bool(enabled))
-
-    def get_cost_tracking_enabled(self) -> bool:
-        return bool(self.get("cost_tracking_enabled", False))
-
-    def set_cost_tracking_enabled(self, enabled: bool) -> bool:
-        return self.set("cost_tracking_enabled", bool(enabled))
-
 
 # Global instance for easy access
 _settings_storage = None

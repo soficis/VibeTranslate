@@ -29,7 +29,6 @@ module TranslationFiesta
           first_translation: result.first_translation,
           back_translation: result.back_translation,
           api_type: result.api_type,
-          cost: result.cost,
           bleu_score: bleu_score,
           timestamp: result.timestamp
         )

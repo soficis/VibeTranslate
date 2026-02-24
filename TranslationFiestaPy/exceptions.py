@@ -148,17 +148,6 @@ class NoTranslationFoundError(TranslationError):
         )
 
 
-class ApiKeyRequiredError(TranslationError):
-    """API key required but not provided"""
-
-    def __init__(self, **kwargs):
-        super().__init__(
-            message="API key required for official translation endpoint",
-            code="API_KEY_REQUIRED",
-            **kwargs
-        )
-
-
 class UnsupportedLanguageError(TranslationError):
     """Unsupported language code"""
 
@@ -257,11 +246,6 @@ class StorageError(TranslationFiestaError):
     pass
 
 
-class SecureStorageError(StorageError):
-    """Secure storage specific errors"""
-    pass
-
-
 class SettingsStorageError(StorageError):
     """Settings storage specific errors"""
     pass
@@ -345,9 +329,9 @@ def get_user_friendly_message(error: Exception) -> str:
         if error.status_code == 400:
             return "Invalid request. Please check your input and try again."
         elif error.status_code == 401:
-            return "Authentication failed. Please check your API key."
+            return "Authentication failed. Please try again."
         elif error.status_code == 403:
-            return "Access denied. Please check your API key permissions."
+            return "Access denied by the translation service."
         elif error.status_code == 404:
             return "Translation service not found. Please try again later."
         elif error.status_code == 429:
@@ -362,9 +346,6 @@ def get_user_friendly_message(error: Exception) -> str:
 
     elif isinstance(error, TimeoutError):
         return "Request timed out. The translation service may be busy. Please try again."
-
-    elif isinstance(error, ApiKeyRequiredError):
-        return "API key is required for official translation service. Please provide a valid API key."
 
     elif isinstance(error, FileNotFoundError):
         return "The selected file was not found. Please check the file path and try again."

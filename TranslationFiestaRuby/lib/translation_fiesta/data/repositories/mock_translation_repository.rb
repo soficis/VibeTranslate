@@ -7,7 +7,7 @@ module TranslationFiesta
     module Repositories
       # A tiny mock translation repository for offline testing and CI.
       # It performs deterministic, trivial "translations" so the app can be
-      # exercised without network access or API keys.
+      # exercised without network access.
       class MockTranslationRepository < TranslationFiesta::Domain::Repositories::TranslationRepository
         def initialize
           # no-op

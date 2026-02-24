@@ -6,10 +6,9 @@ module TranslationFiesta
   module Domain
     module Services
       class TranslatorService
-        def initialize(translation_repo, memory_repo = nil, cost_tracker = nil)
+        def initialize(translation_repo, memory_repo = nil)
           @translation_repo = translation_repo
           @memory_repo = memory_repo
-          @cost_tracker = cost_tracker
         end
 
         def perform_back_translation(text, api_type = :unofficial)
@@ -23,15 +22,11 @@ module TranslationFiesta
           first_translation = translate_with_memory(text, 'en', 'ja', api_type)
           back_translation = translate_with_memory(first_translation, 'ja', 'en', api_type)
 
-          cost = calculate_cost(text, first_translation, api_type)
-          track_cost(cost, text.length, api_type) if @cost_tracker
-
           result = Entities::TranslationResult.new(
             original_text: text,
             first_translation: first_translation,
             back_translation: back_translation,
-            api_type: api_type,
-            cost: cost
+            api_type: api_type
           )
 
           # Cache the complete result
@@ -46,7 +41,7 @@ module TranslationFiesta
 
         private
 
-        attr_reader :translation_repo, :memory_repo, :cost_tracker
+        attr_reader :translation_repo, :memory_repo
 
         def validate_input(text)
           raise ArgumentError, 'Text cannot be nil or empty' if text.nil? || text.strip.empty?
@@ -66,8 +61,7 @@ module TranslationFiesta
             original_text: text,
             first_translation: cached_first,
             back_translation: cached_back,
-            api_type: api_type,
-            cost: 0.0
+            api_type: api_type
           )
         end
 
@@ -85,21 +79,6 @@ module TranslationFiesta
           memory_repo&.save_translation(text, from_lang, to_lang, result)
 
           result
-        end
-
-        def calculate_cost(original_text, first_translation, api_type)
-          return 0.0 if [:unofficial, :local].include?(api_type)
-
-          character_count = original_text.length + first_translation.length
-          character_count * 0.00002 # Google Translate pricing: $20 per 1M characters
-        end
-
-        def track_cost(cost, character_count, api_type)
-          cost_tracker.track_translation_cost(
-            cost: cost,
-            character_count: character_count,
-            api_type: api_type
-          )
         end
 
         def cache_translation_result(result)

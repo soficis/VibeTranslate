@@ -1,6 +1,6 @@
 Translation Fiesta — WinUI 3 edition
 
-This is a WinUI 3 (Windows App SDK) version of Translation Fiesta. It uses WinUI controls and Fluent styles for a Windows 11 look, provides dark mode, secure DPAPI-based storage for API keys, and persistent user settings.
+This is a WinUI 3 (Windows App SDK) version of Translation Fiesta. It uses WinUI controls and Fluent styles for a Windows 11 look, provides dark mode, and persistent user settings.
 
 Requirements
 - Windows 10 19041+ or Windows 11
@@ -44,6 +44,5 @@ Publish & Packaging (MSIX)
 3. Sign the MSIX using SignTool and a code-signing certificate. Unsigned MSIX packages may require special install steps on target machines.
 
 Notes
-- Secure storage uses DPAPI (ProtectedData) to encrypt the API key per user.
 - Theme resources (LightTheme.xaml, DarkTheme.xaml, Controls.xaml) are under `Themes/` and can be extended.
 - For full Fluent visuals, further customization of ResourceDictionaries and use of WinUI brushes is recommended.

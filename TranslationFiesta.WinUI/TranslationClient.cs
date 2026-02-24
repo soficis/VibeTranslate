@@ -15,7 +15,7 @@ using FuzzySharp;
 namespace TranslationFiesta.WinUI
 {
     /// <summary>
-    /// Translation client supporting both official Google Cloud Translation API and unofficial Google Translate
+    /// Translation client supporting local and unofficial Google Translate providers.
     /// </summary>
     public class TranslationClient
     {
@@ -25,18 +25,9 @@ namespace TranslationFiesta.WinUI
             PropertyNameCaseInsensitive = true,
             WriteIndented = true
         };
-        private string? _officialApiKey;
-        private readonly CostTracker _costTracker = new CostTracker();
         private LocalServiceClient _localClient;
 
         public string ProviderId { get; set; } = ProviderIds.GoogleUnofficial;
-        public string? OfficialApiKey
-        {
-            get => _officialApiKey;
-            set => _officialApiKey = value;
-        }
-
-        public CostTracker CostTracker => _costTracker;
 
         public TranslationClient()
         {
@@ -75,7 +66,7 @@ namespace TranslationFiesta.WinUI
         }
 
         /// <summary>
-        /// Translates text using either official or unofficial Google Translate API
+        /// Translates text using either local or unofficial Google Translate API.
         /// </summary>
         private readonly TranslationMemory _tm = new TranslationMemory();
 
@@ -108,13 +99,6 @@ namespace TranslationFiesta.WinUI
                 case ProviderIds.Local:
                     translatedText = await TranslateLocalAsync(text, fromLang, toLang, cancellationToken);
                     break;
-                case ProviderIds.GoogleOfficial:
-                    if (string.IsNullOrEmpty(_officialApiKey))
-                    {
-                        throw new InvalidOperationException("API key required for official translation.");
-                    }
-                    translatedText = await TranslateOfficialAsync(text, fromLang, toLang, cancellationToken);
-                    break;
                 default:
                     translatedText = await TranslateUnofficialAsync(text, fromLang, toLang, cancellationToken);
                     break;
@@ -134,69 +118,6 @@ namespace TranslationFiesta.WinUI
         public void ClearTMCache()
         {
             _tm.ClearCache();
-        }
-
-        /// <summary>
-        /// Uses official Google Cloud Translation API (requires API key)
-        /// </summary>
-        private async Task<string> TranslateOfficialAsync(string text, string fromLang, string toLang, CancellationToken cancellationToken)
-        {
-            try
-            {
-                Logger.Info($"Using official Google Translate API: {fromLang} -> {toLang}");
-
-                var requestBody = new
-                {
-                    q = text,
-                    source = fromLang,
-                    target = toLang,
-                    format = "text"
-                };
-
-                var json = JsonSerializer.Serialize(requestBody);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var url = $"https://translation.googleapis.com/language/translate/v2?key={_officialApiKey}";
-
-                Logger.Debug($"Official API request URL: {url.Replace(_officialApiKey ?? "", "[REDACTED]")}");
-
-                var response = await _httpClient.PostAsync(url, content, cancellationToken);
-                response.EnsureSuccessStatusCode();
-
-                var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-                Logger.Debug($"Official API response: {responseJson}");
-
-                using var doc = JsonDocument.Parse(responseJson);
-                var translatedText = doc.RootElement
-                    .GetProperty("data")
-                    .GetProperty("translations")[0]
-                    .GetProperty("translatedText")
-                    .GetString();
-
-                if (string.IsNullOrEmpty(translatedText))
-                    throw new Exception("Empty translation result from official API");
-
-                Logger.Info($"Official API translation successful: {text.Length} -> {translatedText.Length} chars");
-
-                if (Environment.GetEnvironmentVariable("TF_COST_TRACKING_ENABLED") == "1")
-                {
-                    try
-                    {
-                        _costTracker.RecordTranslation(translatedText.Length, fromLang, toLang);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Warning($"Failed to track translation cost: {ex.Message}");
-                    }
-                }
-
-                return translatedText;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Official API translation failed: {ex.Message}");
-                throw new Exception($"Official Google Translate API failed: {ex.Message}", ex);
-            }
         }
 
         /// <summary>

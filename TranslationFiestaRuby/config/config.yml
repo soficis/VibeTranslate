@@ -2,19 +2,13 @@
 
 # Translation settings
 translation:
-  default_api: unofficial  # unofficial or official
+  default_api: unofficial
   max_text_length: 5000
   translation_memory_ttl: 2592000  # 30 days in seconds
 
 # Database settings
 database:
-  cost_db_path: 'translation_fiesta.db'
   memory_db_path: 'translation_memory.db'
-
-# Cost tracking
-cost_tracking:
-  default_monthly_budget: 10.0
-  warning_threshold: 0.8  # 80% of budget
 
 # Batch processing
 batch_processing:
@@ -35,15 +29,8 @@ export:
     - 'docx'
     - 'html'
 
-# UI settings
-ui:
-  window_width: 800
-  window_height: 600
-  theme: 'default'
-
-# API settings (keys should be stored securely)
+# API settings
 api:
   google_translate:
     unofficial_endpoint: 'https://translate.googleapis.com'
-    official_endpoint: 'https://translation.googleapis.com'
     rate_limit: 100  # requests per minute

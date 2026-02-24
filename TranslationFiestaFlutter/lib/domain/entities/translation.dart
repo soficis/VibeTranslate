@@ -171,7 +171,6 @@ class BackTranslationResult {
 enum TranslationProviderId {
   local,
   googleUnofficial,
-  googleOfficial,
 }
 
 extension TranslationProviderIdX on TranslationProviderId {
@@ -181,8 +180,6 @@ extension TranslationProviderIdX on TranslationProviderId {
         return 'local';
       case TranslationProviderId.googleUnofficial:
         return 'google_unofficial';
-      case TranslationProviderId.googleOfficial:
-        return 'google_official';
     }
   }
 
@@ -192,19 +189,13 @@ extension TranslationProviderIdX on TranslationProviderId {
         return 'Local (Offline)';
       case TranslationProviderId.googleUnofficial:
         return 'Google Translate (Unofficial / Free)';
-      case TranslationProviderId.googleOfficial:
-        return 'Google Cloud Translate (Official)';
     }
   }
-
-  bool get isOfficial => this == TranslationProviderId.googleOfficial;
 
   static TranslationProviderId fromStorage(String? value) {
     switch (value) {
       case 'local':
         return TranslationProviderId.local;
-      case 'google_official':
-        return TranslationProviderId.googleOfficial;
       case 'google_unofficial':
       default:
         return TranslationProviderId.googleUnofficial;
@@ -215,7 +206,6 @@ extension TranslationProviderIdX on TranslationProviderId {
 /// Represents API configuration with meaningful naming
 class ApiConfiguration {
   final TranslationProviderId providerId;
-  final String? apiKey;
   final int maxRetries;
   final Duration timeout;
   final String? localServiceUrl;
@@ -224,7 +214,6 @@ class ApiConfiguration {
 
   ApiConfiguration({
     required this.providerId,
-    this.apiKey,
     this.maxRetries = 4,
     this.timeout = const Duration(seconds: 30),
     this.localServiceUrl,
@@ -233,21 +222,13 @@ class ApiConfiguration {
   });
 
   /// Validate the configuration
-  bool get isValid {
-    if (useOfficialApi) {
-      return apiKey != null && apiKey!.isNotEmpty;
-    }
-    return true;
-  }
-
-  bool get useOfficialApi => providerId.isOfficial;
+  bool get isValid => true;
 
   bool get isLocal => providerId == TranslationProviderId.local;
 
   /// Create a copy with modified fields
   ApiConfiguration copyWith({
     TranslationProviderId? providerId,
-    String? apiKey,
     int? maxRetries,
     Duration? timeout,
     String? localServiceUrl,
@@ -256,7 +237,6 @@ class ApiConfiguration {
   }) {
     return ApiConfiguration(
       providerId: providerId ?? this.providerId,
-      apiKey: apiKey ?? this.apiKey,
       maxRetries: maxRetries ?? this.maxRetries,
       timeout: timeout ?? this.timeout,
       localServiceUrl: localServiceUrl ?? this.localServiceUrl,
@@ -271,7 +251,6 @@ class ApiConfiguration {
       other is ApiConfiguration &&
           runtimeType == other.runtimeType &&
           providerId == other.providerId &&
-          apiKey == other.apiKey &&
           maxRetries == other.maxRetries &&
           timeout == other.timeout &&
           localServiceUrl == other.localServiceUrl &&
@@ -281,7 +260,6 @@ class ApiConfiguration {
   @override
   int get hashCode =>
       providerId.hashCode ^
-      apiKey.hashCode ^
       maxRetries.hashCode ^
       timeout.hashCode ^
       localServiceUrl.hashCode ^
@@ -290,7 +268,7 @@ class ApiConfiguration {
 
   @override
   String toString() {
-    return 'ApiConfiguration(providerId: ${providerId.storageValue}, hasApiKey: ${apiKey != null}, '
+    return 'ApiConfiguration(providerId: ${providerId.storageValue}, '
         'maxRetries: $maxRetries, timeout: ${timeout.inSeconds}s, localServiceUrl: ${localServiceUrl ?? "default"})';
   }
 }
