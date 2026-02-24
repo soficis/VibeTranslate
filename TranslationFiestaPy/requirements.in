@@ -1,8 +1,6 @@
 requests
 beautifulsoup4
 langdetect
-sacrebleu
-rapidfuzz
 pytest
 ebooklib
 tkinterweb

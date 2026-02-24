@@ -28,14 +28,6 @@ public protocol TranslationMemoryRepository {
         targetLanguage: Language
     ) async throws -> TranslationMemoryEntry?
 
-    /// Look up fuzzy translation matches.
-    func lookupFuzzy(
-        sourceText: String,
-        sourceLanguage: Language,
-        targetLanguage: Language,
-        threshold: Double
-    ) async throws -> [FuzzyMatch]
-
     /// Store translation in memory.
     func store(_ entry: TranslationMemoryEntry) async throws
 
@@ -108,26 +100,4 @@ public protocol ExportRepository {
 
     /// Get available export templates.
     func getAvailableTemplates(for format: ExportFormat) async throws -> [String]
-}
-
-/// Repository protocol for quality assessment.
-public protocol QualityRepository {
-    /// Calculate BLEU score for translation.
-    func calculateBLEUScore(
-        reference: String,
-        candidate: String
-    ) async throws -> Double
-
-    /// Generate quality assessment.
-    func assessQuality(
-        originalText: String,
-        backTranslatedText: String
-    ) async throws -> QualityAssessment
-
-    /// Get quality recommendations.
-    func getQualityRecommendations(
-        bleuScore: Double,
-        originalLength: Int,
-        translatedLength: Int
-    ) async throws -> [String]
 }

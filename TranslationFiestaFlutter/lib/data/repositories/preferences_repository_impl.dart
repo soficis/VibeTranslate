@@ -14,8 +14,10 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   SharedPreferences? _prefs;
 
   @override
-  Future<Result<bool>> getBoolPreference(String key,
-      {bool defaultValue = false,}) async {
+  Future<Result<bool>> getBoolPreference(
+    String key, {
+    bool defaultValue = false,
+  }) async {
     try {
       final prefs = await _getPrefs();
       final value = prefs.getBool(key) ?? defaultValue;
@@ -106,8 +108,10 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
 
   /// Convenience methods for theme preferences
   Future<Result<bool>> getThemePreference() async {
-    return getBoolPreference(AppConstants.themePreferenceKey,
-        defaultValue: false,);
+    return getBoolPreference(
+      AppConstants.themePreferenceKey,
+      defaultValue: false,
+    );
   }
 
   Future<Result<void>> setThemePreference(bool isDark) async {
@@ -119,31 +123,10 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   }
 
   Future<Result<void>> setProviderIdPreference(String providerId) async {
-    return setStringPreference(AppConstants.providerIdPreferenceKey, providerId);
-  }
-
-  Future<Result<String?>> getLocalServiceUrlPreference() async {
-    return getStringPreference(AppConstants.localServiceUrlPreferenceKey);
-  }
-
-  Future<Result<void>> setLocalServiceUrlPreference(String url) async {
-    return setStringPreference(AppConstants.localServiceUrlPreferenceKey, url);
-  }
-
-  Future<Result<String?>> getLocalModelDirPreference() async {
-    return getStringPreference(AppConstants.localModelDirPreferenceKey);
-  }
-
-  Future<Result<void>> setLocalModelDirPreference(String path) async {
-    return setStringPreference(AppConstants.localModelDirPreferenceKey, path);
-  }
-
-  Future<Result<bool>> getLocalAutoStartPreference() async {
-    return getBoolPreference(AppConstants.localAutoStartPreferenceKey, defaultValue: true);
-  }
-
-  Future<Result<void>> setLocalAutoStartPreference(bool enabled) async {
-    return setBoolPreference(AppConstants.localAutoStartPreferenceKey, enabled);
+    return setStringPreference(
+      AppConstants.providerIdPreferenceKey,
+      providerId,
+    );
   }
 }
 

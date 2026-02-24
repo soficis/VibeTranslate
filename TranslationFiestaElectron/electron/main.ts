@@ -1,16 +1,11 @@
-import { app, BrowserWindow, ipcMain, dialog } from "electron";
-import { spawn } from "child_process";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const defaultBaseUrl = "http://127.0.0.1:5055";
-const defaultScriptPath = "TranslationFiestaLocal/local_service.py";
-let localServiceStarted = false;
-
-type ProviderId = "local" | "google_unofficial";
+type ProviderId = "google_unofficial";
 type SettingsData = { providerId: ProviderId };
 
 const defaultSettings: SettingsData = { providerId: "google_unofficial" };
@@ -21,7 +16,7 @@ const readSettings = (): SettingsData => {
   try {
     const raw = fs.readFileSync(getSettingsPath(), "utf-8");
     const parsed = JSON.parse(raw) as Partial<SettingsData>;
-    const providerId = (parsed.providerId ?? defaultSettings.providerId) as ProviderId;
+    const providerId = parsed.providerId === "google_unofficial" ? parsed.providerId : defaultSettings.providerId;
     return { providerId };
   } catch {
     return { ...defaultSettings };
@@ -31,66 +26,6 @@ const readSettings = (): SettingsData => {
 const writeSettings = (settings: SettingsData) => {
   fs.mkdirSync(app.getPath("userData"), { recursive: true });
   fs.writeFileSync(getSettingsPath(), JSON.stringify(settings, null, 2), "utf-8");
-};
-
-const getBaseUrl = () => {
-  const raw = process.env.TF_LOCAL_URL?.trim();
-  return (raw && raw.length > 0 ? raw : defaultBaseUrl).replace(/\/+$/, "");
-};
-
-const isAutoStartEnabled = () => {
-  const raw = process.env.TF_LOCAL_AUTOSTART?.trim().toLowerCase();
-  if (!raw) return true;
-  return raw !== "0" && raw !== "false" && raw !== "no";
-};
-
-const startLocalService = () => {
-  if (localServiceStarted) {
-    return;
-  }
-  const scriptPath = process.env.TF_LOCAL_SCRIPT?.trim() || defaultScriptPath;
-  const python = process.env.PYTHON?.trim() || "python";
-  const child = spawn(python, [scriptPath, "serve"], {
-    cwd: path.dirname(scriptPath),
-    detached: true,
-    stdio: "ignore"
-  });
-  child.unref();
-  localServiceStarted = true;
-};
-
-const checkLocalHealth = async () => {
-  const baseUrl = getBaseUrl();
-  const response = await fetch(`${baseUrl}/health`);
-  if (!response.ok) {
-    throw new Error(`Local service HTTP ${response.status}`);
-  }
-  const body = (await response.json()) as { status?: string };
-  if (body.status?.toLowerCase() !== "ok") {
-    throw new Error("Local service not ready");
-  }
-  return true;
-};
-
-const ensureLocalService = async () => {
-  try {
-    await checkLocalHealth();
-    return;
-  } catch {
-    if (!isAutoStartEnabled()) {
-      throw new Error("Local service unavailable and autostart disabled");
-    }
-    startLocalService();
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      try {
-        await checkLocalHealth();
-        return;
-      } catch {
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
-    }
-    throw new Error("Local service did not become healthy");
-  }
 };
 
 const createWindow = () => {
@@ -119,9 +54,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle("settings-load", async () => {
     const settings = readSettings();
-    return {
-      providerId: settings.providerId
-    };
+    return { providerId: settings.providerId };
   });
 
   ipcMain.handle("settings-set-provider", async (_event, payload: { providerId: ProviderId }) => {
@@ -133,101 +66,6 @@ app.whenReady().then(() => {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save provider";
       return { ok: false, error: message };
-    }
-  });
-
-  ipcMain.handle("local-health", async () => {
-    try {
-      await checkLocalHealth();
-      return { ok: true };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Health check failed";
-      return { ok: false, error: message };
-    }
-  });
-
-  ipcMain.handle("local-start", async () => {
-    try {
-      startLocalService();
-      return { started: true };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to start local service";
-      return { started: false, error: message };
-    }
-  });
-
-  ipcMain.handle("local-translate", async (_event, payload: { text: string; source_lang: string; target_lang: string }) => {
-    try {
-      await ensureLocalService();
-      const baseUrl = getBaseUrl();
-      const response = await fetch(`${baseUrl}/translate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        return { error: `Local service HTTP ${response.status}` };
-      }
-      const data = (await response.json()) as { translated_text?: string; error?: { message?: string } };
-      if (data.error?.message) {
-        return { error: data.error.message };
-      }
-      return { translatedText: data.translated_text ?? "" };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Local translation failed";
-      return { error: message };
-    }
-  });
-
-  ipcMain.handle("local-models-status", async () => {
-    try {
-      await ensureLocalService();
-      const baseUrl = getBaseUrl();
-      const response = await fetch(`${baseUrl}/models`);
-      return await response.json();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to read models status";
-      return { error: { code: "network_error", message } };
-    }
-  });
-
-  ipcMain.handle("local-models-verify", async () => {
-    try {
-      await ensureLocalService();
-      const baseUrl = getBaseUrl();
-      const response = await fetch(`${baseUrl}/models/verify`, { method: "POST" });
-      return await response.json();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to verify models";
-      return { error: { code: "network_error", message } };
-    }
-  });
-
-  ipcMain.handle("local-models-remove", async () => {
-    try {
-      await ensureLocalService();
-      const baseUrl = getBaseUrl();
-      const response = await fetch(`${baseUrl}/models/remove`, { method: "POST" });
-      return await response.json();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to remove models";
-      return { error: { code: "network_error", message } };
-    }
-  });
-
-  ipcMain.handle("local-models-install", async (_event, payload: { preset?: string } = {}) => {
-    try {
-      await ensureLocalService();
-      const baseUrl = getBaseUrl();
-      const response = await fetch(`${baseUrl}/models/install`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload ?? {})
-      });
-      return await response.json();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to install models";
-      return { error: { code: "network_error", message } };
     }
   });
 

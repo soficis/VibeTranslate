@@ -14,9 +14,6 @@
 /// - **Immutability and Functional Idioms**:
 ///     - The `ExportConfig` is now a record with a builder-style `Create` function and
 ///       `With...` methods for more readable and composable configuration.
-///     - The `CalculateQualityMetrics` function now uses a more functional approach with `List.fold`.
-/// - **Dependency Management**: The convenience functions (`exportToPdf`, `exportToDocx`, `exportToHtml`)
-///   now accept a `BLEUScorer` instance, promoting dependency injection and avoiding the creation of new instances on each call.
 /// - **Meaningful Naming**: Ensured all types, functions, and parameters have clear, descriptive names.
 /// - **XML Documentation**: Added comprehensive XML documentation to all public types and members
 ///   to enhance clarity, discoverability, and ease of use.
@@ -31,7 +28,6 @@ open PdfSharp.Pdf
 open DocumentFormat.OpenXml
 open DocumentFormat.OpenXml.Packaging
 open DocumentFormat.OpenXml.Wordprocessing
-open TranslationFiestaFSharp.BLEUScorer
 
 /// <summary>
 /// Represents metadata for an exported document, including title, author, and translation-specific details.
@@ -44,7 +40,6 @@ type ExportMetadata = {
     CreatedDate: string
     SourceLanguage: string
     TargetLanguage: string
-    TranslationQualityScore: float
     ProcessingTimeSeconds: float
     ApiUsed: string
 } with
@@ -59,7 +54,6 @@ type ExportMetadata = {
         CreatedDate = DateTime.Now.ToString("O")
         SourceLanguage = ""
         TargetLanguage = ""
-        TranslationQualityScore = 0.0
         ProcessingTimeSeconds = 0.0
         ApiUsed = ""
     }
@@ -71,7 +65,6 @@ type ExportConfig = {
     Format: string
     TemplatePath: string option
     IncludeMetadata: bool
-    IncludeQualityMetrics: bool
     IncludeTimestamps: bool
     PageSize: string
     FontFamily: string
@@ -87,7 +80,6 @@ type ExportConfig = {
         Format = "pdf"
         TemplatePath = None
         IncludeMetadata = true
-        IncludeQualityMetrics = true
         IncludeTimestamps = true
         PageSize = "A4"
         FontFamily = "Arial"
@@ -109,10 +101,6 @@ type ExportConfig = {
     /// </summary>
     member this.WithMetadata(shouldInclude: bool) = { this with IncludeMetadata = shouldInclude }
     /// <summary>
-    /// Specifies whether to include quality metrics in the exported document.
-    /// </summary>
-    member this.WithQualityMetrics(shouldInclude: bool) = { this with IncludeQualityMetrics = shouldInclude }
-    /// <summary>
     /// Specifies whether to include timestamps in the exported document.
     /// </summary>
     member this.WithTimestamps(shouldInclude: bool) = { this with IncludeTimestamps = shouldInclude }
@@ -125,23 +113,19 @@ type TranslationResult = {
     TranslatedText: string
     SourceLanguage: string
     TargetLanguage: string
-    QualityScore: float
-    ConfidenceLevel: string
     ProcessingTime: float
     ApiUsed: string
     Timestamp: string
 } with
     /// <summary>
-    /// Creates a new <see cref="TranslationResult"/> with optional parameters for quality metrics.
+    /// Creates a new <see cref="TranslationResult"/> with optional parameters for processing metadata.
     /// </summary>
     static member Create(originalText, translatedText, sourceLanguage, targetLanguage,
-                        ?qualityScore, ?confidenceLevel, ?processingTime, ?apiUsed) = {
+                        ?processingTime, ?apiUsed) = {
         OriginalText = originalText
         TranslatedText = translatedText
         SourceLanguage = sourceLanguage
         TargetLanguage = targetLanguage
-        QualityScore = defaultArg qualityScore 0.0
-        ConfidenceLevel = defaultArg confidenceLevel ""
         ProcessingTime = defaultArg processingTime 0.0
         ApiUsed = defaultArg apiUsed ""
         Timestamp = DateTime.Now.ToString("O")
@@ -151,8 +135,7 @@ type TranslationResult = {
 /// Manages the export of translation results to various document formats.
 /// </summary>
 /// <param name="config">The <see cref="ExportConfig"/> to use for export operations.</param>
-/// <param name="bleuScorer">An instance of <see cref="BLEUScorer"/> for calculating quality metrics.</param>
-type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
+type ExportManager(config: ExportConfig) =
 
     let supportedFormats = ["pdf"; "docx"; "html"]
 
@@ -185,12 +168,8 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
                                          else metadata.TargetLanguage
                 }
 
-                // Calculate overall quality metrics
                 let finalMetadata, finalTranslations =
-                    if config.IncludeQualityMetrics then
-                        this.CalculateQualityMetrics(defaultMetadata, translations)
-                    else
-                        defaultMetadata, translations
+                    this.CalculateProcessingMetrics(defaultMetadata, translations)
 
                 // Export based on format
                 match config.Format.ToLower() with
@@ -201,31 +180,17 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
         with ex ->
             Error ex
 
-    member private this.CalculateQualityMetrics(metadata: ExportMetadata, translations: TranslationResult list) =
-        let processedTranslations, totalScore, totalTime =
+    member private this.CalculateProcessingMetrics(metadata: ExportMetadata, translations: TranslationResult list) =
+        let processedTranslations, totalTime =
             translations
-            |> List.fold (fun (accTranslations, accScore, accTime) translation ->
-                let finalTranslation, score =
-                    if translation.QualityScore = 0.0 && not (String.IsNullOrEmpty translation.OriginalText) &&
-                       not (String.IsNullOrEmpty translation.TranslatedText) then
-                        // Calculate BLEU score if not already calculated
-                        let bleuScore = bleuScorer.CalculateBleu(translation.OriginalText, translation.TranslatedText)
-                        let confidence, _ = bleuScorer.GetConfidenceLevel(bleuScore)
-                        { translation with
-                            QualityScore = bleuScore
-                            ConfidenceLevel = confidence }, bleuScore
-                    else
-                        translation, translation.QualityScore
+            |> List.fold (fun (accTranslations, accTime) translation ->
+                translation :: accTranslations, accTime + translation.ProcessingTime
+            ) ([], 0.0)
 
-                finalTranslation :: accTranslations, accScore + score, accTime + translation.ProcessingTime
-            ) ([], 0.0, 0.0)
-
-        let avgScore = if translations.Length > 0 then totalScore / float translations.Length else 0.0
         let avgTime = if translations.Length > 0 then totalTime / float translations.Length else 0.0
 
         let updatedMetadata = {
             metadata with
-                TranslationQualityScore = avgScore
                 ProcessingTimeSeconds = avgTime
         }
 
@@ -289,14 +254,10 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
                 yPosition <- yPosition + lineHeight
                 yPosition <- this.DrawMultilineText(currentGfx, translation.TranslatedText, font, 70.0, yPosition, pageWidth - 20.0)
 
-                // Quality metrics
-                if config.IncludeQualityMetrics then
+                if translation.ProcessingTime > 0.0 then
                     yPosition <- yPosition + 10.0
-                    let qualityText =
-                        sprintf "Quality Score: %.3f (%s)" translation.QualityScore translation.ConfidenceLevel
-                        + if translation.ProcessingTime > 0.0 then sprintf " | Processing Time: %.2fs" translation.ProcessingTime else ""
                     let smallFont = new XFont(config.FontFamily, float (config.FontSize - 2), XFontStyleEx.Italic)
-                    currentGfx.DrawString(qualityText, smallFont, XBrushes.Gray, 50.0, yPosition)
+                    currentGfx.DrawString(sprintf "Processing Time: %.2fs" translation.ProcessingTime, smallFont, XBrushes.Gray, 50.0, yPosition)
                     yPosition <- yPosition + lineHeight
 
                 yPosition <- yPosition + 20.0
@@ -355,20 +316,14 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
                 )
                 body.AppendChild(translatedPara) |> ignore
 
-                // Quality metrics
-                if config.IncludeQualityMetrics then
-                    let qualityText =
-                        sprintf "Quality Score: %.3f (%s)" translation.QualityScore translation.ConfidenceLevel
-                        + if translation.ProcessingTime > 0.0 then sprintf " | Processing Time: %.2fs" translation.ProcessingTime else ""
+                if translation.ProcessingTime > 0.0 then
                     let c = new Color()
                     c.Val <- "666666"
-                    let qualityPara = new Paragraph(new Run(
+                    let processingPara = new Paragraph(new Run(
                         new RunProperties(new Italic(), c),
-                        new Text(qualityText)
+                        new Text(sprintf "Processing Time: %.2fs" translation.ProcessingTime)
                     ))
-                    body.AppendChild(qualityPara) |> ignore
-                else
-                    ()
+                    body.AppendChild(processingPara) |> ignore
 
                 // Add spacing
                 let spacingPara = new Paragraph()
@@ -428,11 +383,6 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
             html.AppendLine("        .translated {") |> ignore
             html.AppendLine("            margin-bottom: 15px;") |> ignore
             html.AppendLine("        }") |> ignore
-            html.AppendLine("        .quality {") |> ignore
-            html.AppendLine("            font-style: italic;") |> ignore
-            html.AppendLine("            color: #666;") |> ignore
-            html.AppendLine("            font-size: 0.9em;") |> ignore
-            html.AppendLine("        }") |> ignore
             html.AppendLine("        .metadata {") |> ignore
             html.AppendLine("            background: #e8f4fd;") |> ignore
             html.AppendLine("            padding: 15px;") |> ignore
@@ -472,7 +422,6 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
                 html.AppendLine(sprintf "                <tr><th>Created</th><td>%s</td></tr>" metadata.CreatedDate) |> ignore
                 html.AppendLine(sprintf "                <tr><th>Source Language</th><td>%s</td></tr>" metadata.SourceLanguage) |> ignore
                 html.AppendLine(sprintf "                <tr><th>Target Language</th><td>%s</td></tr>" metadata.TargetLanguage) |> ignore
-                html.AppendLine(sprintf "                <tr><th>Quality Score</th><td>%.3f</td></tr>" metadata.TranslationQualityScore) |> ignore
                 html.AppendLine(sprintf "                <tr><th>API Used</th><td>%s</td></tr>" metadata.ApiUsed) |> ignore
                 html.AppendLine("            </table>") |> ignore
                 html.AppendLine("        </div>") |> ignore
@@ -481,11 +430,9 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
             html.AppendLine("        <h2>Translation Results</h2>") |> ignore
 
             for i, translation in List.indexed translations do
-                let qualityInfo =
-                    if config.IncludeQualityMetrics then
-                        sprintf "<div class=\"quality\">Quality Score: %.3f (%s)" translation.QualityScore translation.ConfidenceLevel
-                        + if translation.ProcessingTime > 0.0 then sprintf " | Processing Time: %.2fs" translation.ProcessingTime else ""
-                        + "</div>"
+                let processingInfo =
+                    if translation.ProcessingTime > 0.0 then
+                        sprintf "<div><em>Processing Time: %.2fs</em></div>" translation.ProcessingTime
                     else ""
 
                 html.AppendLine("        <div class=\"translation\">") |> ignore
@@ -498,7 +445,7 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
                 html.AppendLine("                <strong>Translated Text:</strong><br>") |> ignore
                 html.AppendLine(sprintf "                %s" (translation.TranslatedText.Replace("\n", "<br>"))) |> ignore
                 html.AppendLine("            </div>") |> ignore
-                html.AppendLine(sprintf "            %s" qualityInfo) |> ignore
+                html.AppendLine(sprintf "            %s" processingInfo) |> ignore
                 html.AppendLine("        </div>") |> ignore
 
             html.AppendLine("    </div>") |> ignore
@@ -552,8 +499,8 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
         drawRow "Created:" metadata.CreatedDate
         drawRow "Source Language:" metadata.SourceLanguage
         drawRow "Target Language:" metadata.TargetLanguage
-        drawRow "Quality Score:" (sprintf "%.3f" metadata.TranslationQualityScore)
         drawRow "API Used:" metadata.ApiUsed
+        drawRow "Processing Time:" (sprintf "%.2fs" metadata.ProcessingTimeSeconds)
         currentY
 
     member private this.AddMetadataTable(body: Body, metadata: ExportMetadata) =
@@ -583,10 +530,6 @@ type ExportManager(config: ExportConfig, bleuScorer: BLEUScorer) =
             new TableRow(
                 this.CreateTableCell("Target Language", false),
                 this.CreateTableCell(metadata.TargetLanguage, false)
-            ),
-            new TableRow(
-                this.CreateTableCell("Quality Score", false),
-                this.CreateTableCell(sprintf "%.3f" metadata.TranslationQualityScore, false)
             ),
             new TableRow(
                 this.CreateTableCell("API Used", false),
@@ -622,13 +565,12 @@ module ExportManager =
     /// <param name="outputPath">The path where the PDF file will be saved.</param>
     /// <param name="metadata">Optional <see cref="ExportMetadata"/> for the document.</param>
     /// <param name="config">Optional <see cref="ExportConfig"/> for the export operation.</param>
-    /// <param name="bleuScorer">An instance of <see cref="BLEUScorer"/> for quality metrics.</param>
     /// <returns>A <see cref="Result{string, exn}"/> containing the output path on success, or an exception on failure.</returns>
     let exportToPdf (translations: TranslationResult list) (outputPath: string)
-                   (metadata: ExportMetadata option) (config: ExportConfig option) (bleuScorer: BLEUScorer) : Result<string, exn> =
+                   (metadata: ExportMetadata option) (config: ExportConfig option) : Result<string, exn> =
         let config = defaultArg config (ExportConfig.Create())
         let config = { config with Format = "pdf" }
-        let manager = ExportManager(config, bleuScorer)
+        let manager = ExportManager(config)
         manager.ExportTranslations(translations, outputPath, ?metadata = metadata)
 
     /// <summary>
@@ -638,13 +580,12 @@ module ExportManager =
     /// <param name="outputPath">The path where the DOCX file will be saved.</param>
     /// <param name="metadata">Optional <see cref="ExportMetadata"/> for the document.</param>
     /// <param name="config">Optional <see cref="ExportConfig"/> for the export operation.</param>
-    /// <param name="bleuScorer">An instance of <see cref="BLEUScorer"/> for quality metrics.</param>
     /// <returns>A <see cref="Result{string, exn}"/> containing the output path on success, or an exception on failure.</returns>
     let exportToDocx (translations: TranslationResult list) (outputPath: string)
-                    (metadata: ExportMetadata option) (config: ExportConfig option) (bleuScorer: BLEUScorer) : Result<string, exn> =
+                    (metadata: ExportMetadata option) (config: ExportConfig option) : Result<string, exn> =
         let config = defaultArg config (ExportConfig.Create())
         let config = { config with Format = "docx" }
-        let manager = ExportManager(config, bleuScorer)
+        let manager = ExportManager(config)
         manager.ExportTranslations(translations, outputPath, ?metadata = metadata)
 
     /// <summary>
@@ -654,11 +595,10 @@ module ExportManager =
     /// <param name="outputPath">The path where the HTML file will be saved.</param>
     /// <param name="metadata">Optional <see cref="ExportMetadata"/> for the document.</param>
     /// <param name="config">Optional <see cref="ExportConfig"/> for the export operation.</param>
-    /// <param name="bleuScorer">An instance of <see cref="BLEUScorer"/> for quality metrics.</param>
     /// <returns>A <see cref="Result{string, exn}"/> containing the output path on success, or an exception on failure.</returns>
     let exportToHtml (translations: TranslationResult list) (outputPath: string)
-                    (metadata: ExportMetadata option) (config: ExportConfig option) (bleuScorer: BLEUScorer) : Result<string, exn> =
+                    (metadata: ExportMetadata option) (config: ExportConfig option) : Result<string, exn> =
         let config = defaultArg config (ExportConfig.Create())
         let config = { config with Format = "html" }
-        let manager = ExportManager(config, bleuScorer)
+        let manager = ExportManager(config)
         manager.ExportTranslations(translations, outputPath, ?metadata = metadata)

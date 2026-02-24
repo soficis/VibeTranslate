@@ -10,12 +10,11 @@ import (
 	"translationfiestago/internal/domain/entities"
 )
 
-// TranslationMemory stores previously translated strings with LRU + fuzzy lookup support.
+// TranslationMemory stores previously translated strings with LRU caching.
 type TranslationMemory struct {
 	cache           map[string]*list.Element
 	lruList         *list.List
 	cacheSize       int
-	threshold       float64
 	persistencePath string
 	metrics         TMetrics
 }
@@ -31,17 +30,15 @@ type TMEntry struct {
 type TMetrics struct {
 	Hits         int     `json:"hits"`
 	Misses       int     `json:"misses"`
-	FuzzyHits    int     `json:"fuzzy_hits"`
 	TotalLookups int     `json:"total_lookups"`
 	TotalTime    float64 `json:"total_time"`
 }
 
-func NewTranslationMemory(cacheSize int, persistencePath string, threshold float64) *TranslationMemory {
+func NewTranslationMemory(cacheSize int, persistencePath string) *TranslationMemory {
 	tm := &TranslationMemory{
 		cache:           make(map[string]*list.Element),
 		lruList:         list.New(),
 		cacheSize:       cacheSize,
-		threshold:       threshold,
 		persistencePath: persistencePath,
 		metrics:         TMetrics{},
 	}
@@ -64,65 +61,6 @@ func (tm *TranslationMemory) Lookup(source, targetLang, providerID string) (stri
 	tm.metrics.Misses++
 	tm.metrics.TotalLookups++
 	return "", false
-}
-
-func levenshtein(s1, s2 string) int {
-	m, n := len(s1), len(s2)
-	if m == 0 {
-		return n
-	}
-	if n == 0 {
-		return m
-	}
-	d := make([][]int, m+1)
-	for i := range d {
-		d[i] = make([]int, n+1)
-	}
-	for i := range d {
-		d[i][0] = i
-	}
-	for j := range d[0] {
-		d[0][j] = j
-	}
-	for i := 1; i <= m; i++ {
-		for j := 1; j <= n; j++ {
-			cost := 0
-			if s1[i-1] != s2[j-1] {
-				cost = 1
-			}
-			d[i][j] = min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1]+cost)
-		}
-	}
-	return d[m][n]
-}
-
-func (tm *TranslationMemory) FuzzyLookup(source, targetLang, providerID string) (string, float64, bool) {
-	var bestScore float64
-	var bestTranslation string
-	matched := false
-
-	for elem := tm.lruList.Front(); elem != nil; elem = elem.Next() {
-		entry := elem.Value.(*TMEntry)
-		if entry.TargetLang == targetLang && entry.ProviderID == providerID {
-			distance := levenshtein(source, entry.Source)
-			maxLen := max(len(source), len(entry.Source))
-			score := 1.0 - float64(distance)/float64(maxLen)
-			if score > bestScore && score >= tm.threshold {
-				bestScore = score
-				bestTranslation = entry.Translation
-				matched = true
-			}
-		}
-	}
-
-	if matched {
-		tm.metrics.FuzzyHits++
-		tm.metrics.TotalLookups++
-		return bestTranslation, bestScore, true
-	}
-	tm.metrics.Misses++
-	tm.metrics.TotalLookups++
-	return "", 0, false
 }
 
 func (tm *TranslationMemory) Store(source, targetLang, providerID, translation string) {
@@ -156,9 +94,8 @@ func (tm *TranslationMemory) GetStats() map[string]interface{} {
 	stats := make(map[string]interface{})
 	stats["hits"] = tm.metrics.Hits
 	stats["misses"] = tm.metrics.Misses
-	stats["fuzzy_hits"] = tm.metrics.FuzzyHits
 	stats["total_lookups"] = tm.metrics.TotalLookups
-	stats["hit_rate"] = float64(tm.metrics.Hits+tm.metrics.FuzzyHits) / float64(max(1, tm.metrics.TotalLookups))
+	stats["hit_rate"] = float64(tm.metrics.Hits) / float64(max(1, tm.metrics.TotalLookups))
 	stats["avg_lookup_time"] = tm.metrics.TotalTime / float64(max(1, tm.metrics.TotalLookups))
 	stats["cache_size"] = tm.lruList.Len()
 	stats["max_size"] = tm.cacheSize
@@ -175,8 +112,7 @@ func (tm *TranslationMemory) ClearCache() {
 func (tm *TranslationMemory) persist() {
 	data := map[string]interface{}{
 		"config": map[string]interface{}{
-			"max_size":  tm.cacheSize,
-			"threshold": tm.threshold,
+			"max_size": tm.cacheSize,
 		},
 		"cache":   []TMEntry{},
 		"metrics": tm.metrics,
@@ -216,9 +152,6 @@ func (tm *TranslationMemory) loadCache() {
 		if size, ok := config["max_size"].(float64); ok {
 			tm.cacheSize = int(size)
 		}
-		if thresh, ok := config["threshold"].(float64); ok {
-			tm.threshold = thresh
-		}
 	}
 
 	if metricsData, ok := data["metrics"].(map[string]interface{}); ok {
@@ -227,9 +160,6 @@ func (tm *TranslationMemory) loadCache() {
 		}
 		if m, ok := metricsData["misses"].(float64); ok {
 			tm.metrics.Misses = int(m)
-		}
-		if fh, ok := metricsData["fuzzy_hits"].(float64); ok {
-			tm.metrics.FuzzyHits = int(fh)
 		}
 		if tl, ok := metricsData["total_lookups"].(float64); ok {
 			tm.metrics.TotalLookups = int(tl)
@@ -259,19 +189,6 @@ func (tm *TranslationMemory) loadCache() {
 		elem := tm.lruList.PushFront(entry)
 		tm.cache[key] = elem
 	}
-}
-
-func min(a, b, c int) int {
-	if a < b {
-		if a < c {
-			return a
-		}
-		return c
-	}
-	if b < c {
-		return b
-	}
-	return c
 }
 
 func max(a, b int) int {

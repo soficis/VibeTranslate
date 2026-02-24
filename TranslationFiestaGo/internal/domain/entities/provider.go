@@ -3,15 +3,12 @@ package entities
 import "strings"
 
 const (
-	ProviderLocal            = "local"
 	ProviderGoogleUnofficial = "google_unofficial"
 )
 
 func NormalizeProviderID(raw string) string {
 	value := strings.TrimSpace(strings.ToLower(raw))
 	switch value {
-	case ProviderLocal:
-		return ProviderLocal
 	case "unofficial", "google_unofficial_free", "google_free", "googletranslate":
 		return ProviderGoogleUnofficial
 	case "":

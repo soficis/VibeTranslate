@@ -2,7 +2,7 @@
 
 **Repository**: [https://github.com/soficis/VibeTranslate](https://github.com/soficis/VibeTranslate)
 
-A clean, modern Windows Forms application for backtranslation testing built with F# and .NET 9. This tool translates English text to Japanese and back to English, helping you evaluate translation quality and identify potential issues in your content.
+A clean, modern Windows Forms application for backtranslation testing built with F# and .NET 9. This tool translates English text to Japanese and back to English, helping you identify potential issues in your content.
 
 ## ✨ Features
 
@@ -266,7 +266,7 @@ This project is provided for educational and development purposes. Usage of tran
 ### FAQ
 
 **Q: Why only English ↔ Japanese?**
-A: Simplified for focused backtranslation testing. Japanese provides good linguistic distance from English for quality evaluation.
+A: Simplified for focused backtranslation testing. Japanese provides good linguistic distance from English for useful round-trip comparisons.
 
 **Q: Can I add more languages?**
 A: Yes, modify `defaultIntermediateLanguageCode` and update UI labels accordingly.

@@ -2,7 +2,6 @@ package entities
 
 import (
 	"time"
-	"translationfiestago/internal/utils"
 )
 
 // Translation represents a translation operation
@@ -45,5 +44,4 @@ type BackTranslation struct {
 	Error             error
 	Timestamp         time.Time
 	Duration          time.Duration
-	QualityAssessment *utils.TranslationQualityAssessment
 }

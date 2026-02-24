@@ -7,11 +7,9 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-PROVIDER_LOCAL = "local"
 PROVIDER_GOOGLE_UNOFFICIAL = "google_unofficial"
 
 PROVIDER_LABELS: Dict[str, str] = {
-    PROVIDER_LOCAL: "Local (Offline)",
     PROVIDER_GOOGLE_UNOFFICIAL: "Google Translate (Unofficial / Free)",
 }
 

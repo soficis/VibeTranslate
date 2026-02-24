@@ -2,7 +2,7 @@
 """
 TranslationFiesta Export Manager
 Provides professional document export capabilities with proper formatting,
-metadata inclusion, and quality metrics.
+metadata inclusion, and processing metadata.
 """
 
 import os
@@ -35,7 +35,6 @@ except ImportError:
     JINJA2_AVAILABLE = False
 
 from app_logger import create_logger
-from bleu_scorer import BLEUScorer
 from exceptions import TranslationFiestaError
 
 
@@ -49,7 +48,6 @@ class ExportMetadata:
     created_date: str = None
     source_language: str = ""
     target_language: str = ""
-    translation_quality_score: float = 0.0
     processing_time_seconds: float = 0.0
     api_used: str = ""
 
@@ -66,7 +64,6 @@ class ExportConfig:
     format: str = "pdf"  # pdf, docx, html
     template_path: Optional[str] = None
     include_metadata: bool = True
-    include_quality_metrics: bool = True
     include_timestamps: bool = True
     page_size: str = "A4"  # A4, letter
     font_family: str = "Helvetica"
@@ -83,8 +80,6 @@ class TranslationResult:
     translated_text: str
     source_language: str
     target_language: str
-    quality_score: float = 0.0
-    confidence_level: str = ""
     processing_time: float = 0.0
     api_used: str = ""
     timestamp: str = ""
@@ -102,7 +97,6 @@ class ExportManager:
     def __init__(self, config: Optional[ExportConfig] = None):
         self.config = config or ExportConfig()
         self.logger = create_logger("export_manager")
-        self.bleu_scorer = BLEUScorer()
 
         # Check dependencies
         if self.config.format == "pdf" and not REPORTLAB_AVAILABLE:
@@ -140,9 +134,7 @@ class ExportManager:
                 target_language=translations[0].target_language if translations else "",
             )
 
-        # Calculate overall quality metrics
-        if self.config.include_quality_metrics:
-            self._calculate_quality_metrics(translations, metadata)
+        self._calculate_processing_metrics(translations, metadata)
 
         # Export based on format
         if self.config.format == "pdf":
@@ -154,25 +146,15 @@ class ExportManager:
         else:
             raise TranslationFiestaError(f"Unsupported export format: {self.config.format}")
 
-    def _calculate_quality_metrics(self, translations: List[TranslationResult], metadata: ExportMetadata):
-        """Calculate overall quality metrics for the translation set"""
-        total_score = 0.0
+    def _calculate_processing_metrics(self, translations: List[TranslationResult], metadata: ExportMetadata):
+        """Calculate average processing time for the translation set."""
         total_time = 0.0
 
         for translation in translations:
-            if translation.quality_score == 0.0 and translation.original_text and translation.translated_text:
-                # Calculate BLEU score if not already calculated
-                bleu_score = self.bleu_scorer.calculate_bleu(translation.original_text, translation.translated_text)
-                translation.quality_score = bleu_score
-                confidence = self.bleu_scorer.get_confidence_level(bleu_score)
-                translation.confidence_level = confidence["Level"]
-
-            total_score += translation.quality_score
             total_time += translation.processing_time
 
         # Update metadata with averages
         if translations:
-            metadata.translation_quality_score = total_score / len(translations)
             metadata.processing_time_seconds = total_time / len(translations)
 
     def _export_pdf(
@@ -241,12 +223,8 @@ class ExportManager:
             content.append(Paragraph("<b>Translated Text:</b>", normal_style))
             content.append(Paragraph(translation.translated_text, normal_style))
 
-            # Quality metrics
-            if self.config.include_quality_metrics:
-                quality_text = f"Quality Score: {translation.quality_score:.3f} ({translation.confidence_level})"
-                if translation.processing_time > 0:
-                    quality_text += f" | Processing Time: {translation.processing_time:.2f}s"
-                content.append(Paragraph(f"<i>{quality_text}</i>", normal_style))
+            if translation.processing_time > 0:
+                content.append(Paragraph(f"<i>Processing Time: {translation.processing_time:.2f}s</i>", normal_style))
 
             content.append(Spacer(1, 0.25 * inch))
 
@@ -299,12 +277,8 @@ class ExportManager:
             p = doc.add_paragraph(translation.translated_text)
             p.style = 'Body Text'
 
-            # Quality metrics
-            if self.config.include_quality_metrics:
-                quality_text = f"Quality Score: {translation.quality_score:.3f} ({translation.confidence_level})"
-                if translation.processing_time > 0:
-                    quality_text += f" | Processing Time: {translation.processing_time:.2f}s"
-                p = doc.add_paragraph(quality_text, style='Caption')
+            if translation.processing_time > 0:
+                p = doc.add_paragraph(f"Processing Time: {translation.processing_time:.2f}s", style='Caption')
                 p.italic = True
 
             # Add spacing
@@ -378,11 +352,6 @@ class ExportManager:
         .translated {{
             margin-bottom: 15px;
         }}
-        .quality {{
-            font-style: italic;
-            color: #666;
-            font-size: 0.9em;
-        }}
         .metadata {{
             background: #e8f4fd;
             padding: 15px;
@@ -420,7 +389,6 @@ class ExportManager:
                 <tr><th>Created</th><td>{metadata.created_date}</td></tr>
                 <tr><th>Source Language</th><td>{metadata.source_language}</td></tr>
                 <tr><th>Target Language</th><td>{metadata.target_language}</td></tr>
-                <tr><th>Quality Score</th><td>{metadata.translation_quality_score:.3f}</td></tr>
                 <tr><th>API Used</th><td>{metadata.api_used}</td></tr>
             </table>
         </div>
@@ -430,12 +398,9 @@ class ExportManager:
         html_content += "<h2>Translation Results</h2>"
 
         for i, translation in enumerate(translations, 1):
-            quality_info = ""
-            if self.config.include_quality_metrics:
-                quality_info = f'<div class="quality">Quality Score: {translation.quality_score:.3f} ({translation.confidence_level})'
-                if translation.processing_time > 0:
-                    quality_info += f' | Processing Time: {translation.processing_time:.2f}s'
-                quality_info += '</div>'
+            processing_info = ""
+            if translation.processing_time > 0:
+                processing_info = f'<div><em>Processing Time: {translation.processing_time:.2f}s</em></div>'
 
             html_content += f"""
         <div class="translation">
@@ -448,7 +413,7 @@ class ExportManager:
                 <strong>Translated Text:</strong><br>
                 {translation.translated_text.replace(chr(10), '<br>')}
             </div>
-            {quality_info}
+            {processing_info}
         </div>
 """
 
@@ -505,14 +470,13 @@ class ExportManager:
             ["Created", metadata.created_date],
             ["Source Language", metadata.source_language],
             ["Target Language", metadata.target_language],
-            ["Quality Score", ".3f"],
             ["API Used", metadata.api_used],
-            ["Processing Time", ".2f"]
+            ["Processing Time", f"{metadata.processing_time_seconds:.2f}s"]
         ]
 
     def _add_metadata_table_docx(self, doc: Document, metadata: ExportMetadata):
         """Add metadata table to DOCX document"""
-        table = doc.add_table(rows=8, cols=2)
+        table = doc.add_table(rows=7, cols=2)
         table.style = 'Table Grid'
 
         # Header row
@@ -527,9 +491,8 @@ class ExportManager:
             ("Created", metadata.created_date),
             ("Source Language", metadata.source_language),
             ("Target Language", metadata.target_language),
-            ("Quality Score", ".3f"),
             ("API Used", metadata.api_used),
-            ("Processing Time", ".2f")
+            ("Processing Time", f"{metadata.processing_time_seconds:.2f}s")
         ]
 
         for i, (prop, value) in enumerate(data, 1):
@@ -552,7 +515,6 @@ class ExportManager:
         .translation { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
         .original { background: #f0f0f0; padding: 10px; }
         .translated { background: #e8f4fd; padding: 10px; }
-        .quality { font-style: italic; color: #666; }
     </style>
 </head>
 <body>
@@ -568,7 +530,6 @@ class ExportManager:
             <li><strong>Author:</strong> {{ metadata.author }}</li>
             <li><strong>Source Language:</strong> {{ metadata.source_language }}</li>
             <li><strong>Target Language:</strong> {{ metadata.target_language }}</li>
-            <li><strong>Quality Score:</strong> {{ metadata.translation_quality_score | round(3) }}</li>
         </ul>
     </div>
     {% endif %}
@@ -584,12 +545,9 @@ class ExportManager:
             <strong>Translated:</strong><br>
             {{ translation.translated_text | replace('\n', '<br>') | safe }}
         </div>
-        {% if config.include_quality_metrics %}
-        <div class="quality">
-            Quality Score: {{ translation.quality_score | round(3) }} ({{ translation.confidence_level }})
-            {% if translation.processing_time > 0 %}
-            | Processing Time: {{ translation.processing_time | round(2) }}s
-            {% endif %}
+        {% if translation.processing_time > 0 %}
+        <div>
+            <em>Processing Time: {{ translation.processing_time | round(2) }}s</em>
         </div>
         {% endif %}
     </div>
@@ -655,8 +613,6 @@ if __name__ == "__main__":
             translated_text="こんにちは、お元気ですか？",
             source_language="en",
             target_language="ja",
-            quality_score=0.85,
-            confidence_level="High",
             processing_time=1.2,
             api_used="Google Translate"
         ),
@@ -665,8 +621,6 @@ if __name__ == "__main__":
             translated_text="お手伝いいただきありがとうございます。",
             source_language="en",
             target_language="ja",
-            quality_score=0.92,
-            confidence_level="Very High",
             processing_time=0.8,
             api_used="Google Translate"
         )

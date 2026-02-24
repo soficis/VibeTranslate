@@ -62,8 +62,8 @@ struct TranslationMemoryView: View {
                     
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 8) {
-                            ForEach(viewModel.searchResults, id: \.entry.id) { match in
-                                FuzzyMatchRow(match: match)
+                            ForEach(viewModel.searchResults, id: \.id) { entry in
+                                TranslationMemoryEntryRow(entry: entry)
                             }
                         }
                     }
@@ -138,13 +138,13 @@ struct TranslationMemoryStatsCard: View {
                 Spacer()
                 
                 VStack(alignment: .trailing) {
-                    Text("Fuzzy Hits")
+                    Text("Total Misses")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text("\(stats.fuzzyHits)")
+                    Text("\(stats.totalMisses)")
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(.blue)
+                        .foregroundColor(.orange)
                 }
             }
             
@@ -187,40 +187,36 @@ struct TranslationMemoryStatsCard: View {
     }
 }
 
-/// Fuzzy match row view
-struct FuzzyMatchRow: View {
-    let match: FuzzyMatch
+/// Translation memory entry row view
+struct TranslationMemoryEntryRow: View {
+    let entry: TranslationMemoryEntry
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Similarity: " + String(format: "%.2f", match.similarityScore))
+                Text("\(entry.sourceLanguage.flag) \(entry.sourceLanguage.displayName)")
                     .font(.caption)
                     .fontWeight(.bold)
                     .foregroundColor(.blue)
                 
                 Spacer()
                 
-                Text("Distance: \(match.levenshteinDistance)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Text("Used \(match.entry.accessCount)x")
+                Text("Used \(entry.accessCount)x")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("\(match.entry.sourceLanguage.flag)")
-                    Text(match.entry.sourceText)
+                    Text("\(entry.sourceLanguage.flag)")
+                    Text(entry.sourceText)
                         .font(.caption)
                         .lineLimit(2)
                 }
                 
                 HStack {
-                    Text("\(match.entry.targetLanguage.flag)")
-                    Text(match.entry.translatedText)
+                    Text("\(entry.targetLanguage.flag)")
+                    Text(entry.translatedText)
                         .font(.caption)
                         .lineLimit(2)
                         .foregroundColor(.blue)
@@ -276,7 +272,6 @@ struct ExportView: View {
                     
                     VStack(alignment: .leading) {
                         Toggle("Include Metadata", isOn: $viewModel.includeMetadata)
-                        Toggle("Include Quality Metrics", isOn: $viewModel.includeQualityMetrics)
                     }
                 }
             }
@@ -370,81 +365,20 @@ struct ExportView: View {
 /// Settings view
 struct SettingsView: View {
     @EnvironmentObject var appContainer: AppContainer
-    @State private var localServiceUrl = ""
-    @State private var localModelDir = ""
-    @State private var localAutoStart = true
-    @State private var localStatus = ""
-    private let localSettingsStore = LocalModelSettingsStore()
     
     var body: some View {
         VStack(spacing: 20) {
-            // Header
             HStack {
                 Text("Settings")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                
                 Spacer()
             }
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Local Model Manager")
-                    .font(.headline)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    TextField("Service URL", text: $localServiceUrl)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-
-                    TextField("Model Directory (optional)", text: $localModelDir)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-
-                    Toggle("Auto-start local service", isOn: $localAutoStart)
-                }
-
-                HStack(spacing: 12) {
-                    Button("Save") {
-                        saveLocalSettings()
-                        localStatus = "Settings saved."
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    Button("Install Default") {
-                        Task { await installDefaultLocalModels() }
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    Button("Refresh") {
-                        Task { await loadLocalStatus() }
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button("Verify") {
-                        Task { await verifyLocalModels() }
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button("Remove") {
-                        Task { await removeLocalModels() }
-                    }
-                    .buttonStyle(.bordered)
-                }
-
-                if !localStatus.isEmpty {
-                    Text(localStatus)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .padding()
-            .background(Color.orange.opacity(0.1))
-            .cornerRadius(12)
-            
-            // Application Information
-            VStack(alignment: .leading, spacing: 12) {
                 Text("About Translation Fiesta Swift")
                     .font(.headline)
-                
+
                 VStack(alignment: .leading, spacing: 8) {
                     InfoRow(label: "Version", value: "1.0.0")
                     InfoRow(label: "Framework", value: "SwiftUI")
@@ -455,17 +389,15 @@ struct SettingsView: View {
             .padding()
             .background(Color.gray.opacity(0.1))
             .cornerRadius(12)
-            
-            // Features
+
             VStack(alignment: .leading, spacing: 12) {
                 Text("Features")
                     .font(.headline)
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     FeatureRow(feature: "English ↔ Japanese Back-translation", implemented: true)
                     FeatureRow(feature: "Batch Processing", implemented: true)
-                    FeatureRow(feature: "BLEU Quality Scoring", implemented: true)
-                    FeatureRow(feature: "Translation Memory with Fuzzy Matching", implemented: true)
+                    FeatureRow(feature: "Translation Memory Cache", implemented: true)
                     FeatureRow(feature: "Multiple Export Formats", implemented: true)
                     FeatureRow(feature: "EPUB Processing", implemented: true)
                 }
@@ -473,70 +405,10 @@ struct SettingsView: View {
             .padding()
             .background(Color.green.opacity(0.1))
             .cornerRadius(12)
-            
+
             Spacer()
         }
         .padding()
-        .onAppear {
-            loadLocalSettings()
-        }
-    }
-
-    private func loadLocalSettings() {
-        let settings = localSettingsStore.load()
-        localServiceUrl = settings.serviceUrl
-        localModelDir = settings.modelDir
-        localAutoStart = settings.autoStart
-    }
-
-    private func saveLocalSettings() {
-        let settings = LocalModelSettings(
-            serviceUrl: localServiceUrl,
-            modelDir: localModelDir,
-            autoStart: localAutoStart
-        )
-        localSettingsStore.save(settings)
-    }
-
-    private func makeLocalClient() -> LocalServiceClient {
-        let settings = LocalModelSettings(
-            serviceUrl: localServiceUrl,
-            modelDir: localModelDir,
-            autoStart: localAutoStart
-        )
-        return LocalServiceClient(session: URLSession.shared, configuration: .fromSettings(settings))
-    }
-
-    private func loadLocalStatus() async {
-        do {
-            localStatus = try await makeLocalClient().modelsStatus()
-        } catch {
-            localStatus = error.localizedDescription
-        }
-    }
-
-    private func verifyLocalModels() async {
-        do {
-            localStatus = try await makeLocalClient().verifyModels()
-        } catch {
-            localStatus = error.localizedDescription
-        }
-    }
-
-    private func installDefaultLocalModels() async {
-        do {
-            localStatus = try await makeLocalClient().installDefaultModels()
-        } catch {
-            localStatus = error.localizedDescription
-        }
-    }
-
-    private func removeLocalModels() async {
-        do {
-            localStatus = try await makeLocalClient().removeModels()
-        } catch {
-            localStatus = error.localizedDescription
-        }
     }
 }
 

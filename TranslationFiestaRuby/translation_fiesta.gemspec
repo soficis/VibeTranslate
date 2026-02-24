@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['team@translationfiesta.com']
 
   spec.summary       = 'English ↔ Japanese Back-Translation Tool'
-  spec.description   = 'A comprehensive Ruby application for back-translation with quality assessment'
+  spec.description   = 'A comprehensive Ruby application for back-translation'
   spec.homepage      = 'https://github.com/soficis/VibeTranslate'
   spec.license       = 'GPL-3.0-only'
   spec.required_ruby_version = Gem::Requirement.new('>= 3.2.0')

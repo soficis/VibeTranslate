@@ -17,9 +17,6 @@ type Settings struct {
 	SourceLanguage       string `json:"source_language"`
 	TargetLanguage       string `json:"target_language"`
 	IntermediateLanguage string `json:"intermediate_language"`
-	LocalServiceURL      string `json:"local_service_url"`
-	LocalModelDir        string `json:"local_model_dir"`
-	LocalAutoStart       bool   `json:"local_auto_start"`
 	WindowWidth          int    `json:"window_width"`
 	WindowHeight         int    `json:"window_height"`
 	WindowX              int    `json:"window_x"`
@@ -43,9 +40,6 @@ func NewSettingsRepository(settingsFile string) repositories.SettingsRepository 
 			SourceLanguage:       "en",
 			TargetLanguage:       "ja",
 			IntermediateLanguage: "ja",
-			LocalServiceURL:      "",
-			LocalModelDir:        "",
-			LocalAutoStart:       true,
 			WindowWidth:          960,
 			WindowHeight:         720,
 			WindowX:              100,
@@ -56,7 +50,6 @@ func NewSettingsRepository(settingsFile string) repositories.SettingsRepository 
 
 	// Load existing settings
 	repo.loadSettings()
-	repo.applyLocalEnvironment()
 
 	return repo
 }
@@ -92,7 +85,6 @@ func (r *SettingsRepositoryImpl) loadSettings() {
 	}
 
 	r.settings = &loadedSettings
-	r.applyLocalEnvironment()
 
 	r.logger.Info("Settings loaded from %s", r.settingsFile)
 }
@@ -116,26 +108,6 @@ func (r *SettingsRepositoryImpl) saveSettings() {
 	}
 
 	r.logger.Debug("Settings saved to %s", r.settingsFile)
-}
-
-func (r *SettingsRepositoryImpl) applyLocalEnvironment() {
-	if strings.TrimSpace(r.settings.LocalServiceURL) == "" {
-		_ = os.Unsetenv("TF_LOCAL_URL")
-	} else {
-		_ = os.Setenv("TF_LOCAL_URL", strings.TrimSpace(r.settings.LocalServiceURL))
-	}
-
-	if strings.TrimSpace(r.settings.LocalModelDir) == "" {
-		_ = os.Unsetenv("TF_LOCAL_MODEL_DIR")
-	} else {
-		_ = os.Setenv("TF_LOCAL_MODEL_DIR", strings.TrimSpace(r.settings.LocalModelDir))
-	}
-
-	if r.settings.LocalAutoStart {
-		_ = os.Setenv("TF_LOCAL_AUTOSTART", "1")
-	} else {
-		_ = os.Setenv("TF_LOCAL_AUTOSTART", "0")
-	}
 }
 
 // Theme settings
@@ -162,40 +134,6 @@ func (r *SettingsRepositoryImpl) SetProviderID(providerID string) error {
 	normalized := entities.NormalizeProviderID(providerID)
 	r.settings.ProviderID = normalized
 	r.saveSettings()
-	return nil
-}
-
-// Local model settings
-func (r *SettingsRepositoryImpl) GetLocalServiceURL() string {
-	return r.settings.LocalServiceURL
-}
-
-func (r *SettingsRepositoryImpl) SetLocalServiceURL(url string) error {
-	r.settings.LocalServiceURL = strings.TrimSpace(url)
-	r.saveSettings()
-	r.applyLocalEnvironment()
-	return nil
-}
-
-func (r *SettingsRepositoryImpl) GetLocalModelDir() string {
-	return r.settings.LocalModelDir
-}
-
-func (r *SettingsRepositoryImpl) SetLocalModelDir(path string) error {
-	r.settings.LocalModelDir = strings.TrimSpace(path)
-	r.saveSettings()
-	r.applyLocalEnvironment()
-	return nil
-}
-
-func (r *SettingsRepositoryImpl) GetLocalAutoStart() bool {
-	return r.settings.LocalAutoStart
-}
-
-func (r *SettingsRepositoryImpl) SetLocalAutoStart(enabled bool) error {
-	r.settings.LocalAutoStart = enabled
-	r.saveSettings()
-	r.applyLocalEnvironment()
 	return nil
 }
 

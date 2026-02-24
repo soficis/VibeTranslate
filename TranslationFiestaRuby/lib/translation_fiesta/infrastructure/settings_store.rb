@@ -7,9 +7,7 @@ module TranslationFiesta
   module Infrastructure
     class SettingsStore
       DEFAULTS = {
-        'local_service_url' => '',
-        'local_model_dir' => '',
-        'local_auto_start' => true
+        'default_api' => 'unofficial'
       }.freeze
 
       def initialize(path = nil)
@@ -18,6 +16,7 @@ module TranslationFiesta
 
       def load
         return DEFAULTS.dup unless File.exist?(@path)
+
         data = JSON.parse(File.read(@path))
         DEFAULTS.merge(data)
       rescue StandardError
@@ -34,17 +33,7 @@ module TranslationFiesta
       end
 
       def apply_to_env(settings)
-        url = settings['local_service_url'].to_s.strip
-        model_dir = settings['local_model_dir'].to_s.strip
-        auto_start = settings.fetch('local_auto_start', true)
-
-        ENV['TF_LOCAL_URL'] = url unless url.empty?
-        ENV.delete('TF_LOCAL_URL') if url.empty?
-
-        ENV['TF_LOCAL_MODEL_DIR'] = model_dir unless model_dir.empty?
-        ENV.delete('TF_LOCAL_MODEL_DIR') if model_dir.empty?
-
-        ENV['TF_LOCAL_AUTOSTART'] = auto_start ? '1' : '0'
+        ENV['TF_DEFAULT_API'] = settings.fetch('default_api', 'unofficial').to_s
       end
     end
   end

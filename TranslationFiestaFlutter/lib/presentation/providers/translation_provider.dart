@@ -36,10 +36,6 @@ class TranslationProvider extends ChangeNotifier {
   bool _isDarkTheme = false;
   TranslationProviderId _providerId = TranslationProviderId.googleUnofficial;
   OutputFormat _outputFormat = OutputFormat.html;
-  String _localServiceUrl = '';
-  String _localModelDir = '';
-  bool _localAutoStart = true;
-  String _localModelStatus = '';
 
   // Language state
   String _sourceLanguage = 'en';
@@ -54,10 +50,6 @@ class TranslationProvider extends ChangeNotifier {
   bool get isDarkTheme => _isDarkTheme;
   TranslationProviderId get providerId => _providerId;
   OutputFormat get outputFormat => _outputFormat;
-  String get localServiceUrl => _localServiceUrl;
-  String get localModelDir => _localModelDir;
-  bool get localAutoStart => _localAutoStart;
-  String get localModelStatus => _localModelStatus;
 
   String get sourceLanguage => _sourceLanguage;
   String get targetLanguage => _targetLanguage;
@@ -67,9 +59,6 @@ class TranslationProvider extends ChangeNotifier {
   // Configuration
   ApiConfiguration get apiConfiguration => ApiConfiguration(
         providerId: _providerId,
-        localServiceUrl: _localServiceUrl,
-        localModelDir: _localModelDir,
-        localAutoStart: _localAutoStart,
       );
 
   TranslationProvider() {
@@ -97,12 +86,6 @@ class TranslationProvider extends ChangeNotifier {
       final themeResult = await _preferencesRepository.getThemePreference();
       final providerIdResult =
           await _preferencesRepository.getProviderIdPreference();
-      final localUrlResult =
-          await _preferencesRepository.getLocalServiceUrlPreference();
-      final localDirResult =
-          await _preferencesRepository.getLocalModelDirPreference();
-      final localAutoResult =
-          await _preferencesRepository.getLocalAutoStartPreference();
 
       themeResult.fold(
         (failure) => Logger.instance
@@ -115,24 +98,6 @@ class TranslationProvider extends ChangeNotifier {
             .error('Failed to load provider preference: ${failure.message}'),
         (providerValue) =>
             _providerId = TranslationProviderIdX.fromStorage(providerValue),
-      );
-
-      localUrlResult.fold(
-        (failure) => Logger.instance
-            .error('Failed to load local URL: ${failure.message}'),
-        (url) => _localServiceUrl = url ?? '',
-      );
-
-      localDirResult.fold(
-        (failure) => Logger.instance
-            .error('Failed to load local model dir: ${failure.message}'),
-        (path) => _localModelDir = path ?? '',
-      );
-
-      localAutoResult.fold(
-        (failure) => Logger.instance
-            .error('Failed to load local autostart: ${failure.message}'),
-        (enabled) => _localAutoStart = enabled,
       );
 
       notifyListeners();
@@ -177,57 +142,6 @@ class TranslationProvider extends ChangeNotifier {
       (_) => Logger.instance
           .debug('Provider preference saved: ${providerId.storageValue}'),
     );
-  }
-
-  Future<void> updateLocalSettings({
-    required String serviceUrl,
-    required String modelDir,
-    required bool autoStart,
-  }) async {
-    _localServiceUrl = serviceUrl;
-    _localModelDir = modelDir;
-    _localAutoStart = autoStart;
-    notifyListeners();
-
-    await _preferencesRepository.setLocalServiceUrlPreference(serviceUrl);
-    await _preferencesRepository.setLocalModelDirPreference(modelDir);
-    await _preferencesRepository.setLocalAutoStartPreference(autoStart);
-  }
-
-  Future<void> refreshLocalModels() async {
-    final result = await _translationRepository.getLocalModelsStatus(apiConfiguration);
-    result.fold(
-      (failure) => _localModelStatus = failure.message,
-      (status) => _localModelStatus = status,
-    );
-    notifyListeners();
-  }
-
-  Future<void> verifyLocalModels() async {
-    final result = await _translationRepository.verifyLocalModels(apiConfiguration);
-    result.fold(
-      (failure) => _localModelStatus = failure.message,
-      (status) => _localModelStatus = status,
-    );
-    notifyListeners();
-  }
-
-  Future<void> removeLocalModels() async {
-    final result = await _translationRepository.removeLocalModels(apiConfiguration);
-    result.fold(
-      (failure) => _localModelStatus = failure.message,
-      (status) => _localModelStatus = status,
-    );
-    notifyListeners();
-  }
-
-  Future<void> installDefaultLocalModels() async {
-    final result = await _translationRepository.installDefaultLocalModels(apiConfiguration);
-    result.fold(
-      (failure) => _localModelStatus = failure.message,
-      (status) => _localModelStatus = status,
-    );
-    notifyListeners();
   }
 
   /// Perform backtranslation

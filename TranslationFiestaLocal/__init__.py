@@ -1,1 +1,0 @@
-"""Local translation service package."""

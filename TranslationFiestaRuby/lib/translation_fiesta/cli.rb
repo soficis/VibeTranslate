@@ -33,8 +33,8 @@ module TranslationFiesta
         opts.separator ""
         opts.separator "Options:"
 
-        opts.on('-a', '--api API_TYPE', ['unofficial', 'local'],
-                'API type to use (unofficial, local)') do |api|
+        opts.on('-a', '--api API_TYPE', ['unofficial'],
+                'API type to use (unofficial)') do |api|
           @options[:api_type] = api.to_sym
         end
 
@@ -170,8 +170,6 @@ module TranslationFiesta
       puts result.back_translation
       
       puts "\nMetrics:"
-      puts "  BLEU Score: #{result.bleu_score ? (result.bleu_score * 100).round(2) : 'N/A'}%"
-      puts "  Quality Rating: #{result.quality_rating}"
       puts "  API Used: #{result.api_type.to_s.capitalize}"
       puts "  Timestamp: #{result.timestamp}"
       puts "─" * 60

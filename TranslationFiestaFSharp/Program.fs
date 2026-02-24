@@ -12,9 +12,6 @@ namespace TranslationFiestaFSharp
 type UIState = {
     IsDarkTheme: bool
     ProviderId: string
-    LocalServiceUrl: string
-    LocalModelDir: string
-    LocalAutoStart: bool
     WindowWidth: int
     WindowHeight: int
     WindowX: int
@@ -43,9 +40,6 @@ type AppMessage =
     | SaveSettings
     | UpdateTheme of bool
     | UpdateProvider of string
-    | UpdateLocalServiceUrl of string
-    | UpdateLocalModelDir of string
-    | UpdateLocalAutoStart of bool
     | UpdateInputText of string
     | SetIntermediateResult of string
     | SetFinalResult of string
@@ -76,7 +70,6 @@ module Program =
     open System.Drawing
     open System.Windows.Forms.VisualStyles
     open TranslationFiestaFSharp.Settings
-    open TranslationFiestaFSharp.BLEUScorer
     open TranslationFiestaFSharp.ExportManager
     open TranslationFiestaFSharp.BatchProcessor
     open TranslationFiestaFSharp.EpubProcessor
@@ -87,9 +80,6 @@ module Program =
     let initialUIState = {
         IsDarkTheme = true
         ProviderId = ProviderIds.GoogleUnofficial
-        LocalServiceUrl = ""
-        LocalModelDir = ""
-        LocalAutoStart = true
         WindowWidth = 900
         WindowHeight = 650
         WindowX = -1
@@ -223,14 +213,10 @@ module SharedState =
                     | LoadSettings ->
                         match Settings.loadSettings() with
                         | Settings.Success settings ->
-                            LocalServiceClient.applyEnvironment settings.LocalServiceUrl settings.LocalModelDir settings.LocalAutoStart
                             Logger.info "Settings loaded successfully"
                             { state with
                                 IsDarkTheme = settings.IsDarkTheme
                                 ProviderId = settings.ProviderId
-                                LocalServiceUrl = settings.LocalServiceUrl
-                                LocalModelDir = settings.LocalModelDir
-                                LocalAutoStart = settings.LocalAutoStart
                                 WindowWidth = settings.WindowWidth
                                 WindowHeight = settings.WindowHeight
                                 WindowX = settings.WindowX
@@ -251,9 +237,6 @@ module SharedState =
                         let settingsToSave = {
                             IsDarkTheme = state.IsDarkTheme
                             ProviderId = state.ProviderId
-                            LocalServiceUrl = state.LocalServiceUrl
-                            LocalModelDir = state.LocalModelDir
-                            LocalAutoStart = state.LocalAutoStart
                             WindowWidth = state.WindowWidth
                             WindowHeight = state.WindowHeight
                             WindowX = state.WindowX
@@ -275,9 +258,6 @@ module SharedState =
                     | UpdateProvider providerId ->
                         let normalized = ProviderIds.normalize providerId
                         { state with ProviderId = normalized }
-                    | UpdateLocalServiceUrl url -> { state with LocalServiceUrl = url }
-                    | UpdateLocalModelDir path -> { state with LocalModelDir = path }
-                    | UpdateLocalAutoStart enabled -> { state with LocalAutoStart = enabled }
                     | UpdateInputText text -> { state with InputText = text }
                     | SetIntermediateResult text -> { state with IntermediateTranslation = text }
                     | SetFinalResult text -> { state with FinalTranslation = text }
@@ -285,21 +265,18 @@ module SharedState =
                     | SetProcessing isProcessing -> { state with IsProcessing = isProcessing }
                     | SetWindowSizeAndPosition (w, h, x, y) -> { state with WindowWidth = w; WindowHeight = h; WindowX = x; WindowY = y }
                     | SaveFile (filePath, inputText, backTranslatedText) ->
-                        let bleuScorer = BLEUScorer.getBleuScorer()
                         let exportResult =
                             let translations = [{
                                 OriginalText = inputText
                                 TranslatedText = backTranslatedText
                                 SourceLanguage = "en"
                                 TargetLanguage = "ja"
-                                QualityScore = 0.0
-                                ConfidenceLevel = ""
                                 ProcessingTime = 0.0
                                 ApiUsed = ""
                                 Timestamp = System.DateTime.UtcNow.ToString("o")
                             }]
                             // Default to HTML format since output format selector was removed
-                            ExportManager.exportToHtml translations filePath None None bleuScorer
+                            ExportManager.exportToHtml translations filePath None None
 
                         match exportResult with
                         | FSharp.Core.Result.Ok path ->
@@ -467,14 +444,6 @@ module TranslationService =
         }
 
     /// <summary>
-    /// Translates text using the local offline service.
-    /// </summary>
-    let translateLocalAsync (text: string) (source: string) (target: string) : Async<FSharp.Core.Result<string, string>> =
-        async {
-            return! LocalServiceClient.translateAsync Program.httpClient text source target
-        }
-
-    /// <summary>
     /// Detects language for input text. Falls back to English.
     /// </summary>
     let detectLanguageAsync (_text: string) : Async<FSharp.Core.Result<string, string>> = async {
@@ -503,12 +472,7 @@ module TranslationService =
                 let rec attemptLoop (attempt: int) =
                     async {
                         try
-                            let! result =
-                                match normalizedProvider with
-                                | provider when provider = ProviderIds.Local ->
-                                    translateLocalAsync text source target
-                                | _ ->
-                                    translateUnofficialAsync text source target
+                            let! result = translateUnofficialAsync text source target
                             match result with
                             | Ok _ -> return result
                             | Error err when attempt < maxAttempts && isRetryable err ->
@@ -564,7 +528,6 @@ module UI =
     let mutable btnBatchProcess: Button = Unchecked.defaultof<Button>
     let mutable btnCopyResult: Button = Unchecked.defaultof<Button>
     let mutable btnSaveResult: Button = Unchecked.defaultof<Button>
-    let mutable btnModels: Button = Unchecked.defaultof<Button>
     let mutable tglTheme: CheckBox = Unchecked.defaultof<CheckBox>
     let mutable lblFormat: Label = Unchecked.defaultof<Label>
     let mutable cmbFormat: ComboBox = Unchecked.defaultof<ComboBox>
@@ -707,79 +670,6 @@ module UI =
                 progressSpinner.MarqueeAnimationSpeed <- 0
                 Logger.debug "Progress spinner disabled"
         )) |> ignore
-
-    let showModelManager () =
-        let state = SharedState.getState()
-        let dialog = new Form(Text = "Local Model Manager", Width = 520, Height = 320, StartPosition = FormStartPosition.CenterParent)
-        let lblUrl = new Label(Text = "Service URL:", Left = 12, Top = 15, Width = 90)
-        let txtUrl = new TextBox(Left = 110, Top = 12, Width = 370, Text = state.LocalServiceUrl)
-        let lblDir = new Label(Text = "Model Dir:", Left = 12, Top = 45, Width = 90)
-        let txtDir = new TextBox(Left = 110, Top = 42, Width = 370, Text = state.LocalModelDir)
-        let chkAuto = new CheckBox(Text = "Auto-start local service", Left = 110, Top = 72, Width = 220, Checked = state.LocalAutoStart)
-
-        let txtStatus = new TextBox(Left = 12, Top = 105, Width = 468, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true)
-        let btnSave = new Button(Text = "Save", Left = 12, Top = 235, Width = 80)
-        let btnRefresh = new Button(Text = "Refresh", Left = 100, Top = 235, Width = 80)
-        let btnVerify = new Button(Text = "Verify", Left = 188, Top = 235, Width = 80)
-        let btnRemove = new Button(Text = "Remove", Left = 276, Top = 235, Width = 80)
-        let btnInstall = new Button(Text = "Install Default", Left = 364, Top = 235, Width = 116)
-
-        let updateStatus (result: Result<string, string>) =
-            match result with
-            | Ok body -> txtStatus.Text <- body
-            | Error err -> txtStatus.Text <- err
-
-        let refreshStatusAsync () =
-            async {
-                let! result = LocalServiceClient.modelsStatusAsync Program.httpClient
-                dialog.Invoke(Action(fun () -> updateStatus result)) |> ignore
-            }
-
-        let verifyStatusAsync () =
-            async {
-                let! result = LocalServiceClient.modelsVerifyAsync Program.httpClient
-                dialog.Invoke(Action(fun () -> updateStatus result)) |> ignore
-            }
-
-        let removeStatusAsync () =
-            async {
-                let! result = LocalServiceClient.modelsRemoveAsync Program.httpClient
-                dialog.Invoke(Action(fun () -> updateStatus result)) |> ignore
-            }
-
-        let installStatusAsync () =
-            async {
-                let! result = LocalServiceClient.modelsInstallDefaultAsync Program.httpClient
-                dialog.Invoke(Action(fun () -> updateStatus result)) |> ignore
-            }
-
-        btnSave.Click.Add(fun _ ->
-            let url = txtUrl.Text.Trim()
-            let dir = txtDir.Text.Trim()
-            let autoStart = chkAuto.Checked
-            SharedState.dispatch (UpdateLocalServiceUrl url)
-            SharedState.dispatch (UpdateLocalModelDir dir)
-            SharedState.dispatch (UpdateLocalAutoStart autoStart)
-            SharedState.dispatch SaveSettings
-            LocalServiceClient.applyEnvironment url dir autoStart
-            txtStatus.Text <- "Settings saved."
-        )
-
-        btnRefresh.Click.Add(fun _ -> Async.StartImmediate(refreshStatusAsync ()))
-        btnVerify.Click.Add(fun _ -> Async.StartImmediate(verifyStatusAsync ()))
-        btnRemove.Click.Add(fun _ ->
-            if MessageBox.Show(dialog, "Remove local models from disk?", "Confirm", MessageBoxButtons.YesNo) = DialogResult.Yes then
-                Async.StartImmediate(removeStatusAsync ())
-        )
-        btnInstall.Click.Add(fun _ -> Async.StartImmediate(installStatusAsync ()))
-
-        dialog.Controls.AddRange([|
-            lblUrl :> Control; txtUrl :> Control; lblDir :> Control; txtDir :> Control; chkAuto :> Control;
-            txtStatus :> Control; btnSave :> Control; btnRefresh :> Control; btnVerify :> Control; btnRemove :> Control; btnInstall :> Control
-        |])
-
-        Async.StartImmediate(refreshStatusAsync ())
-        dialog.ShowDialog(form) |> ignore
 
     /// <summary>
     /// Disables relevant UI controls during processing.
@@ -993,7 +883,6 @@ module UI =
         cmbProvider <- new ComboBox(Left = 620, Top = 85, Width = 260, Height = 25, DropDownStyle = ComboBoxStyle.DropDownList)
         let providerOptions =
             [|
-                { Id = ProviderIds.Local; Name = "Local (Offline)" }
                 { Id = ProviderIds.GoogleUnofficial; Name = "Google Translate (Unofficial / Free)" }
             |]
         cmbProvider.DataSource <- providerOptions
@@ -1006,7 +895,6 @@ module UI =
         btnCopyResult <- new Button(Text = "Copy Result", Left = 620, Top = 220, Width = 140)
         btnSaveResult <- new Button(Text = "Save Result", Left = 620, Top = 255, Width = 140)
         tglTheme <- new CheckBox(Text = "Dark Mode", Left = 620, Top = 290, Width = 140, Checked = uiState.IsDarkTheme)
-        btnModels <- new Button(Text = "Local Models...", Left = 620, Top = 320, Width = 140)
         lblIntermediate <- new Label(Text = "Intermediate (ja):", Left = 10, Top = 195, Width = 200, Font = new System.Drawing.Font("Segoe UI", 9.0f, System.Drawing.FontStyle.Bold))
         txtIntermediate <- new TextBox(Left = 10, Top = 215, Width = 600, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Text = uiState.IntermediateTranslation)
         lblBack <- new Label(Text = "Back to English:", Left = 10, Top = 345, Width = 200, Font = new System.Drawing.Font("Segoe UI", 9.0f, System.Drawing.FontStyle.Bold))
@@ -1023,7 +911,7 @@ module UI =
             lblTitle :> Control; txtInput :> Control; lblProvider :> Control; cmbProvider :> Control;
             btnBacktranslate :> Control; btnImportTxt :> Control; btnBatchProcess :> Control;
             btnCopyResult :> Control; btnSaveResult :> Control; tglTheme :> Control;
-            btnModels :> Control; lblIntermediate :> Control; txtIntermediate :> Control; lblBack :> Control;
+            lblIntermediate :> Control; txtIntermediate :> Control; lblBack :> Control;
             txtBack :> Control; lblStatus :> Control; progressSpinner :> Control
         |])
 
@@ -1089,10 +977,6 @@ module UI =
             SharedState.dispatch TriggerBatchProcess
         )
 
-        btnModels.Click.Add(fun _ ->
-            showModelManager ()
-        )
-
 
 
 
@@ -1144,10 +1028,9 @@ module ApplicationLogic =
     open System
     open System.Windows.Forms
     open TranslationFiestaFSharp.Logger
-    open BLEUScorer
     open BatchProcessor
     /// <summary>
-    /// Runs the backtranslation workflow, handling UI updates, API calls, and quality assessment.
+    /// Runs the backtranslation workflow, handling UI updates and API calls.
     /// </summary>
     let runTranslationWorkflowAsync () =
         async {
@@ -1196,29 +1079,16 @@ module ApplicationLogic =
                     | FSharp.Core.Result.Ok back ->
                         SharedState.dispatch (SetFinalResult back)
 
-                        // Calculate BLEU score for quality assessment
-                        let bleuScorer = BLEUScorer.getBleuScorer()
-                        let qualityAssessment = bleuScorer.AssessTranslationQuality(input, back)
-
-                        // Update status with BLEU score and confidence
-                        let statusColor =
-                            if qualityAssessment.BleuScore >= 0.6 then System.Drawing.Color.Green
-                            elif qualityAssessment.BleuScore >= 0.4 then System.Drawing.Color.Orange
-                            else System.Drawing.Color.Red
-                        UI.form.Invoke(Action(fun () -> UI.lblStatus.ForeColor <- statusColor)) |> ignore
+                        UI.form.Invoke(Action(fun () -> UI.lblStatus.ForeColor <- System.Drawing.Color.Green)) |> ignore
 
                         let statusText =
                             if currentState.AutoCopyResults then
-                                sprintf "Backtranslation complete! BLEU: %s (%s) (Result copied to clipboard)" qualityAssessment.BleuPercentage qualityAssessment.ConfidenceLevel
+                                "Backtranslation complete! (Result copied to clipboard)"
                             else
-                                sprintf "Backtranslation complete! BLEU: %s (%s)" qualityAssessment.BleuPercentage qualityAssessment.ConfidenceLevel
+                                "Backtranslation complete!"
 
                         SharedState.dispatch (SetStatus statusText)
 
-                        // Log quality assessment
-                        Logger.info (sprintf "Translation quality assessment: BLEU=%s, Confidence=%s" qualityAssessment.BleuPercentage qualityAssessment.ConfidenceLevel)
-                        Logger.info (sprintf "Quality rating: %s" qualityAssessment.QualityRating)
-                        Logger.info (sprintf "Recommendations: %s" qualityAssessment.Recommendations)
                         Logger.info (sprintf "Backtranslation completed successfully: %d -> %d -> %d chars" input.Length intermediate.Length back.Length)
 
                         if currentState.AutoCopyResults then

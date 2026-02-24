@@ -80,8 +80,7 @@
       <div class="form-group">
         <label for="api-type" class="form-label">Translation API</label>
         <select id="api-type" class="form-control select">
-          <option value="local">Local (Offline)</option>
-          <option value="google_unofficial">Google Translate (Unofficial / Free)</option>
+          <option value="unofficial">Google Translate (Unofficial / Free)</option>
         </select>
       </div>
 
@@ -122,15 +121,11 @@
           </div>
         </div>
 
-        <!-- Quality Metrics -->
+        <!-- Result Metrics -->
         <div class="metrics-grid">
           <div class="metric-card">
-            <div class="metric-value" id="bleu-score">--</div>
-            <div class="metric-label">BLEU Score</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-value" id="quality-rating">--</div>
-            <div class="metric-label">Quality</div>
+            <div class="metric-value" id="api-used">--</div>
+            <div class="metric-label">Provider</div>
           </div>
           <div class="metric-card">
             <div class="metric-value" id="character-count">--</div>
@@ -246,8 +241,7 @@
       <div class="form-group">
         <label for="default-api" class="form-label">Default Translation API</label>
         <select id="default-api" class="form-control select">
-          <option value="local">Local (Offline)</option>
-          <option value="google_unofficial">Google Translate (Unofficial / Free)</option>
+          <option value="unofficial">Google Translate (Unofficial / Free)</option>
         </select>
       </div>
 
@@ -262,41 +256,6 @@
           Save Settings
         </button>
       </div>
-    </div>
-
-    <!-- Local Model Manager -->
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Local Model Manager</h2>
-        <p class="card-description">Configure and manage offline models</p>
-      </div>
-
-      <div class="form-group">
-        <label for="local-service-url" class="form-label">Service URL</label>
-        <input type="text" id="local-service-url" class="form-control" placeholder="http://127.0.0.1:5055">
-      </div>
-
-      <div class="form-group">
-        <label for="local-model-dir" class="form-label">Model Directory</label>
-        <input type="text" id="local-model-dir" class="form-control" placeholder="Optional override path">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Auto-start</label>
-        <label class="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" id="local-auto-start" checked>
-          Auto-start local service
-        </label>
-      </div>
-
-      <div class="form-group">
-        <button class="btn btn-secondary btn-sm" onclick="installDefaultLocalModels()">Install Default</button>
-        <button class="btn btn-secondary btn-sm" onclick="refreshLocalModels()">Refresh</button>
-        <button class="btn btn-secondary btn-sm" onclick="verifyLocalModels()">Verify</button>
-        <button class="btn btn-secondary btn-sm" onclick="removeLocalModels()">Remove</button>
-      </div>
-
-      <pre id="local-model-status" class="text-xs text-muted"></pre>
     </div>
   </div>
 </div>
@@ -371,7 +330,7 @@
       // Process through API
       const result = await apiCall('/api/batch', 'POST', {
         files: fileContents,
-        api_type: 'google_unofficial'
+        api_type: 'unofficial'
       });
 
       displayBatchResults(result.results);
@@ -397,8 +356,7 @@
         <div class="card-header">
           <h3 class="card-title">${item.filename}</h3>
           <p class="card-description">
-            Quality: ${item.result.quality_rating} | 
-            BLEU: ${item.result.bleu_score ? formatPercentage(item.result.bleu_score * 100) : 'N/A'}
+            Provider: ${item.result.api_type || 'N/A'}
           </p>
         </div>
         <div class="result-text">${item.result.back_translation}</div>
@@ -449,10 +407,7 @@
     document.getElementById('original-text').textContent = result.original_text;
     document.getElementById('japanese-translation').textContent = result.first_translation;
     document.getElementById('back-translation').textContent = result.back_translation;
-    
-    document.getElementById('bleu-score').textContent = result.bleu_score ? 
-      formatPercentage(result.bleu_score * 100) : 'N/A';
-    document.getElementById('quality-rating').textContent = result.quality_rating || 'N/A';
+    document.getElementById('api-used').textContent = result.api_type || 'N/A';
     document.getElementById('character-count').textContent = result.original_text.length.toLocaleString();
   }
 
@@ -525,71 +480,26 @@
       console.error('Failed to load analytics:', error);
     }
   }
-
-  async function loadLocalSettings() {
+  async function loadSettings() {
     try {
-      const settings = await apiCall('/api/local/settings');
-      document.getElementById('local-service-url').value = settings.local_service_url || '';
-      document.getElementById('local-model-dir').value = settings.local_model_dir || '';
-      document.getElementById('local-auto-start').checked = settings.local_auto_start !== false;
+      const settings = await apiCall('/api/settings');
+      document.getElementById('default-api').value = settings.default_api || 'unofficial';
     } catch (error) {
-      console.error('Failed to load local settings', error);
+      console.error('Failed to load settings', error);
     }
   }
 
   async function saveSettings() {
     try {
       const payload = {
-        local_service_url: document.getElementById('local-service-url').value,
-        local_model_dir: document.getElementById('local-model-dir').value,
-        local_auto_start: document.getElementById('local-auto-start').checked
+        default_api: document.getElementById('default-api').value
       };
-      await apiCall('/api/local/settings', 'POST', payload);
+      await apiCall('/api/settings', 'POST', payload);
       showNotification('Settings saved successfully', 'success');
     } catch (error) {
       showNotification(`Failed to save settings: ${error.message}`, 'error');
     }
   }
-
-  function updateLocalModelStatus(message) {
-    document.getElementById('local-model-status').textContent = message;
-  }
-
-  async function refreshLocalModels() {
-    try {
-      const result = await apiCall('/api/local/models');
-      updateLocalModelStatus(result.body || 'No response');
-    } catch (error) {
-      updateLocalModelStatus(error.message);
-    }
-  }
-
-  async function verifyLocalModels() {
-    try {
-      const result = await apiCall('/api/local/models/verify', 'POST', {});
-      updateLocalModelStatus(result.body || 'No response');
-    } catch (error) {
-      updateLocalModelStatus(error.message);
-    }
-  }
-
-  async function removeLocalModels() {
-    if (!confirm('Remove local models from disk?')) return;
-    try {
-      const result = await apiCall('/api/local/models/remove', 'POST', {});
-      updateLocalModelStatus(result.body || 'No response');
-    } catch (error) {
-      updateLocalModelStatus(error.message);
-    }
-  }
-
-  async function installDefaultLocalModels() {
-    try {
-      const result = await apiCall('/api/local/models/install', 'POST', {});
-      updateLocalModelStatus(result.body || 'No response');
-    } catch (error) {
-      updateLocalModelStatus(error.message);
-    }
   }
 
   function clearTranslationMemory() {
@@ -651,7 +561,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    loadLocalSettings();
+    loadSettings();
   });
 
   // Utility functions

@@ -3,7 +3,6 @@ import os
 from langdetect import detect
 from langdetect.lang_detect_exception import LangDetectException
 
-from bleu_scorer import get_bleu_scorer
 from enhanced_logger import get_logger
 from file_utils import load_text_from_path
 from provider_ids import normalize_provider_id
@@ -15,7 +14,6 @@ class BatchProcessor:
         self.translation_service = translation_service
         self.update_callback = update_callback
         self.logger = get_logger()
-        self.bleu_scorer = get_bleu_scorer()
         self.is_running = False
 
     def process_directory(
@@ -49,7 +47,7 @@ class BatchProcessor:
                         source_lang,
                         target_lang,
                     )
-                    self.save_translated_file(filepath, translated_content, content)
+                    self.save_translated_file(filepath, translated_content)
                 else:
                     self.logger.error(f"Failed to load file {filename}: {result.error}")
 
@@ -109,18 +107,9 @@ class BatchProcessor:
             )
             if second_result.is_success():
                 backtranslated = second_result.value
-
-                # Calculate BLEU score for quality assessment
-                quality_assessment = self.bleu_scorer.assess_translation_quality(content, backtranslated)
-
-                # Log quality assessment
                 self.logger.info(
-                    "Batch translation quality assessment",
+                    "Batch translation completed",
                     extra={
-                        "bleu_score": quality_assessment['bleu_score'],
-                        "confidence_level": quality_assessment['confidence_level'],
-                        "quality_rating": quality_assessment['quality_rating'],
-                        "recommendations": quality_assessment['recommendations'],
                         "original_length": len(content),
                         "intermediate_length": len(intermediate),
                         "backtranslated_length": len(backtranslated),
@@ -133,7 +122,7 @@ class BatchProcessor:
 
         return "Translation Failed"
 
-    def save_translated_file(self, original_path, translated_content, original_content=None):
+    def save_translated_file(self, original_path, translated_content):
         dir_name, file_name = os.path.split(original_path)
         name, ext = os.path.splitext(file_name)
         new_filename = f"{name}_translated{ext}"
@@ -141,16 +130,6 @@ class BatchProcessor:
         try:
             with open(new_filepath, 'w', encoding='utf-8') as f:
                 f.write(translated_content)
-
-                # Add quality assessment if original content is available
-                if original_content:
-                    quality_assessment = self.bleu_scorer.assess_translation_quality(original_content, translated_content)
-                    f.write("\n\n=== QUALITY ASSESSMENT ===\n")
-                    f.write(f"BLEU Score: {quality_assessment['bleu_percentage']}\n")
-                    f.write(f"Confidence: {quality_assessment['confidence_level']}\n")
-                    f.write(f"Rating: {quality_assessment['quality_rating']}\n")
-                    f.write(f"Assessment: {quality_assessment['description']}\n")
-                    f.write(f"Recommendations: {quality_assessment['recommendations']}\n")
 
             self.logger.info(f"Saved translated file to {new_filepath}")
         except Exception as e:

@@ -6,29 +6,25 @@ import '../../core/errors/failure.dart';
 import '../../core/utils/logger.dart';
 import '../../domain/entities/translation.dart';
 import '../../domain/repositories/translation_repository.dart';
-import '../services/translation_service.dart';
 import '../services/retry_service.dart';
+import '../services/translation_service.dart';
 
 /// Implementation of TranslationRepository interface
 /// Single Responsibility: Coordinate translation operations with services
 class TranslationRepositoryImpl implements TranslationRepository {
   final UnofficialGoogleTranslateService _unofficialService;
-  final LocalTranslationService _localService;
   final RetryService _retryService;
-  final http.Client _httpClient;
   final Logger logger = Logger.instance;
 
-  TranslationRepositoryImpl(this._httpClient)
-      : _unofficialService = UnofficialGoogleTranslateService(_httpClient),
-        _localService = LocalTranslationService(_httpClient),
+  TranslationRepositoryImpl(http.Client httpClient)
+      : _unofficialService = UnofficialGoogleTranslateService(httpClient),
         _retryService = RetryService();
 
   @override
   String get serviceName => 'Translation Repository';
 
   @override
-  bool get isConfigured =>
-      true;
+  bool get isConfigured => true;
 
   @override
   Future<Result<TranslationResult>> translateText(
@@ -43,16 +39,15 @@ class TranslationRepositoryImpl implements TranslationRepository {
     );
   }
 
-  /// Internal method to select and use the appropriate translation service
+  /// Internal method to run translation service
   Future<Result<TranslationResult>> _translateWithService(
     TranslationRequest request,
     ApiConfiguration config,
   ) async {
     logger.info('Starting translation with config: $config');
-    final service = _selectService(config.providerId);
-    logger.info('Using service: ${service.serviceName}');
+    logger.info('Using service: ${_unofficialService.serviceName}');
 
-    final result = await service.translate(request, config);
+    final result = await _unofficialService.translate(request, config);
 
     logger.info('Service result: ${result.isRight ? "Success" : "Failure"}');
     if (result.isLeft) {
@@ -60,15 +55,6 @@ class TranslationRepositoryImpl implements TranslationRepository {
     }
 
     return result;
-  }
-
-  BaseTranslationService _selectService(TranslationProviderId providerId) {
-    switch (providerId) {
-      case TranslationProviderId.local:
-        return _localService;
-      case TranslationProviderId.googleUnofficial:
-        return _unofficialService;
-    }
   }
 
   @override
@@ -147,28 +133,13 @@ class TranslationRepositoryImpl implements TranslationRepository {
   @override
   Future<Result<String>> detectLanguage(
     String text,
-    ApiConfiguration _config,
+    ApiConfiguration config,
   ) async {
+    logger.debug('Detect language provider: ${config.providerId}');
     if (text.trim().isEmpty) {
       return Left(AppFailure(message: 'Text is empty'));
     }
     return const Right('en');
-  }
-
-  Future<Result<String>> getLocalModelsStatus(ApiConfiguration config) async {
-    return _localService.getModelsStatus(config);
-  }
-
-  Future<Result<String>> verifyLocalModels(ApiConfiguration config) async {
-    return _localService.verifyModels(config);
-  }
-
-  Future<Result<String>> removeLocalModels(ApiConfiguration config) async {
-    return _localService.removeModels(config);
-  }
-
-  Future<Result<String>> installDefaultLocalModels(ApiConfiguration config) async {
-    return _localService.installDefaultModels(config);
   }
 }
 

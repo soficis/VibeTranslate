@@ -98,9 +98,6 @@ class _ApiStatusIndicator extends StatelessWidget {
   }
 
   String _getStatusText() {
-    if (providerId == TranslationProviderId.local) {
-      return 'Local (Offline)';
-    }
-    return 'Unofficial API';
+    return providerId.displayName;
   }
 }

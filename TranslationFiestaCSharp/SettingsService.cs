@@ -8,9 +8,6 @@ namespace TranslationFiestaCSharp
     {
         public bool DarkMode { get; set; } = false;
         public string ProviderId { get; set; } = ProviderIds.GoogleUnofficial;
-        public string LocalServiceUrl { get; set; } = "";
-        public string LocalModelDir { get; set; } = "";
-        public bool LocalAutoStart { get; set; } = true;
         public int WindowWidth { get; set; } = 900;
         public int WindowHeight { get; set; } = 850;
         public int WindowX { get; set; } = -1; // -1 means center

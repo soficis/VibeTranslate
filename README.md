@@ -16,17 +16,10 @@ Polyglot monorepo of TranslationFiesta ports with a shared feature set: **EN↔J
 
 ## Providers (standardized across ports)
 
-Every app exposes the same provider IDs:
+Every app uses the same provider ID:
 
-- **Local (Offline)**: `TranslationFiestaLocal/` service (HTTP) using quantized JA↔EN models.
 - **Google Translate (Unofficial / Free)**: must exist in every app; network calls are mocked in tests.
 
-## Offline models (free, small, offline)
-
-Default preset ships with ElanMT “tiny” models converted to CTranslate2 `int8`:
-
-- One model per direction (each ≤ 20MB zipped).
-- Install from any app’s “Local Model Manager” using **Install Default** (calls `POST /models/install`).
 
 ## Building and Testing
 
@@ -35,6 +28,17 @@ A unified root `Makefile` provides commands to evaluate the codebase across all 
 - `make test-all`
 - `make lint-all`
 For specific targets, see the Makefile (e.g., `make test-python`).
+
+
+## Windows x64 release bundle
+
+To build the full Windows x64 release bundle (all non-Swift apps) in one step:
+
+```powershell
+pwsh -File scripts/build_windows_x64_release.ps1
+```
+
+Artifacts are written to `dist/release/windows-x64/`.
 
 ## Build Instructions per App
 

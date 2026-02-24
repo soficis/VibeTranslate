@@ -3,8 +3,6 @@
 require 'sinatra/base'
 require 'json'
 require 'securerandom'
-require 'net/http'
-require 'uri'
 require_relative '../infrastructure/dependency_container'
 require_relative '../infrastructure/settings_store'
 
@@ -16,12 +14,12 @@ module TranslationFiesta
       set :port, ENV.fetch('TF_WEB_PORT', 4567)
       set :static, true
       set :public_folder, File.expand_path('../public', __dir__)
-  set :views, File.expand_path('views', __dir__)
-  # Avoid blocking tests or non-standard hosts (Rack::Protection may reject test Host headers)
-  set :protection, except: :http_host
-  
-  # Enable file uploads
-  set :max_file_size, 10_000_000 # 10MB
+      set :views, File.expand_path('views', __dir__)
+      # Avoid blocking tests or non-standard hosts (Rack::Protection may reject test Host headers)
+      set :protection, except: :http_host
+
+      # Enable file uploads
+      set :max_file_size, 10_000_000 # 10MB
 
       RATE_LIMIT = ENV.fetch('TF_RATE_LIMIT', '60').to_i
 
@@ -32,33 +30,30 @@ module TranslationFiesta
         @container = container
         @results = {}
         @settings_store = Infrastructure::SettingsStore.new
-        stored = @settings_store.load
-        @settings_store.apply_to_env(stored)
+        @settings_store.apply_to_env(@settings_store.load)
       end
 
       # Simple auth and rate limiting for /api/* endpoints
       before do
-        if request.path.start_with?('/api/')
-          # API token enforcement (if TF_API_TOKEN is set)
-          token = ENV['TF_API_TOKEN']
-          if token
-            provided = request.env['HTTP_X_API_TOKEN'] || params['api_token']
-            halt 401, JSON.generate({ error: 'Unauthorized' }) unless provided == token
-          end
+        next unless request.path.start_with?('/api/')
 
-          # Rate limit per IP (sliding window of 60s)
-          client = request.ip
-          now = Time.now.to_i
-          data = @@rate_limits[client] || { count: 0, window_start: now }
-          if now - data[:window_start] >= 60
-            data = { count: 0, window_start: now }
-          end
-          data[:count] += 1
-          @@rate_limits[client] = data
-          if data[:count] > RATE_LIMIT
-            halt 429, JSON.generate({ error: 'Rate limit exceeded' })
-          end
+        # API token enforcement (if TF_API_TOKEN is set)
+        token = ENV['TF_API_TOKEN']
+        if token
+          provided = request.env['HTTP_X_API_TOKEN'] || params['api_token']
+          halt 401, JSON.generate({ error: 'Unauthorized' }) unless provided == token
         end
+
+        # Rate limit per IP (sliding window of 60s)
+        client = request.ip
+        now = Time.now.to_i
+        data = @@rate_limits[client] || { count: 0, window_start: now }
+        if now - data[:window_start] >= 60
+          data = { count: 0, window_start: now }
+        end
+        data[:count] += 1
+        @@rate_limits[client] = data
+        halt 429, JSON.generate({ error: 'Rate limit exceeded' }) if data[:count] > RATE_LIMIT
       end
 
       helpers do
@@ -71,37 +66,21 @@ module TranslationFiesta
           settings.respond_to?(:container) ? settings.container : @container
         end
 
+        def normalize_api_type(value)
+          case value.to_s
+          when 'unofficial', 'google_unofficial'
+            :unofficial
+          else
+            :unofficial
+          end
+        end
+
         def translate(text:, api_type: :unofficial)
-          container.translate_use_case.execute(text, api_type)
+          container.translate_use_case.execute(text, normalize_api_type(api_type))
         end
 
-        def local_settings_store
+        def settings_store
           @settings_store
-        end
-
-        def local_settings_payload
-          local_settings_store.load
-        end
-
-        def apply_local_settings(settings)
-          local_settings_store.apply_to_env(settings)
-        end
-
-        def local_service_request(method, path, body = nil)
-          base = ENV.fetch('TF_LOCAL_URL', 'http://127.0.0.1:5055')
-          uri = URI.join(base, path)
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.use_ssl = uri.scheme == 'https'
-          request = case method
-                    when :get then Net::HTTP::Get.new(uri.request_uri)
-                    else
-                      req = Net::HTTP::Post.new(uri.request_uri)
-                      req['Content-Type'] = 'application/json'
-                      req.body = JSON.generate(body || {})
-                      req
-                    end
-          response = http.request(request)
-          [response.code.to_i, response.body]
         end
       end
 
@@ -112,7 +91,8 @@ module TranslationFiesta
       post '/api/translate' do
         payload = JSON.parse(request.body.read) rescue {}
         text = (payload['text'] || '').strip
-        api_type = (payload['api_type'] || 'unofficial').to_sym
+        configured_default = settings_store.load.fetch('default_api', 'unofficial')
+        api_type = payload['api_type'] || configured_default
         return json({ error: 'Text is required' }, status: 422) if text.empty?
 
         begin
@@ -128,6 +108,7 @@ module TranslationFiesta
       get '/api/result/:id' do
         result = @results[params[:id]]
         return json({ error: 'Not found' }, status: 404) unless result
+
         json({ id: params[:id], result: serialize_result(result) })
       end
 
@@ -165,14 +146,13 @@ module TranslationFiesta
       post '/api/batch' do
         payload = JSON.parse(request.body.read) rescue {}
         files = payload['files'] || []
-        api_type = (payload['api_type'] || 'unofficial').to_sym
-        threads = (payload['threads'] || 4).to_i
+        configured_default = settings_store.load.fetch('default_api', 'unofficial')
+        api_type = payload['api_type'] || configured_default
 
         return json({ error: 'No files provided' }, status: 422) if files.empty?
 
         begin
-          # This is a simplified batch processing for the web UI
-          # In a real implementation, this would use the actual BatchProcessor
+          # Simplified batch processing for the web UI.
           results = []
           files.each do |file_data|
             result = translate(text: file_data['content'], api_type: api_type)
@@ -198,39 +178,17 @@ module TranslationFiesta
         json(payload)
       end
 
-      get '/api/local/settings' do
-        json(local_settings_payload)
+      get '/api/settings' do
+        json(settings_store.load)
       end
 
-      post '/api/local/settings' do
+      post '/api/settings' do
         payload = JSON.parse(request.body.read) rescue {}
-        saved = local_settings_store.save(
-          'local_service_url' => payload['local_service_url'].to_s,
-          'local_model_dir' => payload['local_model_dir'].to_s,
-          'local_auto_start' => payload.fetch('local_auto_start', true)
+        saved = settings_store.save(
+          'default_api' => normalize_api_type(payload['default_api']).to_s
         )
-        apply_local_settings(saved)
+        settings_store.apply_to_env(saved)
         json(saved)
-      end
-
-      get '/api/local/models' do
-        status, body = local_service_request(:get, '/models')
-        json({ status: status, body: body }, status: status == 200 ? 200 : 502)
-      end
-
-      post '/api/local/models/verify' do
-        status, body = local_service_request(:post, '/models/verify')
-        json({ status: status, body: body }, status: status == 200 ? 200 : 502)
-      end
-
-      post '/api/local/models/remove' do
-        status, body = local_service_request(:post, '/models/remove')
-        json({ status: status, body: body }, status: status == 200 ? 200 : 502)
-      end
-
-      post '/api/local/models/install' do
-        status, body = local_service_request(:post, '/models/install', {})
-        json({ status: status, body: body }, status: status == 200 ? 200 : 502)
       end
 
       get '/api/export/test-docx' do
@@ -262,15 +220,13 @@ module TranslationFiesta
 
       private
 
-      def serialize_result(r)
+      def serialize_result(result)
         {
-          original_text: r.original_text,
-          first_translation: r.first_translation,
-          back_translation: r.back_translation,
-          bleu_score: r.bleu_score,
-          quality_rating: r.quality_rating,
-          api_type: r.api_type,
-          timestamp: r.timestamp
+          original_text: result.original_text,
+          first_translation: result.first_translation,
+          back_translation: result.back_translation,
+          api_type: result.api_type,
+          timestamp: result.timestamp
         }
       end
     end

@@ -13,7 +13,6 @@ Features:
 - Cross-platform support
 """
 
-import json
 import os
 import platform
 import sys
@@ -32,16 +31,13 @@ except ImportError:
     HtmlFrame = None
 
 from batch_processor import BatchProcessor
-from bleu_scorer import get_bleu_scorer
 from enhanced_logger import get_logger
 from epub_processor import EpubProcessor
 from exceptions import get_user_friendly_message
 from file_utils import load_text_from_path
-from local_service_client import LocalServiceClient, LocalServiceConfig
 from provider_ids import (
     PROVIDER_GOOGLE_UNOFFICIAL,
     PROVIDER_LABELS,
-    PROVIDER_LOCAL,
     normalize_provider_id,
 )
 from settings_storage import get_settings_storage
@@ -93,7 +89,6 @@ class TranslationFiesta:
             PROVIDER_LABELS[PROVIDER_GOOGLE_UNOFFICIAL],
         )
         self.provider_labels = [
-            PROVIDER_LABELS[PROVIDER_LOCAL],
             PROVIDER_LABELS[PROVIDER_GOOGLE_UNOFFICIAL],
         ]
         self.provider_label_to_id = {label: pid for pid, label in PROVIDER_LABELS.items()}
@@ -105,11 +100,7 @@ class TranslationFiesta:
         self.progress_bar = None
 
         # Translation service with enhanced error handling
-        self._apply_local_settings()
-        self.translation_service = TranslationService(session=self.session, local_client=self.local_client)
-
-        # BLEU scorer for quality assessment
-        self.bleu_scorer = get_bleu_scorer()
+        self.translation_service = TranslationService(session=self.session)
 
         # Initialize UI text labels
         self.lbl_input_text = "Input (English):"
@@ -482,25 +473,12 @@ class TranslationFiesta:
 
             # Update preview
             self.root.after(0, lambda: self.update_preview(backtranslated_text))
+            self.root.after(0, lambda: self.lbl_status.config(text="Done", fg="green"))
 
-            # Calculate BLEU score for quality assessment
-            quality_assessment = self.bleu_scorer.assess_translation_quality(
-                input_text, backtranslated_text
-            )
-
-            # Update status with BLEU score and confidence
-            status_text = f"Done - BLEU: {quality_assessment['bleu_percentage']} ({quality_assessment['confidence_level']})"
-            status_color = "green" if quality_assessment['bleu_score'] >= 0.6 else "orange" if quality_assessment['bleu_score'] >= 0.4 else "red"
-            self.root.after(0, lambda: self.lbl_status.config(text=status_text, fg=status_color))
-
-            # Log quality assessment
+            # Log translation summary
             self.logger.info(
                 "Back-translation completed",
                 extra={
-                    "bleu_score": quality_assessment['bleu_score'],
-                    "confidence_level": quality_assessment['confidence_level'],
-                    "quality_rating": quality_assessment['quality_rating'],
-                    "recommendations": quality_assessment['recommendations'],
                     "input_length": len(input_text),
                     "japanese_length": len(japanese_text),
                     "backtranslated_length": len(backtranslated_text)
@@ -559,10 +537,7 @@ class TranslationFiesta:
         """Persist provider selection and update status."""
         provider_id = self.get_selected_provider_id()
         self.settings.set_provider_id(provider_id)
-        if provider_id == PROVIDER_LOCAL:
-            self.set_status("Using local offline provider.", "blue")
-        else:
-            self.set_status("Using unofficial provider.", "blue")
+        self.set_status("Using unofficial provider.", "blue")
 
     def set_status(self, text: str, color: str = "blue"):
         self.lbl_status.config(text=text, fg=color)
@@ -673,114 +648,9 @@ class TranslationFiesta:
 
         settings_menu = tk.Menu(menubar, tearoff=0)
         settings_menu.add_command(label="Toggle Provider (Ctrl+P)", command=self.toggle_api_shortcut)
-        settings_menu.add_command(label="Local Models...", command=self.show_model_manager)
         menubar.add_cascade(label="Settings", menu=settings_menu)
 
         self.root.config(menu=menubar)
-
-    def _apply_local_settings(self):
-        service_url = (self.settings.get_local_service_url() or "").strip()
-        model_dir = (self.settings.get_local_model_dir() or "").strip()
-        autostart = self.settings.get_local_autostart()
-
-        if service_url:
-            os.environ["TF_LOCAL_URL"] = service_url
-        else:
-            os.environ.pop("TF_LOCAL_URL", None)
-
-        if model_dir:
-            os.environ["TF_LOCAL_MODEL_DIR"] = model_dir
-        else:
-            os.environ.pop("TF_LOCAL_MODEL_DIR", None)
-
-        os.environ["TF_LOCAL_AUTOSTART"] = "1" if autostart else "0"
-
-        self.local_client = LocalServiceClient(
-            session=self.session,
-            config=LocalServiceConfig(
-                base_url=service_url or "http://127.0.0.1:5055",
-                auto_start=autostart,
-                model_dir=model_dir or None,
-            ),
-        )
-
-    def _refresh_local_client(self):
-        self._apply_local_settings()
-        self.translation_service = TranslationService(session=self.session, local_client=self.local_client)
-
-    def show_model_manager(self):
-        window = tk.Toplevel(self.root)
-        window.title("Local Model Manager")
-        window.geometry("520x360")
-        window.resizable(False, False)
-
-        status_var = tk.StringVar(value="Loading...")
-
-        tk.Label(window, text="Local Service URL:").pack(anchor="w", padx=12, pady=(10, 0))
-        url_var = tk.StringVar(value=self.settings.get_local_service_url())
-        url_entry = tk.Entry(window, textvariable=url_var, width=60)
-        url_entry.pack(anchor="w", padx=12)
-
-        tk.Label(window, text="Model Directory:").pack(anchor="w", padx=12, pady=(10, 0))
-        model_dir_var = tk.StringVar(value=self.settings.get_local_model_dir())
-        model_entry = tk.Entry(window, textvariable=model_dir_var, width=60)
-        model_entry.pack(anchor="w", padx=12)
-
-        autostart_var = tk.BooleanVar(value=self.settings.get_local_autostart())
-        tk.Checkbutton(window, text="Auto-start local service", variable=autostart_var).pack(anchor="w", padx=12, pady=(6, 0))
-
-        status_frame = tk.LabelFrame(window, text="Status")
-        status_frame.pack(fill="both", expand=False, padx=12, pady=(10, 0))
-        status_label = tk.Label(status_frame, textvariable=status_var, anchor="w", justify="left")
-        status_label.pack(fill="x", padx=8, pady=6)
-
-        action_frame = tk.Frame(window)
-        action_frame.pack(fill="x", padx=12, pady=(10, 0))
-
-        def save_settings():
-            self.settings.set_local_service_url(url_var.get().strip())
-            self.settings.set_local_model_dir(model_dir_var.get().strip())
-            self.settings.set_local_autostart(bool(autostart_var.get()))
-            self._refresh_local_client()
-            status_var.set("Settings saved.")
-
-        def refresh_status():
-            result = self.local_client.models_status()
-            if result.is_failure():
-                status_var.set(str(result.error))
-                return
-            status_var.set(json.dumps(result.value, indent=2))
-
-        def verify_models():
-            result = self.local_client.models_verify()
-            if result.is_failure():
-                status_var.set(str(result.error))
-                return
-            status_var.set(json.dumps(result.value, indent=2))
-
-        def remove_models():
-            if not messagebox.askyesno("Remove Models", "Remove local models from disk?"):
-                return
-            result = self.local_client.models_remove()
-            if result.is_failure():
-                status_var.set(str(result.error))
-                return
-            status_var.set(json.dumps(result.value, indent=2))
-
-        def install_default_models():
-            result = self.local_client.models_install_default()
-            if result.is_failure():
-                status_var.set(str(result.error))
-                return
-            status_var.set(json.dumps(result.value, indent=2))
-
-        tk.Button(action_frame, text="Save Settings", command=save_settings).pack(side=tk.LEFT, padx=(0, 8))
-        tk.Button(action_frame, text="Install Default", command=install_default_models).pack(side=tk.LEFT, padx=(0, 8))
-        tk.Button(action_frame, text="Refresh", command=refresh_status).pack(side=tk.LEFT, padx=(0, 8))
-        tk.Button(action_frame, text="Verify", command=verify_models).pack(side=tk.LEFT, padx=(0, 8))
-        tk.Button(action_frame, text="Remove", command=remove_models).pack(side=tk.LEFT)
-
-        refresh_status()
 
     def bind_shortcuts(self):
         """Bind keyboard shortcuts to application functions."""

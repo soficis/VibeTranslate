@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Translation providers and translation orchestration (unofficial Google and local service),
+Translation provider orchestration (unofficial Google),
 including retry/backoff, error mapping, and structured logging.
 """
 
@@ -16,7 +16,6 @@ from datetime import datetime
 from typing import Callable, Optional
 
 import requests
-from rapidfuzz import fuzz
 
 from enhanced_logger import get_logger
 from exceptions import (
@@ -31,9 +30,7 @@ from exceptions import (
     TimeoutError,
     TranslationFiestaError,
 )
-from local_service_client import LocalServiceClient
 from provider_ids import (
-    PROVIDER_LOCAL,
     normalize_provider_id,
 )
 from rate_limiter import RateLimiter
@@ -71,17 +68,15 @@ class TranslationResponse:
 
 
 class TranslationMemory:
-    """Translation Memory with LRU, fuzzy matching, persistence, and metrics"""
+    """Translation Memory with LRU, persistence, and metrics."""
 
-    def __init__(self, cache_size: int = 1000, persistence_path: str = "tm_cache.json", similarity_threshold: float = 0.8):
+    def __init__(self, cache_size: int = 1000, persistence_path: str = "tm_cache.json"):
         self.cache_size = cache_size
         self.persistence_path = persistence_path
-        self.similarity_threshold = similarity_threshold
         self.cache = OrderedDict()  # key: f"{source}:{target_lang}"
         self.metrics = {
             'hits': 0,
             'misses': 0,
-            'fuzzy_hits': 0,
             'total_lookups': 0,
             'total_time': 0.0
         }
@@ -104,27 +99,6 @@ class TranslationMemory:
         self.metrics['total_time'] += (time.time() - start_time)
         return None
 
-    def fuzzy_lookup(self, source: str, target_lang: str) -> Optional[tuple[str, float]]:
-        start_time = time.time()
-        best_match = None
-        best_score = 0.0
-        for k, entry in self.cache.items():
-            if entry['target_lang'] == target_lang:
-                cached_source = k.split(':')[0]
-                score = fuzz.ratio(source, cached_source) / 100.0
-                if score > best_score and score >= self.similarity_threshold:
-                    best_score = score
-                    best_match = entry['translation']
-        if best_match:
-            self.metrics['fuzzy_hits'] += 1
-            self.metrics['total_lookups'] += 1
-            self.metrics['total_time'] += (time.time() - start_time)
-            return best_match, best_score
-        self.metrics['misses'] += 1
-        self.metrics['total_lookups'] += 1
-        self.metrics['total_time'] += (time.time() - start_time)
-        return None
-
     def store(self, source: str, target_lang: str, translation: str):
         key = self._get_key(source, target_lang)
         now = datetime.now().isoformat()
@@ -141,7 +115,7 @@ class TranslationMemory:
 
     def get_stats(self) -> dict:
         stats = self.metrics.copy()
-        stats['hit_rate'] = (stats['hits'] + stats['fuzzy_hits']) / max(1, stats['total_lookups'])
+        stats['hit_rate'] = stats['hits'] / max(1, stats['total_lookups'])
         stats['avg_lookup_time'] = stats['total_time'] / max(1, stats['total_lookups'])
         stats['cache_size'] = len(self.cache)
         stats['max_size'] = self.cache_size
@@ -157,7 +131,6 @@ class TranslationMemory:
         data = {
             'config': {
                 'max_size': self.cache_size,
-                'threshold': self.similarity_threshold
             },
             'cache': [
                 {
@@ -180,7 +153,6 @@ class TranslationMemory:
             with open(self.persistence_path, 'r') as f:
                 data = json.load(f)
                 self.cache_size = data['config'].get('max_size', 1000)
-                self.similarity_threshold = data['config'].get('threshold', 0.8)
                 for entry in data['cache']:
                     key = self._get_key(entry['source'], entry['target_lang'])
                     self.cache[key] = entry
@@ -200,12 +172,10 @@ class TranslationService:
     def __init__(
         self,
         session: Optional[requests.Session] = None,
-        local_client: Optional[LocalServiceClient] = None,
     ) -> None:
         self.logger = get_logger()
         self.rate_limiter = RateLimiter()
         self.session = session or requests.Session()
-        self.local_client = local_client or LocalServiceClient(self.session)
         self.tm = TranslationMemory(cache_size=1000, persistence_path="tm_cache.json")
 
     def _extract_text_from_unofficial_response(self, data: object) -> Result[str, TranslationFiestaError]:
@@ -347,44 +317,34 @@ class TranslationService:
             self.logger.info(f"Cache hit for {text[:50]}...")
             return Success(cache_result)
 
-        # Check fuzzy cache
-        fuzzy_result = self.tm.fuzzy_lookup(text, target_lang)
-        if fuzzy_result is not None:
-            translation, score = fuzzy_result
-            self.logger.info(f"Fuzzy cache hit (score: {score:.2f}) for {text[:50]}...")
-            return Success(translation)
+        # Execute with retry if cache miss
+        retry_result = None
+        for attempt in range(max_attempts):
+            retry_result = self._translate_unofficial(session, request)
 
-        if resolved_provider_id == PROVIDER_LOCAL:
-            retry_result = self.local_client.translate(text, source_lang, target_lang)
-        else:
-            # Execute with retry if cache miss
-            retry_result = None
-            for attempt in range(max_attempts):
-                retry_result = self._translate_unofficial(session, request)
+            if retry_result.is_success():
+                self.rate_limiter.success()
+                break
 
-                if retry_result.is_success():
-                    self.rate_limiter.success()
+            if isinstance(retry_result.error, RateLimitedError):
+                retry_after = retry_result.error.retry_after
+                self.rate_limiter.failure(retry_after=retry_after)
+                if not self.rate_limiter.should_retry():
                     break
-
-                if isinstance(retry_result.error, RateLimitedError):
-                    retry_after = retry_result.error.retry_after
-                    self.rate_limiter.failure(retry_after=retry_after)
-                    if not self.rate_limiter.should_retry():
-                        break
-                    self.rate_limiter.wait()
-                elif isinstance(retry_result.error, HttpError) and retry_result.error.status_code == 429:
-                    retry_after = retry_result.error.headers.get("Retry-After")
-                    if retry_after:
-                        try:
-                            retry_after = int(retry_after)
-                        except ValueError:
-                            retry_after = None
-                    self.rate_limiter.failure(retry_after=retry_after)
-                    if not self.rate_limiter.should_retry():
-                        break
-                    self.rate_limiter.wait()
-                else:
+                self.rate_limiter.wait()
+            elif isinstance(retry_result.error, HttpError) and retry_result.error.status_code == 429:
+                retry_after = retry_result.error.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        retry_after = int(retry_after)
+                    except ValueError:
+                        retry_after = None
+                self.rate_limiter.failure(retry_after=retry_after)
+                if not self.rate_limiter.should_retry():
                     break
+                self.rate_limiter.wait()
+            else:
+                break
 
         if retry_result.is_failure():
             error = retry_result.error  # type: ignore

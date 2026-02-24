@@ -17,30 +17,6 @@ class ControlPanel extends StatefulWidget {
 }
 
 class _ControlPanelState extends State<ControlPanel> {
-  late TextEditingController _localUrlController;
-  late TextEditingController _localDirController;
-
-  @override
-  void initState() {
-    super.initState();
-    _localUrlController = TextEditingController();
-    _localDirController = TextEditingController();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final provider = context.read<TranslationProvider>();
-    _localUrlController.text = provider.localServiceUrl;
-    _localDirController.text = provider.localModelDir;
-  }
-
-  @override
-  void dispose() {
-    _localUrlController.dispose();
-    _localDirController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,102 +62,6 @@ class _ControlPanelState extends State<ControlPanel> {
             ),
 
             const SizedBox(height: 16),
-
-            if (provider.providerId == TranslationProviderId.local) ...[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Local Model Manager',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _localUrlController,
-                    decoration: const InputDecoration(
-                      labelText: 'Service URL',
-                      hintText: 'http://127.0.0.1:5055',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _localDirController,
-                    decoration: const InputDecoration(
-                      labelText: 'Model Directory',
-                      hintText: 'Optional override path',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  SwitchListTile.adaptive(
-                    title: const Text('Auto-start local service'),
-                    value: provider.localAutoStart,
-                    onChanged: provider.isLoading
-                        ? null
-                        : (value) async {
-                            await provider.updateLocalSettings(
-                              serviceUrl: _localUrlController.text,
-                              modelDir: _localDirController.text,
-                              autoStart: value,
-                            );
-                          },
-                  ),
-                  Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: provider.isLoading
-                            ? null
-                            : () async {
-                                await provider.updateLocalSettings(
-                                  serviceUrl: _localUrlController.text,
-                                  modelDir: _localDirController.text,
-                                  autoStart: provider.localAutoStart,
-                                );
-                                await provider.refreshLocalModels();
-                              },
-                        child: const Text('Save'),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: provider.isLoading
-                            ? null
-                            : provider.installDefaultLocalModels,
-                        child: const Text('Install Default'),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: provider.isLoading
-                            ? null
-                            : provider.refreshLocalModels,
-                        child: const Text('Refresh'),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: provider.isLoading
-                            ? null
-                            : provider.verifyLocalModels,
-                        child: const Text('Verify'),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: provider.isLoading
-                            ? null
-                            : provider.removeLocalModels,
-                        child: const Text('Remove'),
-                      ),
-                    ],
-                  ),
-                  if (provider.localModelStatus.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      provider.localModelStatus,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
 
             // Format Selection
             Row(

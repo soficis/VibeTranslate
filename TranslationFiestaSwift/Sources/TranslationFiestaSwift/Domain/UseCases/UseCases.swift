@@ -4,16 +4,13 @@ import Foundation
 public final class BackTranslationUseCase {
     private let translationRepository: TranslationRepository
     private let translationMemoryRepository: TranslationMemoryRepository
-    private let qualityRepository: QualityRepository
 
     public init(
         translationRepository: TranslationRepository,
-        translationMemoryRepository: TranslationMemoryRepository,
-        qualityRepository: QualityRepository
+        translationMemoryRepository: TranslationMemoryRepository
     ) {
         self.translationRepository = translationRepository
         self.translationMemoryRepository = translationMemoryRepository
-        self.qualityRepository = qualityRepository
     }
 
     /// Execute back-translation with translation memory.
@@ -55,17 +52,6 @@ public final class BackTranslationUseCase {
             return try await createResultFromMemoryEntry(exactMatch)
         }
 
-        let fuzzyMatches = try await translationMemoryRepository.lookupFuzzy(
-            sourceText: text,
-            sourceLanguage: sourceLanguage,
-            targetLanguage: targetLanguage,
-            threshold: 0.9
-        )
-
-        if let bestMatch = fuzzyMatches.first, bestMatch.similarityScore > 0.95 {
-            return try await createResultFromMemoryEntry(bestMatch.entry)
-        }
-
         return nil
     }
 
@@ -103,18 +89,12 @@ public final class BackTranslationUseCase {
             )
         }
 
-        let qualityAssessment = try await qualityRepository.assessQuality(
-            originalText: entry.sourceText,
-            backTranslatedText: backwardResult.translatedText
-        )
-
         return BackTranslationResult(
             originalEnglish: entry.sourceLanguage == .english ? entry.sourceText : backwardResult.translatedText,
             japanese: entry.targetLanguage == .japanese ? entry.translatedText : entry.sourceText,
             backTranslatedEnglish: entry.sourceLanguage == .english ? backwardResult.translatedText : entry.sourceText,
             forwardTranslation: forwardResult,
-            backwardTranslation: backwardResult,
-            qualityAssessment: qualityAssessment
+            backwardTranslation: backwardResult
         )
     }
 
@@ -253,13 +233,11 @@ public final class ExportUseCase {
         results: [BackTranslationResult],
         format: ExportFormat,
         to url: URL,
-        includeMetadata: Bool = true,
-        includeQualityMetrics: Bool = true
+        includeMetadata: Bool = true
     ) async throws {
         let config = ExportConfig(
             format: format,
-            includeMetadata: includeMetadata,
-            includeQualityMetrics: includeQualityMetrics
+            includeMetadata: includeMetadata
         )
 
         try await exportRepository.exportResults(results, config: config, to: url)
@@ -280,12 +258,6 @@ public final class ExportUseCase {
 public struct EPUBTranslationResult: Equatable, Codable {
     public let book: EPUBBook
     public let chapterResults: [ChapterTranslationResult]
-
-    public var averageQualityScore: Double {
-        let scores = chapterResults.compactMap { $0.translationResult.qualityAssessment.bleuScore }
-        guard !scores.isEmpty else { return 0.0 }
-        return scores.reduce(0, +) / Double(scores.count)
-    }
 }
 
 /// Chapter translation result.

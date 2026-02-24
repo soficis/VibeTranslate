@@ -15,9 +15,6 @@ module Settings =
     type AppSettings = {
         IsDarkTheme: bool
         ProviderId: string
-        LocalServiceUrl: string
-        LocalModelDir: string
-        LocalAutoStart: bool
         WindowWidth: int
         WindowHeight: int
         WindowX: int
@@ -48,26 +45,15 @@ module Settings =
                             ProviderIds.GoogleUnofficial
                         else
                             ProviderIds.normalize settings.ProviderId
-                    let serviceUrl =
-                        if String.IsNullOrWhiteSpace settings.LocalServiceUrl then ""
-                        else settings.LocalServiceUrl
-                    let modelDir =
-                        if String.IsNullOrWhiteSpace settings.LocalModelDir then ""
-                        else settings.LocalModelDir
                     Success {
                         settings with
                             ProviderId = normalized
-                            LocalServiceUrl = serviceUrl
-                            LocalModelDir = modelDir
                     }
             else
                 // Default settings
                 Success {
                     IsDarkTheme = false
                     ProviderId = ProviderIds.GoogleUnofficial
-                    LocalServiceUrl = ""
-                    LocalModelDir = ""
-                    LocalAutoStart = true
                     WindowWidth = 900
                     WindowHeight = 650
                     WindowX = -1

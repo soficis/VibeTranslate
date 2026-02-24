@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -57,7 +56,6 @@ namespace TranslationFiestaCSharp
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
     }
-    static readonly BLEUScorer BleuScorer = new BLEUScorer();
 
         static void Main(string[] args)
         {
@@ -73,8 +71,6 @@ namespace TranslationFiestaCSharp
             // Load settings
             var settings = SettingsService.Load();
             var providerId = ProviderIds.Normalize(settings.ProviderId);
-            ApplyLocalEnv(settings);
-            var localModelsClient = new LocalServiceClient(new HttpClient());
 
             // Make window responsive to screen size
             var screen = Screen.PrimaryScreen;
@@ -111,10 +107,6 @@ namespace TranslationFiestaCSharp
             var miExit = new ToolStripMenuItem("Exit") { ShortcutKeys = Keys.Alt | Keys.F4 };
             fileMenu.DropDownItems.AddRange(new ToolStripItem[] { miImport, miSaveBack, miCopyBack, new ToolStripSeparator(), miExit });
             menu.Items.Add(fileMenu);
-            var toolsMenu = new ToolStripMenuItem("Tools");
-            var miModels = new ToolStripMenuItem("Local Models...");
-            toolsMenu.DropDownItems.Add(miModels);
-            menu.Items.Add(toolsMenu);
             form.MainMenuStrip = menu;
             form.Controls.Add(menu);
 
@@ -130,7 +122,6 @@ namespace TranslationFiestaCSharp
             var btnBatch = new Button { Text = "Batch Process", Left = margin + 200, Top = yTop, Width = 120 };
             var providerOptions = new[]
             {
-                new ProviderOption { Id = ProviderIds.Local, Name = "Local (Offline)" },
                 new ProviderOption { Id = ProviderIds.GoogleUnofficial, Name = "Google Translate (Unofficial / Free)" }
             };
             var lblProvider = new Label { Text = "Provider:", Left = margin + 330, Top = yTop + 5, Width = 70 };
@@ -299,20 +290,8 @@ namespace TranslationFiestaCSharp
                 {
                     var content = txtBack.Text ?? string.Empty;
 
-                    // Add quality assessment if we have both input and back-translation
-                    if (!string.IsNullOrWhiteSpace(txtInput.Text) && !string.IsNullOrWhiteSpace(content))
-                    {
-                        var qualityAssessment = BleuScorer.AssessTranslationQuality(txtInput.Text, content);
-                        content += $"\n\n=== QUALITY ASSESSMENT ===\n";
-                        content += $"BLEU Score: {qualityAssessment.BleuPercentage}\n";
-                        content += $"Confidence: {qualityAssessment.ConfidenceLevel}\n";
-                        content += $"Rating: {qualityAssessment.QualityRating}\n";
-                        content += $"Assessment: {qualityAssessment.Description}\n";
-                        content += $"Recommendations: {qualityAssessment.Recommendations}\n";
-                    }
-
                     System.IO.File.WriteAllText(sfd.FileName, content, Encoding.UTF8);
-                    Logger.Info($"Saved back-translation with quality assessment to '{sfd.FileName}'");
+                    Logger.Info($"Saved back-translation to '{sfd.FileName}'");
 
                     // Save last save path
                     SettingsService.SaveCurrentSettings(dark, GetSelectedProviderId(), form.Width, form.Height, form.Location.X, form.Location.Y, settings.LastFilePath, sfd.FileName);
@@ -326,7 +305,6 @@ namespace TranslationFiestaCSharp
             miSaveBack.Click += (s, e) => saveBack();
 
             miExit.Click += (s, e) => form.Close();
-            miModels.Click += (s, e) => ShowModelManager();
 
             // Save settings on form closing
             // Handle window resizing for responsive layout
@@ -373,102 +351,6 @@ namespace TranslationFiestaCSharp
 
             // Initialize settings and log them
             Logger.Debug($"Initial settings loaded: DarkMode={settings.DarkMode}, ProviderId={providerId}, WindowSize={settings.WindowWidth}x{settings.WindowHeight}, WindowPos=({settings.WindowX},{settings.WindowY}), LastFilePath='{settings.LastFilePath}', LastSavePath='{settings.LastSavePath}'");
-
-            void ApplyLocalEnv(AppSettings appSettings)
-            {
-                if (!string.IsNullOrWhiteSpace(appSettings.LocalServiceUrl))
-                {
-                    Environment.SetEnvironmentVariable("TF_LOCAL_URL", appSettings.LocalServiceUrl);
-                }
-                else
-                {
-                    Environment.SetEnvironmentVariable("TF_LOCAL_URL", null);
-                }
-
-                if (!string.IsNullOrWhiteSpace(appSettings.LocalModelDir))
-                {
-                    Environment.SetEnvironmentVariable("TF_LOCAL_MODEL_DIR", appSettings.LocalModelDir);
-                }
-                else
-                {
-                    Environment.SetEnvironmentVariable("TF_LOCAL_MODEL_DIR", null);
-                }
-
-                Environment.SetEnvironmentVariable("TF_LOCAL_AUTOSTART", appSettings.LocalAutoStart ? "1" : "0");
-            }
-
-            void ShowModelManager()
-            {
-                var dialog = new Form
-                {
-                    Text = "Local Model Manager",
-                    Width = 520,
-                    Height = 320,
-                    StartPosition = FormStartPosition.CenterParent
-                };
-
-                var lblUrl = new Label { Text = "Service URL:", Left = 12, Top = 15, Width = 90 };
-                var txtUrl = new TextBox { Left = 110, Top = 12, Width = 360, Text = settings.LocalServiceUrl ?? "" };
-                var lblDir = new Label { Text = "Model Dir:", Left = 12, Top = 45, Width = 90 };
-                var txtDir = new TextBox { Left = 110, Top = 42, Width = 360, Text = settings.LocalModelDir ?? "" };
-                var chkAuto = new CheckBox { Text = "Auto-start local service", Left = 110, Top = 72, Width = 220, Checked = settings.LocalAutoStart };
-
-                var txtStatus = new TextBox
-                {
-                    Left = 12,
-                    Top = 105,
-                    Width = 458,
-                    Height = 120,
-                    Multiline = true,
-                    ScrollBars = ScrollBars.Vertical,
-                    ReadOnly = true
-                };
-
-                var btnSave = new Button { Text = "Save", Left = 12, Top = 235, Width = 80 };
-                var btnRefresh = new Button { Text = "Refresh", Left = 100, Top = 235, Width = 80 };
-                var btnVerify = new Button { Text = "Verify", Left = 188, Top = 235, Width = 80 };
-                var btnRemove = new Button { Text = "Remove", Left = 276, Top = 235, Width = 80 };
-                var btnInstall = new Button { Text = "Install Default", Left = 364, Top = 235, Width = 106 };
-
-                async Task UpdateStatus(Func<CancellationToken, Task<string>> action)
-                {
-                    try
-                    {
-                        var result = await action(CancellationToken.None);
-                        txtStatus.Text = result;
-                    }
-                    catch (Exception ex)
-                    {
-                        txtStatus.Text = ex.Message;
-                    }
-                }
-
-                btnSave.Click += (s, e) =>
-                {
-                    settings.LocalServiceUrl = txtUrl.Text.Trim();
-                    settings.LocalModelDir = txtDir.Text.Trim();
-                    settings.LocalAutoStart = chkAuto.Checked;
-                    SettingsService.Save(settings);
-                    ApplyLocalEnv(settings);
-                    localModelsClient = new LocalServiceClient(new HttpClient());
-                    txtStatus.Text = "Settings saved.";
-                };
-
-                btnRefresh.Click += async (s, e) => await UpdateStatus(localModelsClient.GetModelsStatusAsync);
-                btnVerify.Click += async (s, e) => await UpdateStatus(localModelsClient.VerifyModelsAsync);
-                btnRemove.Click += async (s, e) =>
-                {
-                    if (MessageBox.Show(dialog, "Remove local models from disk?", "Confirm", MessageBoxButtons.YesNo) != DialogResult.Yes)
-                    {
-                        return;
-                    }
-                    await UpdateStatus(localModelsClient.RemoveModelsAsync);
-                };
-                btnInstall.Click += async (s, e) => await UpdateStatus(localModelsClient.InstallDefaultModelsAsync);
-
-                dialog.Controls.AddRange(new Control[] { lblUrl, txtUrl, lblDir, txtDir, chkAuto, txtStatus, btnSave, btnRefresh, btnVerify, btnRemove, btnInstall });
-                dialog.ShowDialog(form);
-            }
 
             void setBusy(bool busy)
             {
@@ -526,19 +408,8 @@ namespace TranslationFiestaCSharp
                     txtBack.Text = back;
                     Logger.Performance("Translation back to English", backStopwatch.Elapsed);
                     Logger.Debug($"Back-translation length: {back.Length} chars");
-
-                    // Calculate BLEU score for quality assessment
-                    var qualityAssessment = BleuScorer.AssessTranslationQuality(input, back);
-
-                    // Update status with BLEU score and confidence
-                    var statusColor = qualityAssessment.BleuScore >= 0.6 ? System.Drawing.Color.Green :
-                                    qualityAssessment.BleuScore >= 0.4 ? System.Drawing.Color.Orange :
-                                    System.Drawing.Color.Red;
-                    lblStatus.ForeColor = statusColor;
-                    setStatus($"Done - BLEU: {qualityAssessment.BleuPercentage} ({qualityAssessment.ConfidenceLevel})");
-
-                    // Log quality assessment
-                    Logger.Info($"Translation quality assessment completed: BLEU={qualityAssessment.BleuScore:F2}, Confidence={qualityAssessment.ConfidenceLevel}, Rating={qualityAssessment.QualityRating}");
+                    lblStatus.ForeColor = System.Drawing.Color.Green;
+                    setStatus("Done");
 
                     Logger.Info("Translation process completed successfully.");
                 }

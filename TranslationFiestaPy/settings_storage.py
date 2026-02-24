@@ -54,9 +54,6 @@ class SettingsStorage:
             "theme": "light",
             "window_geometry": "820x640",
             "provider_id": PROVIDER_GOOGLE_UNOFFICIAL,
-            "local_service_url": "",
-            "local_model_dir": "",
-            "local_autostart": True,
             "max_retries": 4,
             "timeout_seconds": 15,
             "auto_save_results": False,
@@ -332,24 +329,6 @@ class SettingsStorage:
     def clear_recent_files(self) -> bool:
         """Clear the recent files list."""
         return self.set("recent_files", [])
-
-    def get_local_service_url(self) -> str:
-        return self.get("local_service_url", "")
-
-    def set_local_service_url(self, url: str) -> bool:
-        return self.set("local_service_url", url)
-
-    def get_local_model_dir(self) -> str:
-        return self.get("local_model_dir", "")
-
-    def set_local_model_dir(self, path: str) -> bool:
-        return self.set("local_model_dir", path)
-
-    def get_local_autostart(self) -> bool:
-        return bool(self.get("local_autostart", True))
-
-    def set_local_autostart(self, enabled: bool) -> bool:
-        return self.set("local_autostart", bool(enabled))
 
 # Global instance for easy access
 _settings_storage = None

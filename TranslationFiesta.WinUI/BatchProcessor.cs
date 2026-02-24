@@ -38,24 +38,11 @@ namespace TranslationFiesta.WinUI
                 var result = await _translationClient.BackTranslateAsync(content);
 
                 // Create translation result for batch export
-                double bleuScore = 0.0;
-                if (result.QualityAssessment != null && !string.IsNullOrEmpty(result.QualityAssessment.BleuPercentage))
-                {
-                    // Parse BLEU percentage (e.g., "85.50%" -> 0.855)
-                    var percentageStr = result.QualityAssessment.BleuPercentage.TrimEnd('%');
-                    if (double.TryParse(percentageStr, out double percentage))
-                    {
-                        bleuScore = percentage / 100.0;
-                    }
-                }
-
                 var translationResult = new TranslationResult(
                     content,
                     result.BackTranslation ?? "Translation failed",
                     "auto", // Source language detection
                     "auto", // Target language detection
-                    bleuScore,
-                    result.QualityAssessment?.ConfidenceLevel ?? "",
                     0.0, // Processing time not tracked in current implementation
                     "TranslationFiesta"
                 );
@@ -63,17 +50,6 @@ namespace TranslationFiesta.WinUI
                 _batchResults.Add(translationResult);
 
                 string translatedContent = $"Original:\n{content}\n\nIntermediate:\n{result.IntermediateTranslation}\n\nBacktranslation:\n{result.BackTranslation}";
-
-                // Add quality assessment if available
-                if (result.QualityAssessment != null)
-                {
-                    translatedContent += $"\n\n=== QUALITY ASSESSMENT ===\n";
-                    translatedContent += $"BLEU Score: {result.QualityAssessment.BleuPercentage}\n";
-                    translatedContent += $"Confidence: {result.QualityAssessment.ConfidenceLevel}\n";
-                    translatedContent += $"Rating: {result.QualityAssessment.QualityRating}\n";
-                    translatedContent += $"Assessment: {result.QualityAssessment.Description}\n";
-                    translatedContent += $"Recommendations: {result.QualityAssessment.Recommendations}\n";
-                }
 
                 var newFile = await folder.CreateFileAsync($"{file.DisplayName}_translated{file.FileType}", CreationCollisionOption.GenerateUniqueName);
                 await FileIO.WriteTextAsync(newFile, translatedContent);

@@ -6,7 +6,6 @@ class AppConstants {
   // API Configuration
   static const String unofficialTranslateBaseUrl =
       'https://translate.googleapis.com/translate_a/single';
-  static const String localTranslateBaseUrl = 'http://127.0.0.1:5055';
   static const String unofficialApiClient = 'gtx';
 
   // Retry Configuration
@@ -33,9 +32,6 @@ class AppConstants {
   // Theme Configuration
   static const String themePreferenceKey = 'isDarkTheme';
   static const String providerIdPreferenceKey = 'providerId';
-  static const String localServiceUrlPreferenceKey = 'localServiceUrl';
-  static const String localModelDirPreferenceKey = 'localModelDir';
-  static const String localAutoStartPreferenceKey = 'localAutoStart';
 
   // Animation Configuration
   static const int progressAnimationDurationMs = 300;

@@ -2,7 +2,7 @@ SHELL := /bin/bash
 .ONESHELL:
 
 .PHONY: \
-	test-python test-python-local test-go test-electron test-flutter test-ruby test-winui test-csharp \
+	test-python test-go test-electron test-flutter test-ruby test-winui test-csharp \
 	lint-python lint-go lint-electron lint-flutter lint-ruby lint-winui lint-csharp \
 	test-all lint-all
 
@@ -22,9 +22,6 @@ test-python:
 	fi
 	cd TranslationFiestaPy && PYTHONPATH=. pytest -q -s
 
-test-python-local:
-	$(call require_cmd,python3,test-python-local)
-	PYTHONPATH=. pytest -q -s TranslationFiestaLocal/tests
 
 test-go:
 	$(call require_cmd,go,test-go)
@@ -93,7 +90,7 @@ define run_targets
 endef
 
 test-all:
-	$(call run_targets,test-python test-python-local test-go test-electron test-flutter test-ruby test-winui test-csharp)
+	$(call run_targets,test-python test-go test-electron test-flutter test-ruby test-winui test-csharp)
 
 lint-all:
 	$(call run_targets,lint-python lint-go lint-electron lint-flutter lint-ruby lint-winui lint-csharp)

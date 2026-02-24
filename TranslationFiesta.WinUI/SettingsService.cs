@@ -12,9 +12,6 @@ namespace TranslationFiesta.WinUI
         public string ProviderId { get; set; } = ProviderIds.GoogleUnofficial;
         public string? LastFilePath { get; set; }
         public string? LastSavePath { get; set; }
-        public string LocalServiceUrl { get; set; } = string.Empty;
-        public string LocalModelDir { get; set; } = string.Empty;
-        public bool LocalAutoStart { get; set; } = true;
         public int WindowWidth { get; set; } = 1200;
         public int WindowHeight { get; set; } = 800;
         public int WindowX { get; set; } = -1;

@@ -1,18 +1,17 @@
 # TranslationFiesta Swift
 
-A comprehensive English ↔ Japanese translation application built with Swift and SwiftUI, featuring advanced translation capabilities, batch processing, and quality assessment tools.
+A comprehensive English ↔ Japanese translation application built with Swift and SwiftUI, featuring advanced translation capabilities and batch processing.
 
 ## 🌟 Features
 
 ### Core Translation
-- **Bidirectional Translation**: English ↔ Japanese with local/offline and unofficial provider support
+- **Bidirectional Translation**: English ↔ Japanese with unofficial provider support
 - **Back-Translation Validation**: Automatically validate translations by translating back to source language
-- **Quality Assessment**: Built-in BLEU scoring for translation quality measurement
-- **Provider Switching**: Quickly switch between local and unofficial providers
+- **Provider Simplicity**: Unofficial provider only for a focused workflow
 
 ### Advanced Capabilities
 - **Batch Processing**: Process multiple files simultaneously with progress tracking
-- **Translation Memory**: LRU cache-based translation memory with fuzzy matching
+- **Translation Memory**: LRU cache-based translation memory
 - **Multiple Export Formats**: JSON, CSV, XML, and plain text export options
 - **EPUB Processing**: Native support for EPUB file translation and processing
 
@@ -85,8 +84,7 @@ This application follows **Clean Architecture** principles with clear separation
 1. **Open the application**
 2. **Navigate to Settings** (gear icon in toolbar)
 3. **Select a Provider**:
-   - Use local offline translation
-   - Or use the unofficial Google Translate endpoint
+   - Use the unofficial Google Translate endpoint
    - No API key setup required
 
 ## 📱 Usage Guide
@@ -122,26 +120,22 @@ This application follows **Clean Architecture** principles with clear separation
 
 1. **Export Translations**:
    - Choose from JSON, CSV, XML, or TXT formats
-   - Include metadata and quality scores
+   - Include metadata
    - Batch export multiple translation sessions
 
 2. **Import Settings**:
    - Import translation memory from previous sessions
-   - Restore local preferences
 
 ## 🔧 Advanced Features
 
-### Quality Assessment
+### Back-Translation Validation
 
-- **BLEU Scoring**: Automatic quality assessment using BLEU metrics
-- **Back-Translation Validation**: Compare source → target → source translations
-- **Confidence Scoring**: AI-based confidence ratings for translations
-- **Quality Thresholds**: Set minimum quality requirements for batch processing
+- **Round-Trip Validation**: Compare source → target → source translations
+- **Human Review Focus**: Evaluate outputs directly instead of generated metrics
 
 ### Translation Memory
 
 - **LRU Cache**: Efficient memory management with least-recently-used eviction
-- **Fuzzy Matching**: Find similar translations with configurable similarity thresholds
 - **Persistent Storage**: Translation memory persists between application sessions
 - **Import/Export**: Share translation memories between users or applications
 
@@ -212,7 +206,6 @@ swift test --enable-code-coverage
 
 ### Translation Memory
 - **LRU Cache**: Configurable cache size with efficient eviction policy
-- **Fuzzy Matching**: Optimized similarity algorithms for fast lookups
 - **Async Operations**: Non-blocking translation memory operations
 
 ### Batch Processing
@@ -228,7 +221,7 @@ swift test --enable-code-coverage
 ## 🔐 Security Considerations
 
 ### Data Privacy
-- Local processing when possible
+- Minimize retained data
 - Configurable data retention policies
 - Secure deletion of temporary files
 - Optional network request logging

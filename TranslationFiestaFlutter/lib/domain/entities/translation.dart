@@ -1,7 +1,5 @@
 library;
 
-import '../../core/utils/bleu_scorer.dart';
-
 /// Represents a translation request with clear, meaningful naming
 class TranslationRequest {
   final String text;
@@ -46,7 +44,8 @@ class TranslationRequest {
 
   @override
   String toString() {
-    return 'TranslationRequest(text: ${text.substring(0, text.length > 50 ? 50 : text.length)}..., '
+    final preview = text.substring(0, text.length > 50 ? 50 : text.length);
+    return 'TranslationRequest(text: $preview..., '
         'source: $sourceLanguage, target: $targetLanguage, timestamp: $timestamp)';
   }
 }
@@ -108,8 +107,16 @@ class TranslationResult {
 
   @override
   String toString() {
-    return 'TranslationResult(original: ${originalText.substring(0, originalText.length > 30 ? 30 : originalText.length)}..., '
-        'translated: ${translatedText.substring(0, translatedText.length > 30 ? 30 : translatedText.length)}..., '
+    final originalPreview = originalText.substring(
+      0,
+      originalText.length > 30 ? 30 : originalText.length,
+    );
+    final translatedPreview = translatedText.substring(
+      0,
+      translatedText.length > 30 ? 30 : translatedText.length,
+    );
+    return 'TranslationResult(original: $originalPreview..., '
+        'translated: $translatedPreview..., '
         'source: $sourceLanguage, target: $targetLanguage, chars: $characterCount)';
   }
 }
@@ -121,7 +128,6 @@ class BackTranslationResult {
   final TranslationResult finalTranslation;
   final DateTime timestamp;
   final Duration totalDuration;
-  final TranslationQualityAssessment? qualityAssessment;
 
   BackTranslationResult({
     required this.originalText,
@@ -129,17 +135,10 @@ class BackTranslationResult {
     required this.finalTranslation,
     required this.timestamp,
     required this.totalDuration,
-    this.qualityAssessment,
   });
 
   /// Get the final backtranslated text
   String get backTranslatedText => finalTranslation.translatedText;
-
-  /// Get BLEU score (returns 0.0 if no assessment available)
-  double get bleuScore => qualityAssessment?.bleuScore ?? 0.0;
-
-  /// Get confidence level
-  String get confidenceLevel => qualityAssessment?.confidenceLevel ?? 'Unknown';
 
   @override
   bool operator ==(Object other) =>
@@ -158,44 +157,40 @@ class BackTranslationResult {
 
   @override
   String toString() {
-    final bleuInfo = qualityAssessment != null
-        ? 'BLEU: ${qualityAssessment!.bleuPercentage} (${qualityAssessment!.confidenceLevel})'
-        : 'BLEU: Not calculated';
-    return 'BackTranslationResult(original: ${originalText.substring(0, 30)}..., '
-        'intermediate: ${intermediateTranslation.translatedText.substring(0, 30)}..., '
-        'final: ${backTranslatedText.substring(0, 30)}..., '
-        '$bleuInfo)';
+    final originalPreview = originalText.substring(
+      0,
+      originalText.length > 30 ? 30 : originalText.length,
+    );
+    final intermediatePreview =
+        intermediateTranslation.translatedText.substring(
+      0,
+      intermediateTranslation.translatedText.length > 30
+          ? 30
+          : intermediateTranslation.translatedText.length,
+    );
+    final backPreview = backTranslatedText.substring(
+      0,
+      backTranslatedText.length > 30 ? 30 : backTranslatedText.length,
+    );
+
+    return 'BackTranslationResult(original: $originalPreview..., '
+        'intermediate: $intermediatePreview..., '
+        'final: $backPreview..., '
+        'duration: ${totalDuration.inMilliseconds}ms)';
   }
 }
 
 enum TranslationProviderId {
-  local,
   googleUnofficial,
 }
 
 extension TranslationProviderIdX on TranslationProviderId {
-  String get storageValue {
-    switch (this) {
-      case TranslationProviderId.local:
-        return 'local';
-      case TranslationProviderId.googleUnofficial:
-        return 'google_unofficial';
-    }
-  }
+  String get storageValue => 'google_unofficial';
 
-  String get displayName {
-    switch (this) {
-      case TranslationProviderId.local:
-        return 'Local (Offline)';
-      case TranslationProviderId.googleUnofficial:
-        return 'Google Translate (Unofficial / Free)';
-    }
-  }
+  String get displayName => 'Google Translate (Unofficial / Free)';
 
   static TranslationProviderId fromStorage(String? value) {
     switch (value) {
-      case 'local':
-        return TranslationProviderId.local;
       case 'google_unofficial':
       default:
         return TranslationProviderId.googleUnofficial;
@@ -208,40 +203,26 @@ class ApiConfiguration {
   final TranslationProviderId providerId;
   final int maxRetries;
   final Duration timeout;
-  final String? localServiceUrl;
-  final String? localModelDir;
-  final bool localAutoStart;
 
   ApiConfiguration({
     required this.providerId,
     this.maxRetries = 4,
     this.timeout = const Duration(seconds: 30),
-    this.localServiceUrl,
-    this.localModelDir,
-    this.localAutoStart = true,
   });
 
   /// Validate the configuration
   bool get isValid => true;
-
-  bool get isLocal => providerId == TranslationProviderId.local;
 
   /// Create a copy with modified fields
   ApiConfiguration copyWith({
     TranslationProviderId? providerId,
     int? maxRetries,
     Duration? timeout,
-    String? localServiceUrl,
-    String? localModelDir,
-    bool? localAutoStart,
   }) {
     return ApiConfiguration(
       providerId: providerId ?? this.providerId,
       maxRetries: maxRetries ?? this.maxRetries,
       timeout: timeout ?? this.timeout,
-      localServiceUrl: localServiceUrl ?? this.localServiceUrl,
-      localModelDir: localModelDir ?? this.localModelDir,
-      localAutoStart: localAutoStart ?? this.localAutoStart,
     );
   }
 
@@ -252,23 +233,15 @@ class ApiConfiguration {
           runtimeType == other.runtimeType &&
           providerId == other.providerId &&
           maxRetries == other.maxRetries &&
-          timeout == other.timeout &&
-          localServiceUrl == other.localServiceUrl &&
-          localModelDir == other.localModelDir &&
-          localAutoStart == other.localAutoStart;
+          timeout == other.timeout;
 
   @override
   int get hashCode =>
-      providerId.hashCode ^
-      maxRetries.hashCode ^
-      timeout.hashCode ^
-      localServiceUrl.hashCode ^
-      localModelDir.hashCode ^
-      localAutoStart.hashCode;
+      providerId.hashCode ^ maxRetries.hashCode ^ timeout.hashCode;
 
   @override
   String toString() {
     return 'ApiConfiguration(providerId: ${providerId.storageValue}, '
-        'maxRetries: $maxRetries, timeout: ${timeout.inSeconds}s, localServiceUrl: ${localServiceUrl ?? "default"})';
+        'maxRetries: $maxRetries, timeout: ${timeout.inSeconds}s)';
   }
 }

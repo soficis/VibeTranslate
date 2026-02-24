@@ -37,41 +37,20 @@ public struct TranslationMemoryEntry: Equatable, Codable, Identifiable, Sendable
     }
 }
 
-/// Fuzzy match result from translation memory
-public struct FuzzyMatch: Equatable, Codable, Identifiable, Sendable {
-    public let entry: TranslationMemoryEntry
-    public let similarityScore: Double
-    public let levenshteinDistance: Int
-    
-    public var id: UUID { entry.id }
-    
-    public init(entry: TranslationMemoryEntry, similarityScore: Double, levenshteinDistance: Int) {
-        self.entry = entry
-        self.similarityScore = similarityScore
-        self.levenshteinDistance = levenshteinDistance
-    }
-}
-
 /// Translation memory configuration
 public struct TranslationMemoryConfig: Equatable, Codable, Sendable {
     public var maxCacheSize: Int
-    public var similarityThreshold: Double
     public var persistencePath: String
     public var autoSaveInterval: TimeInterval
-    public var enableFuzzyMatching: Bool
     
     public init(
         maxCacheSize: Int = 1000,
-        similarityThreshold: Double = 0.8,
         persistencePath: String = "translation_memory.json",
-        autoSaveInterval: TimeInterval = 300, // 5 minutes
-        enableFuzzyMatching: Bool = true
+        autoSaveInterval: TimeInterval = 300 // 5 minutes
     ) {
         self.maxCacheSize = maxCacheSize
-        self.similarityThreshold = similarityThreshold
         self.persistencePath = persistencePath
         self.autoSaveInterval = autoSaveInterval
-        self.enableFuzzyMatching = enableFuzzyMatching
     }
 }
 
@@ -82,7 +61,6 @@ public struct TranslationMemoryStats: Equatable, Codable, Sendable {
     public let cacheUtilization: Double
     public let totalHits: Int
     public let totalMisses: Int
-    public let fuzzyHits: Int
     public let hitRate: Double
     public let averageLookupTime: TimeInterval
     public let lastPersistTime: Date?
@@ -92,7 +70,6 @@ public struct TranslationMemoryStats: Equatable, Codable, Sendable {
         maxCacheSize: Int,
         totalHits: Int,
         totalMisses: Int,
-        fuzzyHits: Int,
         averageLookupTime: TimeInterval,
         lastPersistTime: Date?
     ) {
@@ -101,7 +78,6 @@ public struct TranslationMemoryStats: Equatable, Codable, Sendable {
         self.cacheUtilization = maxCacheSize > 0 ? Double(totalEntries) / Double(maxCacheSize) * 100.0 : 0.0
         self.totalHits = totalHits
         self.totalMisses = totalMisses
-        self.fuzzyHits = fuzzyHits
         
         let totalLookups = totalHits + totalMisses
         self.hitRate = totalLookups > 0 ? Double(totalHits) / Double(totalLookups) * 100.0 : 0.0
@@ -166,7 +142,7 @@ public struct EPUBBook: Equatable, Codable, Identifiable, Sendable {
 }
 
 /// Export format types
-public enum ExportFormat: String, CaseIterable, Codable, Identifiable {
+public enum ExportFormat: String, CaseIterable, Codable, Identifiable, Sendable {
     case pdf = "pdf"
     case docx = "docx"
     case html = "html"
@@ -204,7 +180,6 @@ public enum ExportFormat: String, CaseIterable, Codable, Identifiable {
 public struct ExportConfig: Equatable, Codable, Sendable {
     public let format: ExportFormat
     public let includeMetadata: Bool
-    public let includeQualityMetrics: Bool
     public let includeTimestamps: Bool
     public let customTemplate: String?
     public let outputFileName: String?
@@ -212,14 +187,12 @@ public struct ExportConfig: Equatable, Codable, Sendable {
     public init(
         format: ExportFormat,
         includeMetadata: Bool = true,
-        includeQualityMetrics: Bool = true,
         includeTimestamps: Bool = true,
         customTemplate: String? = nil,
         outputFileName: String? = nil
     ) {
         self.format = format
         self.includeMetadata = includeMetadata
-        self.includeQualityMetrics = includeQualityMetrics
         self.includeTimestamps = includeTimestamps
         self.customTemplate = customTemplate
         self.outputFileName = outputFileName

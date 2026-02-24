@@ -8,8 +8,6 @@ using Windows.Storage.Pickers;
 using Windows.UI.Core;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Automation.Provider;
-using System.Net.Http;
-using System.Threading;
 
 namespace TranslationFiesta.WinUI
 {
@@ -25,8 +23,6 @@ namespace TranslationFiesta.WinUI
         private AppSettings _settings;
         private BatchProcessor? _currentBatchProcessor;
         private readonly TemplateManager _templateManager;
-        private readonly HttpClient _localHttp = new HttpClient();
-        private LocalServiceClient _modelsClient;
 
         public MainWindow()
         {
@@ -38,7 +34,6 @@ namespace TranslationFiesta.WinUI
 
             // Load settings
             _settings = SettingsService.Load();
-            ApplyLocalSettings(_settings);
 
             InitializeProviderSelector();
 
@@ -57,7 +52,6 @@ namespace TranslationFiesta.WinUI
             TargetSpeakButton.Click += TargetSpeakButton_Click;
             KeyboardShortcutsMenuItem.Click += KeyboardShortcutsMenuItem_Click;
             ManageTemplatesButton.Click += ManageTemplatesButton_Click;
-            LocalModelsButton.Click += LocalModelsButton_Click;
 
             // Update character count when text changes
             SourceTextBox.TextChanged += SourceTextBox_TextChanged;
@@ -75,13 +69,6 @@ namespace TranslationFiesta.WinUI
 
             Logger.Info("Translation Fiesta initialized");
 
-        }
-
-        private void ApplyLocalSettings(AppSettings settings)
-        {
-            LocalServiceClient.ApplyEnvironment(settings.LocalServiceUrl, settings.LocalModelDir, settings.LocalAutoStart);
-            _translator.ApplyLocalSettings(settings.LocalServiceUrl, settings.LocalModelDir, settings.LocalAutoStart);
-            _modelsClient = new LocalServiceClient(_localHttp);
         }
 
         private void Window_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
@@ -399,8 +386,7 @@ namespace TranslationFiesta.WinUI
         {
             if (TemplateComboBox.SelectedItem is TranslationTemplate selectedTemplate)
             {
-                // Assuming you have access to bleuScore and qualityRating, otherwise pass null
-                return _templateManager.ApplyTemplate(SourceTextBox.Text, TargetTextBox.Text, GetSelectedLanguageCode(SourceLanguageCombo), GetSelectedLanguageCode(TargetLanguageCombo), null, null, selectedTemplate);
+                return _templateManager.ApplyTemplate(SourceTextBox.Text, TargetTextBox.Text, GetSelectedLanguageCode(SourceLanguageCombo), GetSelectedLanguageCode(TargetLanguageCombo), selectedTemplate);
             }
             return $"Source Text:\n{SourceTextBox.Text}\n\nBack-translation:\n{TargetTextBox.Text}";
         }
@@ -502,8 +488,6 @@ namespace TranslationFiesta.WinUI
                         TargetTextBox.Text,
                         sourceLang,
                         targetLang,
-                        0.0, // Quality score - could be calculated if needed
-                        "",
                         0.0, // Processing time - could be tracked if needed
                         "TranslationFiesta"
                     );

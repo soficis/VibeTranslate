@@ -2,10 +2,6 @@ import XCTest
 @testable import TranslationFiestaSwift
 
 final class TranslationFiestaSwiftTests: XCTestCase {
-    func testLocalProviderProperties() throws {
-        XCTAssertEqual(APIProvider.localOffline.rawValue, "local")
-    }
-
     func testUnofficialProviderIdentifier() throws {
         XCTAssertEqual(APIProvider.googleUnofficialAPI.rawValue, "google_unofficial")
     }

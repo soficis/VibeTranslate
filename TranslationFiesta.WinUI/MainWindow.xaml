@@ -4,7 +4,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:local="using:TranslationFiesta.WinUI"
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     mc:Ignorable="d"
     Title="TranslationFiesta">
@@ -41,7 +40,6 @@
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                     <TextBlock Text="Provider:" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <ComboBox x:Name="ProviderCombo" Width="260" Margin="0,0,10,0" />
-                    <Button x:Name="LocalModelsButton" Content="Local Models..." Margin="10,0,0,0" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">

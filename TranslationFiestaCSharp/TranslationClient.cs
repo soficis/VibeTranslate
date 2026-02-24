@@ -9,7 +9,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using FuzzySharp;
 
 namespace TranslationFiestaCSharp
 {
@@ -22,12 +21,10 @@ namespace TranslationFiestaCSharp
         public TimeSpan BaseRetryDelay { get; set; } = TimeSpan.FromMilliseconds(300);
 
         private readonly TranslationMemory _tm = new TranslationMemory();
-        private readonly LocalServiceClient _localClient;
 
         public TranslationClient(HttpClient? http = null)
         {
             _http = http ?? new HttpClient();
-            _localClient = new LocalServiceClient(_http);
         }
 
         public async Task<string> TranslateAsync(string text, string source, string target, CancellationToken cancellationToken = default)
@@ -49,27 +46,8 @@ namespace TranslationFiestaCSharp
                 return cacheResult;
             }
 
-            // Check fuzzy cache
-            var fuzzyResult = _tm.FuzzyLookup(text, target, providerId);
-            if (fuzzyResult.HasValue && fuzzyResult.Value.Translation != null)
-            {
-                var (translation, score) = fuzzyResult.Value;
-                Logger.Info($"Fuzzy cache hit (score: {score:F2}) for {text.Substring(0, Math.Min(50, text.Length))}...");
-                return translation;
-            }
-
-            string translatedText;
-            switch (providerId)
-            {
-                case ProviderIds.Local:
-                    Logger.Debug("Using local provider for translation.");
-                    translatedText = await TranslateWithLocalServiceAsync(text, source, target, cancellationToken).ConfigureAwait(false);
-                    break;
-                default:
-                    Logger.Debug("Using unofficial API for translation.");
-                    translatedText = await TranslateWithUnofficialApiAsync(text, source, target, cancellationToken).ConfigureAwait(false);
-                    break;
-            }
+            Logger.Debug("Using unofficial API for translation.");
+            var translatedText = await TranslateWithUnofficialApiAsync(text, source, target, cancellationToken).ConfigureAwait(false);
 
             // Store in cache
             _tm.Store(text, target, providerId, translatedText);
@@ -167,12 +145,6 @@ namespace TranslationFiestaCSharp
             }
         }
 
-        private async Task<string> TranslateWithLocalServiceAsync(string text, string source, string target, CancellationToken cancellationToken)
-        {
-            Logger.Debug($"Starting local service translation for text length {text.Length}");
-            return await _localClient.TranslateAsync(text, source, target, cancellationToken).ConfigureAwait(false);
-        }
-
         private static string ParseUnofficialResponse(string body)
         {
             using var doc = JsonDocument.Parse(body);
@@ -218,10 +190,9 @@ namespace TranslationFiestaCSharp
         {
             public int Hits { get; set; }
             public int Misses { get; set; }
-            public int FuzzyHits { get; set; }
             public int TotalLookups { get; set; }
             public double TotalTime { get; set; } = 0;
-            public double HitRate => TotalLookups > 0 ? (double)(Hits + FuzzyHits) / TotalLookups : 0;
+            public double HitRate => TotalLookups > 0 ? (double)Hits / TotalLookups : 0;
             public double AvgLookupTime => TotalLookups > 0 ? TotalTime / TotalLookups : 0;
         }
 
@@ -230,15 +201,13 @@ namespace TranslationFiestaCSharp
             private readonly OrderedDictionary cache = new OrderedDictionary();
             private int cacheSize;
             private readonly string persistencePath;
-            private double similarityThreshold;
             private readonly JsonSerializerOptions _jsonOptions;
             public TMetrics Metrics { get; } = new TMetrics();
 
-            public TranslationMemory(int cacheSize = 1000, string persistencePath = "tm_cache.json", double similarityThreshold = 0.8)
+            public TranslationMemory(int cacheSize = 1000, string persistencePath = "tm_cache.json")
             {
                 this.cacheSize = cacheSize;
                 this.persistencePath = persistencePath;
-                this.similarityThreshold = similarityThreshold;
                 _jsonOptions = new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -260,39 +229,6 @@ namespace TranslationFiestaCSharp
                     Metrics.TotalTime += stopwatch.Elapsed.TotalMilliseconds;
                     Metrics.TotalLookups++;
                     return ((TranslationEntry)cache[key]!).Translation;
-                }
-                Metrics.Misses++;
-                stopwatch.Stop();
-                Metrics.TotalTime += stopwatch.Elapsed.TotalMilliseconds;
-                Metrics.TotalLookups++;
-                return null;
-            }
-
-            public (string? Translation, double Score)? FuzzyLookup(string source, string targetLang, string providerId)
-            {
-                var stopwatch = Stopwatch.StartNew();
-                providerId = ProviderIds.Normalize(providerId);
-                double bestScore = 0;
-                string? bestTranslation = null;
-                foreach (DictionaryEntry entry in cache)
-                {
-                    if (entry.Value is TranslationEntry e && e.TargetLang == targetLang && e.ProviderId == providerId)
-                    {
-                        var score = Fuzz.Ratio(source, e.Source) / 100.0;
-                        if (score > bestScore && score >= similarityThreshold)
-                        {
-                            bestScore = score;
-                            bestTranslation = e.Translation;
-                        }
-                    }
-                }
-                if (bestTranslation != null)
-                {
-                    Metrics.FuzzyHits++;
-                    stopwatch.Stop();
-                    Metrics.TotalTime += stopwatch.Elapsed.TotalMilliseconds;
-                    Metrics.TotalLookups++;
-                    return (bestTranslation, bestScore);
                 }
                 Metrics.Misses++;
                 stopwatch.Stop();
@@ -327,7 +263,6 @@ namespace TranslationFiestaCSharp
                 {
                     Hits = Metrics.Hits,
                     Misses = Metrics.Misses,
-                    FuzzyHits = Metrics.FuzzyHits,
                     TotalLookups = Metrics.TotalLookups,
                     TotalTime = Metrics.TotalTime
                 };
@@ -339,7 +274,6 @@ namespace TranslationFiestaCSharp
                 cache.Clear();
                 Metrics.Hits = 0;
                 Metrics.Misses = 0;
-                Metrics.FuzzyHits = 0;
                 Metrics.TotalLookups = 0;
                 Metrics.TotalTime = 0;
                 Persist();
@@ -351,7 +285,7 @@ namespace TranslationFiestaCSharp
                 {
                     var data = new
                     {
-                        config = new { max_size = cacheSize, threshold = similarityThreshold },
+                        config = new { max_size = cacheSize },
                         cache = cache.Values.Cast<TranslationEntry>().ToArray(),
                         metrics = Metrics
                     };
@@ -377,10 +311,6 @@ namespace TranslationFiestaCSharp
                         {
                             cacheSize = sizeProp.GetInt32();
                         }
-                        if (config.TryGetProperty("threshold", out var threshProp))
-                        {
-                            similarityThreshold = threshProp.GetDouble();
-                        }
                     }
                     if (data.TryGetProperty("cache", out var cacheProp) && cacheProp.ValueKind == JsonValueKind.Array)
                     {
@@ -402,7 +332,6 @@ namespace TranslationFiestaCSharp
                         {
                             Metrics.Hits = metrics.Hits;
                             Metrics.Misses = metrics.Misses;
-                            Metrics.FuzzyHits = metrics.FuzzyHits;
                             Metrics.TotalLookups = metrics.TotalLookups;
                             Metrics.TotalTime = metrics.TotalTime;
                         }

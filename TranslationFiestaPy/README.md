@@ -28,7 +28,7 @@ This folder contains the Python version of TranslationFiesta - a desktop applica
 - 🏗️ Smart HTML text extraction
 - 🎯 English ↔ Japanese back-translation
 - ⚡ Asynchronous processing
-- 🔌 Provider support: Unofficial Google Translate (default) and Local Offline
+- 🔌 Provider support: Unofficial Google Translate (default)
 - 🔁 Retry with exponential backoff
 - 📊 Conditional progress bar during translation
 - 💾 Save results and 📋 copy back-translation (Ctrl+S / Ctrl+C)

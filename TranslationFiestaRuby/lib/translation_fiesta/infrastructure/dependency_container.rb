@@ -5,7 +5,6 @@ require_relative '../data/repositories/mock_translation_repository'
 require_relative '../data/repositories/file_system_repository'
 require_relative '../data/repositories/sqlite_memory_repository'
 require_relative '../domain/services/translator_service'
-require_relative '../domain/services/bleu_scorer'
 require_relative '../use_cases/translate_text_use_case'
 require_relative '../use_cases/process_file_use_case'
 require_relative '../features/batch_processor'
@@ -41,17 +40,16 @@ module TranslationFiesta
           @translation_repository,
           @memory_repository
         )
-        @bleu_scorer = Domain::Services::BleuScorer.new
       end
 
       def setup_use_cases
-        @translate_use_case = UseCases::TranslateTextUseCase.new(@translator_service, @bleu_scorer)
+        @translate_use_case = UseCases::TranslateTextUseCase.new(@translator_service)
         @process_file_use_case = UseCases::ProcessFileUseCase.new(@file_repository, @translate_use_case)
       end
 
       def setup_features
         @batch_processor = Features::BatchProcessor.new(@process_file_use_case, @file_repository)
-        @export_manager = Features::ExportManager.new(@bleu_scorer)
+        @export_manager = Features::ExportManager.new
       end
     end
   end

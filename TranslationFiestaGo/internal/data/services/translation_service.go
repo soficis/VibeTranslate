@@ -21,7 +21,6 @@ type TranslationService struct {
 	httpClient *utils.HTTPClient
 	logger     *utils.Logger
 	tm         *TranslationMemory
-	local      *LocalServiceClient
 }
 
 // NewTranslationService creates a new translation service
@@ -30,8 +29,7 @@ func NewTranslationService() *TranslationService {
 	return &TranslationService{
 		httpClient: httpClient,
 		logger:     utils.GetLogger(),
-		tm:         NewTranslationMemory(1000, "tm_cache.json", 0.8),
-		local:      NewLocalServiceClient(httpClient),
+		tm:         NewTranslationMemory(1000, "tm_cache.json"),
 	}
 }
 
@@ -90,30 +88,9 @@ func (ts *TranslationService) Translate(ctx context.Context, request entities.Tr
 		}, nil
 	}
 
-	// Check fuzzy cache
-	fuzzyTrans, score, fuzzyFound := ts.tm.FuzzyLookup(request.Text, request.TargetLang, providerID)
-	if fuzzyFound {
-		ts.logger.Info("Fuzzy cache hit (score: %.2f) for %s", score, previewText(request.Text))
-		return &entities.TranslationResult{
-			OriginalText:   request.Text,
-			TranslatedText: fuzzyTrans,
-			SourceLang:     request.SourceLang,
-			TargetLang:     request.TargetLang,
-			Error:          nil,
-			Timestamp:      time.Now(),
-		}, nil
-	}
-
 	// API call with retry
 	translateFunc := func() (*entities.TranslationResult, error) {
-		var result *entities.TranslationResult
-		var err error
-		switch providerID {
-		case entities.ProviderLocal:
-			result, err = ts.TranslateLocal(ctx, request.Text, request.SourceLang, request.TargetLang)
-		default:
-			result, err = ts.TranslateUnofficial(ctx, request.Text, request.SourceLang, request.TargetLang)
-		}
+		result, err := ts.TranslateUnofficial(ctx, request.Text, request.SourceLang, request.TargetLang)
 		if err != nil {
 			return nil, err
 		}

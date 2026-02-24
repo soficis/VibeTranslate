@@ -2,7 +2,7 @@
 
 **Repository**: [https://github.com/soficis/VibeTranslate](https://github.com/soficis/VibeTranslate)
 
-A Flutter port of the TranslationFiestaFSharp application, implementing Clean Code principles and Clean Architecture. This application provides backtranslation functionality using local and unofficial providers with a modern, responsive UI.
+A Flutter port of the TranslationFiestaFSharp application, implementing Clean Code principles and Clean Architecture. This application provides backtranslation functionality using the unofficial provider with a modern, responsive UI.
 
 ## Overview
 
@@ -14,7 +14,6 @@ TranslationFiestaFlutter is a complete rewrite of the TranslationFiestaFSharp Wi
 - **Backtranslation**: English → Japanese → English translation pipeline
 - **Provider Support**:
   - Unofficial Google Translate (free, immediate setup)
-  - Local Offline provider
 - **Retry Logic**: Exponential backoff with configurable attempts
 - **File Operations**: Import from .txt, .md, .html files with text extraction
 - **Export Results**: Save backtranslation results to files
@@ -120,9 +119,7 @@ lib/
 
 1. **Launch**: Run `flutter run` in the project directory
 2. **Input Text**: Type or paste English text in the input area
-3. **Configure Provider**:
-   - Use unofficial API (default, no setup)
-   - Or switch to the local offline provider
+3. **Configure Provider**: Use unofficial API (default, no setup)
 4. **Translate**: Click "Backtranslate" button
 5. **Monitor Progress**: Watch status updates and progress indicators
 6. **Review Results**:
@@ -306,7 +303,7 @@ Solution: Install Flutter SDK from flutter.dev
 #### Translation Failures
 ```
 Error: HTTP 429 (Rate Limited)
-Solution: Wait and retry, or switch to local provider
+Solution: Wait and retry after the rate-limit window clears
 ```
 
 #### File Import Issues

@@ -95,7 +95,7 @@ public class TemplateManager
         }
     }
 
-    public string ApplyTemplate(string original, string translation, string sourceLang, string targetLang, double? bleuScore, int? qualityRating, TranslationTemplate template)
+    public string ApplyTemplate(string original, string translation, string sourceLang, string targetLang, TranslationTemplate template)
     {
         var content = template.Content;
         content = content.Replace("{original}", original);
@@ -103,8 +103,6 @@ public class TemplateManager
         content = content.Replace("{source_lang}", sourceLang);
         content = content.Replace("{target_lang}", targetLang);
         content = content.Replace("{date}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-        content = content.Replace("{bleu_score}", bleuScore?.ToString("F2") ?? "N/A");
-        content = content.Replace("{quality_rating}", qualityRating?.ToString() ?? "N/A");
         return content;
     }
 
@@ -117,7 +115,7 @@ public class TemplateManager
                 Id = Guid.NewGuid(),
                 Name = "Professional Report",
                 Description = "A formal report template for professional use.",
-                Content = "Source ({source_lang}): {original}\nTarget ({target_lang}): {translation}\nDate: {date}\nBLEU Score: {bleu_score}\nQuality Rating: {quality_rating}/5",
+                Content = "Source ({source_lang}): {original}\nTarget ({target_lang}): {translation}\nDate: {date}",
                 IsDefault = true
             },
             new()
@@ -131,9 +129,9 @@ public class TemplateManager
             new()
             {
                 Id = Guid.NewGuid(),
-                Name = "Quality Assessment",
-                Description = "Template for quality assessment reports.",
-                Content = "## Quality Assessment Report\n\n- **Source Text**: {original}\n- **Translated Text**: {translation}\n- **Source Language**: {source_lang}\n- **Target Language**: {target_lang}\n- **BLEU Score**: {bleu_score}\n- **Quality Rating**: {quality_rating}",
+                Name = "Translation Summary",
+                Description = "Template for translation summary reports.",
+                Content = "## Translation Summary\n\n- **Source Text**: {original}\n- **Translated Text**: {translation}\n- **Source Language**: {source_lang}\n- **Target Language**: {target_lang}\n- **Generated**: {date}",
                 IsDefault = true
             }
         };

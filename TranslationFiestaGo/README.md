@@ -1,12 +1,12 @@
 # TranslationFiestaGo
 
-A comprehensive back-translation application written in Go, combining all features from the existing TranslationFiesta implementations (Flutter, F#, C#, Python). This application performs back-translation using local offline translation and Google Translate unofficial endpoints.
+A comprehensive back-translation application written in Go, combining all features from the existing TranslationFiesta implementations (Flutter, F#, C#, Python). This application performs back-translation using the Google Translate unofficial endpoint.
 
 ## Features
 
 ### Core Translation Features
 - **Back-translation**: English → Japanese → English translation pipeline
-- **Provider Support**: Local offline translation and unofficial translate.googleapis.com
+- **Provider Support**: Unofficial translate.googleapis.com
 - **Real-time Progress**: Visual progress indicators during translation
 - **Error Handling**: Comprehensive error handling with retry logic
 - **Cancellation Support**: Ability to cancel ongoing translations

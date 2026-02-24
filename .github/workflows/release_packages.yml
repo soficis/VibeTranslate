@@ -80,12 +80,13 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.26.x"
+          cache-dependency-path: TranslationFiestaGo/go.sum
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
-          bundler-cache: true
+          bundler-cache: false
           working-directory: TranslationFiestaRuby
 
       - name: Setup Flutter
@@ -204,9 +205,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$root\TranslationFiestaPy" | Out-Null
           Copy-Item "$env:GITHUB_WORKSPACE\TranslationFiestaPy\dist\TranslationFiestaPy.exe" "$root\TranslationFiestaPy\TranslationFiestaPy.exe" -Force
 
-          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaLocalService TranslationFiestaLocal/local_service.py
-          New-Item -ItemType Directory -Force -Path "$root\TranslationFiestaLocal" | Out-Null
-          Copy-Item "$env:GITHUB_WORKSPACE\dist\TranslationFiestaLocalService.exe" "$root\TranslationFiestaLocal\TranslationFiestaLocalService.exe" -Force
 
       - name: Build TranslationFiestaRuby
         shell: pwsh
@@ -216,6 +214,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $target | Out-Null
 
           Push-Location TranslationFiestaRuby
+          gem install rake --no-document
           bundle install --deployment --path vendor/bundle --jobs 4 --retry 3
           $rubyPrefix = (& ruby -e "require 'rbconfig'; print RbConfig::CONFIG['prefix']").Trim()
           Pop-Location
@@ -282,7 +281,6 @@ jobs:
             'TranslationFiestaFlutter',
             'TranslationFiestaGo',
             'TranslationFiestaPy',
-            'TranslationFiestaLocal',
             'TranslationFiestaRuby'
           )
 
@@ -372,12 +370,13 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.26.x"
+          cache-dependency-path: TranslationFiestaGo/go.sum
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
-          bundler-cache: true
+          bundler-cache: false
           working-directory: TranslationFiestaRuby
 
       - name: Setup Flutter
@@ -473,10 +472,6 @@ jobs:
           mkdir -p "$root/TranslationFiestaPy"
           cp "$GITHUB_WORKSPACE/TranslationFiestaPy/dist/TranslationFiestaPy" "$root/TranslationFiestaPy/TranslationFiestaPy"
 
-          cd "$GITHUB_WORKSPACE"
-          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaLocalService TranslationFiestaLocal/local_service.py
-          mkdir -p "$root/TranslationFiestaLocal"
-          cp "$GITHUB_WORKSPACE/dist/TranslationFiestaLocalService" "$root/TranslationFiestaLocal/TranslationFiestaLocalService"
 
       - name: Build TranslationFiestaRuby runtime bundle
         run: |
@@ -485,6 +480,7 @@ jobs:
           bundle_dir="$root/TranslationFiestaRuby"
 
           cd TranslationFiestaRuby
+          gem install rake --no-document
           bundle install --jobs 4 --retry 3
 
           mkdir -p "$bundle_dir"
@@ -502,7 +498,7 @@ jobs:
           set -euo pipefail
           root="$GITHUB_WORKSPACE/dist/release/linux-${{ matrix.arch }}"
 
-          for app in TranslationFiestaElectron TranslationFiestaFlutter TranslationFiestaGo TranslationFiestaPy TranslationFiestaLocal TranslationFiestaRuby; do
+          for app in TranslationFiestaElectron TranslationFiestaFlutter TranslationFiestaGo TranslationFiestaPy TranslationFiestaRuby; do
             [[ -d "$root/$app" ]] || { echo "Missing build output directory: $app" >&2; exit 1; }
           done
 
@@ -575,12 +571,13 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.26.x"
+          cache-dependency-path: TranslationFiestaGo/go.sum
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
-          bundler-cache: true
+          bundler-cache: false
           working-directory: TranslationFiestaRuby
 
       - name: Setup Flutter
@@ -668,10 +665,6 @@ jobs:
           mkdir -p "$root/TranslationFiestaPy"
           cp "$GITHUB_WORKSPACE/TranslationFiestaPy/dist/TranslationFiestaPy" "$root/TranslationFiestaPy/TranslationFiestaPy"
 
-          cd "$GITHUB_WORKSPACE"
-          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaLocalService TranslationFiestaLocal/local_service.py
-          mkdir -p "$root/TranslationFiestaLocal"
-          cp "$GITHUB_WORKSPACE/dist/TranslationFiestaLocalService" "$root/TranslationFiestaLocal/TranslationFiestaLocalService"
 
       - name: Build TranslationFiestaRuby runtime bundle
         run: |
@@ -680,6 +673,7 @@ jobs:
           bundle_dir="$root/TranslationFiestaRuby"
 
           cd TranslationFiestaRuby
+          gem install rake --no-document
           bundle install --jobs 4 --retry 3
 
           mkdir -p "$bundle_dir"
@@ -697,7 +691,7 @@ jobs:
           set -euo pipefail
           root="$GITHUB_WORKSPACE/dist/release/macos-${{ matrix.arch }}"
 
-          for app in TranslationFiestaSwift TranslationFiestaElectron TranslationFiestaFlutter TranslationFiestaGo TranslationFiestaPy TranslationFiestaLocal TranslationFiestaRuby; do
+          for app in TranslationFiestaSwift TranslationFiestaElectron TranslationFiestaFlutter TranslationFiestaGo TranslationFiestaPy TranslationFiestaRuby; do
             [[ -d "$root/$app" ]] || { echo "Missing build output directory: $app" >&2; exit 1; }
           done
 

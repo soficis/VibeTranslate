@@ -7,14 +7,12 @@ namespace TranslationFiestaCSharp
     public class BatchProcessor
     {
         private readonly TranslationClient _translationClient;
-        private readonly BLEUScorer _bleuScorer;
         private readonly Action<int, int> _updateCallback;
         private bool _isRunning;
 
         public BatchProcessor(TranslationClient translationClient, Action<int, int> updateCallback)
         {
             _translationClient = translationClient;
-            _bleuScorer = new BLEUScorer();
             _updateCallback = updateCallback;
         }
 
@@ -42,14 +40,7 @@ namespace TranslationFiestaCSharp
                     string japaneseContent = await _translationClient.TranslateAsync(originalContent, "en", "ja");
                     string backtranslatedContent = await _translationClient.TranslateAsync(japaneseContent, "ja", "en");
 
-                    // Calculate BLEU score for quality assessment
-                    var qualityAssessment = _bleuScorer.AssessTranslationQuality(originalContent, backtranslatedContent);
-
-                    // Log quality assessment
-                    Logger.Info($"Batch translation quality assessment for {Path.GetFileName(file)}: BLEU={qualityAssessment.BleuScore:F2}, Confidence={qualityAssessment.ConfidenceLevel}, Rating={qualityAssessment.QualityRating}");
-
-                    // Save translated file with quality assessment
-                    await SaveTranslatedFileAsync(file, backtranslatedContent, originalContent, qualityAssessment);
+                    await SaveTranslatedFileAsync(file, backtranslatedContent);
 
                 }
                 catch (Exception ex)
@@ -64,8 +55,7 @@ namespace TranslationFiestaCSharp
             Logger.Info("Batch processing completed.");
         }
 
-        private async Task SaveTranslatedFileAsync(string originalFilePath, string translatedContent,
-            string originalContent, TranslationQualityAssessment assessment)
+        private async Task SaveTranslatedFileAsync(string originalFilePath, string translatedContent)
         {
             string directory = Path.GetDirectoryName(originalFilePath) ?? "";
             string fileNameWithoutExt = Path.GetFileNameWithoutExtension(originalFilePath);
@@ -78,16 +68,9 @@ namespace TranslationFiestaCSharp
                 using (var writer = new StreamWriter(newFilePath, false, System.Text.Encoding.UTF8))
                 {
                     await writer.WriteLineAsync(translatedContent);
-                    await writer.WriteLineAsync();
-                    await writer.WriteLineAsync("=== QUALITY ASSESSMENT ===");
-                    await writer.WriteLineAsync($"BLEU Score: {assessment.BleuPercentage}");
-                    await writer.WriteLineAsync($"Confidence: {assessment.ConfidenceLevel}");
-                    await writer.WriteLineAsync($"Rating: {assessment.QualityRating}");
-                    await writer.WriteLineAsync($"Assessment: {assessment.Description}");
-                    await writer.WriteLineAsync($"Recommendations: {assessment.Recommendations}");
                 }
 
-                Logger.Info($"Saved translated file with quality assessment to {newFilePath}");
+                Logger.Info($"Saved translated file to {newFilePath}");
             }
             catch (Exception ex)
             {

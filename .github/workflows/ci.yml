@@ -29,12 +29,11 @@ jobs:
 
       - name: Lint and compile Python
         run: |
-          ruff check TranslationFiestaPy TranslationFiestaLocal
-          python -m compileall -q TranslationFiestaPy TranslationFiestaLocal
+          ruff check TranslationFiestaPy
+          python -m compileall -q TranslationFiestaPy
 
       - name: Run Python tests
         run: |
-          PYTHONPATH=. pytest -q -s TranslationFiestaLocal/tests
           cd TranslationFiestaPy
           pytest -q -s test_unofficial_provider.py test_theme.py
 
@@ -46,6 +45,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26.x"
+          cache-dependency-path: TranslationFiestaGo/go.sum
 
       - uses: actions/setup-node@v6
         with:
@@ -193,11 +193,12 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26.x"
+          cache-dependency-path: TranslationFiestaGo/go.sum
 
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
-          bundler-cache: true
+          bundler-cache: false
           working-directory: TranslationFiestaRuby
 
       - uses: subosito/flutter-action@v2
@@ -254,7 +255,7 @@ jobs:
           cd TranslationFiestaGo/frontend
           npm ci
           npm run build
-          cd TranslationFiestaGo
+          cd ..
           go test ./internal/... ./test/...
 
       - name: Wails ARM64 smoke package
@@ -285,8 +286,6 @@ jobs:
 
           cd TranslationFiestaPy
           pyinstaller --noconfirm --clean --onefile --name TranslationFiestaPy TranslationFiesta.py
-          cd ..
-          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaLocalService TranslationFiestaLocal/local_service.py
 
       - name: Python ARM64 smoke build (non-Windows)
         if: matrix.target != 'windows'
@@ -298,8 +297,6 @@ jobs:
 
           cd TranslationFiestaPy
           pyinstaller --noconfirm --clean --onefile --name TranslationFiestaPy TranslationFiesta.py
-          cd ..
-          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaLocalService TranslationFiestaLocal/local_service.py
 
       - name: Flutter ARM64 smoke build
         if: matrix.target == 'windows'
@@ -331,6 +328,7 @@ jobs:
         shell: pwsh
         run: |
           cd TranslationFiestaRuby
+          gem install rake --no-document
           bundle install --jobs 4 --retry 3
           ruby -c bin/translation_fiesta
 
@@ -339,6 +337,7 @@ jobs:
         shell: bash
         run: |
           cd TranslationFiestaRuby
+          gem install rake --no-document
           bundle install --jobs 4 --retry 3
           bundle exec ruby -c bin/translation_fiesta
 
@@ -369,8 +368,14 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
-          bundler-cache: true
+          bundler-cache: false
           working-directory: TranslationFiestaRuby
+
+      - name: Install Ruby dependencies
+        run: |
+          cd TranslationFiestaRuby
+          gem install rake --no-document
+          bundle install --jobs 4 --retry 3
 
       - name: Lint and test Ruby
         run: |
@@ -401,7 +406,7 @@ jobs:
 
       - name: Reject Python exception swallowing
         run: |
-          if grep -RIn --include='*.py' 'except:[[:space:]]*pass' TranslationFiestaPy TranslationFiestaLocal; then
+          if grep -RIn --include='*.py' 'except:[[:space:]]*pass' TranslationFiestaPy; then
             echo 'Found except: pass in Python sources';
             exit 1;
           fi

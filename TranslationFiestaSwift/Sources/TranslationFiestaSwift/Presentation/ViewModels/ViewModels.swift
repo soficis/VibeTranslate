@@ -213,7 +213,7 @@ public final class BatchProcessingViewModel: ObservableObject {
 public final class TranslationMemoryViewModel: ObservableObject {
     @Published var stats: TranslationMemoryStats?
     @Published var searchText = ""
-    @Published var searchResults: [FuzzyMatch] = []
+    @Published var searchResults: [TranslationMemoryEntry] = []
     @Published var isSearching = false
     @Published var showError = false
     @Published var errorMessage = ""
@@ -249,13 +249,12 @@ public final class TranslationMemoryViewModel: ObservableObject {
         defer { isSearching = false }
         
         do {
-            let matches = try await container.translationMemoryRepository.lookupFuzzy(
+            let match = try await container.translationMemoryRepository.lookupExact(
                 sourceText: searchText,
                 sourceLanguage: .english,
-                targetLanguage: .japanese,
-                threshold: 0.5
+                targetLanguage: .japanese
             )
-            searchResults = matches
+            searchResults = match.map { [$0] } ?? []
         } catch {
             showErrorMessage(error.localizedDescription)
         }
@@ -287,7 +286,6 @@ public final class ExportViewModel: ObservableObject {
     @Published var selectedResults: Set<BackTranslationResult.ID> = []
     @Published var selectedFormat = ExportFormat.pdf
     @Published var includeMetadata = true
-    @Published var includeQualityMetrics = true
     @Published var isExporting = false
     @Published var showError = false
     @Published var errorMessage = ""
@@ -337,8 +335,7 @@ public final class ExportViewModel: ObservableObject {
                 results: resultsToExport,
                 format: selectedFormat,
                 to: url,
-                includeMetadata: includeMetadata,
-                includeQualityMetrics: includeQualityMetrics
+                includeMetadata: includeMetadata
             )
         } catch {
             handleError(error)

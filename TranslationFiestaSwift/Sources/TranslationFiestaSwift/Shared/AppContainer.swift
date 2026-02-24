@@ -45,7 +45,7 @@ public final class AppContainer: ObservableObject {
 
         _epubProcessor = EpubProcessor()
 
-        let tmConfig = TranslationMemoryConfig(maxCacheSize: 10_000, similarityThreshold: 0.8)
+        let tmConfig = TranslationMemoryConfig(maxCacheSize: 10_000)
         let tmService = TranslationMemoryService(config: tmConfig)
         _translationMemoryService = tmService
 
@@ -55,12 +55,9 @@ public final class AppContainer: ObservableObject {
         let translation = TranslationService()
         _translationService = translation
 
-        let qualityService = QualityService()
-
         let backTranslation = BackTranslationUseCase(
             translationRepository: translation,
-            translationMemoryRepository: tmService,
-            qualityRepository: qualityService
+            translationMemoryRepository: tmService
         )
         _backTranslationUseCase = backTranslation
 
@@ -80,24 +77,6 @@ public final class AppContainer: ObservableObject {
 
         isInitialized = true
         logger.info("Service initialization completed successfully")
-    }
-}
-
-public final class QualityService: QualityRepository {
-    public func calculateBLEUScore(reference: String, candidate: String) async throws -> Double {
-        0.75
-    }
-
-    public func assessQuality(originalText: String, backTranslatedText: String) async throws -> QualityAssessment {
-        QualityAssessment(bleuScore: 0.75, recommendations: ["Consider reviewing translation accuracy"])
-    }
-
-    public func getQualityRecommendations(
-        bleuScore: Double,
-        originalLength: Int,
-        translatedLength: Int
-    ) async throws -> [String] {
-        ["Consider reviewing translation accuracy", "Length ratio: \(translatedLength)/\(originalLength)"]
     }
 }
 

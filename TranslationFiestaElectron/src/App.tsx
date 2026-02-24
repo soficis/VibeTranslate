@@ -1,12 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { translateUnofficialGoogle } from "./providers/googleUnofficial";
-import { translateLocal } from "./providers/local";
 import * as tm from "./translationMemory";
 
-type ProviderId = "local" | "google_unofficial";
+type ProviderId = "google_unofficial";
 
 const providerOptions: { id: ProviderId; label: string }[] = [
-  { id: "local", label: "Local (Offline)" },
   { id: "google_unofficial", label: "Google Translate (Unofficial / Free)" }
 ];
 
@@ -17,12 +15,7 @@ const translateWithProvider = async (
   target: string,
   signal?: AbortSignal
 ) => {
-  switch (providerId) {
-    case "local":
-      return translateLocal(text, source, target, { signal });
-    default:
-      return translateUnofficialGoogle(text, source, target, { signal });
-  }
+  return translateUnofficialGoogle(text, source, target, { signal });
 };
 
 const App: React.FC = () => {
@@ -32,7 +25,6 @@ const App: React.FC = () => {
   const [outputText, setOutputText] = useState("");
   const [status, setStatus] = useState("Ready");
   const [isBusy, setIsBusy] = useState(false);
-  const [localModelsStatus, setLocalModelsStatus] = useState<any>(null);
   const [batchFiles, setBatchFiles] = useState<Array<{ path: string; content: string }>>([]);
   const [batchResults, setBatchResults] = useState<
     Array<{ path: string; intermediate: string; output: string }>
@@ -69,17 +61,6 @@ const App: React.FC = () => {
       localStorage.setItem("tf_provider", providerId);
     }
   }, [providerId]);
-
-  const refreshLocalModels = useCallback(async () => {
-    if (!window.translationFiesta?.localService?.modelsStatus) return;
-    const data = await window.translationFiesta.localService.modelsStatus();
-    setLocalModelsStatus(data);
-  }, []);
-
-  useEffect(() => {
-    if (providerId !== "local") return;
-    void refreshLocalModels();
-  }, [providerId, refreshLocalModels]);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();
@@ -195,24 +176,6 @@ const App: React.FC = () => {
     }
   }, [batchResults]);
 
-  const handleVerifyModels = useCallback(async () => {
-    if (!window.translationFiesta?.localService?.modelsVerify) return;
-    const data = await window.translationFiesta.localService.modelsVerify();
-    setLocalModelsStatus(data);
-  }, []);
-
-  const handleRemoveModels = useCallback(async () => {
-    if (!window.translationFiesta?.localService?.modelsRemove) return;
-    const data = await window.translationFiesta.localService.modelsRemove();
-    setLocalModelsStatus(data);
-  }, []);
-
-  const handleInstallModels = useCallback(async () => {
-    if (!window.translationFiesta?.localService?.modelsInstall) return;
-    const data = await window.translationFiesta.localService.modelsInstall({ preset: "elanmt-tiny-int8" });
-    setLocalModelsStatus(data);
-  }, []);
-
   const handleBacktranslate = useCallback(async () => {
     if (!inputText.trim()) {
       setStatus("Enter text to translate");
@@ -275,27 +238,6 @@ const App: React.FC = () => {
           </select>
         </div>
       </header>
-      {providerId === "local" && (
-        <section className="panel">
-          <h2>Local Model Status</h2>
-          <pre>{localModelsStatus ? JSON.stringify(localModelsStatus, null, 2) : "Loading..."}</pre>
-          <div className="actions">
-            <button onClick={handleInstallModels} disabled={isBusy}>
-              Install Default
-            </button>
-            <button onClick={refreshLocalModels} disabled={isBusy}>
-              Refresh
-            </button>
-            <button onClick={handleVerifyModels} disabled={isBusy}>
-              Verify
-            </button>
-            <button onClick={handleRemoveModels} disabled={isBusy}>
-              Remove
-            </button>
-          </div>
-        </section>
-      )}
-
       <section className="panel">
         <label htmlFor="input">Input</label>
         <textarea

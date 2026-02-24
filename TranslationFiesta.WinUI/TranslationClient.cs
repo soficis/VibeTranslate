@@ -10,12 +10,11 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using FuzzySharp;
 
 namespace TranslationFiesta.WinUI
 {
     /// <summary>
-    /// Translation client supporting local and unofficial Google Translate providers.
+    /// Translation client for the unofficial Google Translate provider.
     /// </summary>
     public class TranslationClient
     {
@@ -25,19 +24,11 @@ namespace TranslationFiesta.WinUI
             PropertyNameCaseInsensitive = true,
             WriteIndented = true
         };
-        private LocalServiceClient _localClient;
 
         public string ProviderId { get; set; } = ProviderIds.GoogleUnofficial;
 
         public TranslationClient()
         {
-            _localClient = new LocalServiceClient(_httpClient);
-        }
-
-        public void ApplyLocalSettings(string? baseUrl, string? modelDir, bool autoStart)
-        {
-            LocalServiceClient.ApplyEnvironment(baseUrl, modelDir, autoStart);
-            _localClient = new LocalServiceClient(_httpClient);
         }
 
         static TranslationClient()
@@ -66,7 +57,7 @@ namespace TranslationFiesta.WinUI
         }
 
         /// <summary>
-        /// Translates text using either local or unofficial Google Translate API.
+        /// Translates text using unofficial Google Translate API.
         /// </summary>
         private readonly TranslationMemory _tm = new TranslationMemory();
 
@@ -85,24 +76,7 @@ namespace TranslationFiesta.WinUI
                 return cacheResult;
             }
 
-            // Check fuzzy cache
-            var fuzzyResult = _tm.FuzzyLookup(text, toLang, providerId);
-            if (fuzzyResult != null && !string.IsNullOrEmpty(fuzzyResult.Item1))
-            {
-                Logger.Info($"Fuzzy cache hit (score: {fuzzyResult.Item2:F2}) for {text.Substring(0, Math.Min(50, text.Length))}...");
-                return fuzzyResult.Item1;
-            }
-
-            string translatedText;
-            switch (providerId)
-            {
-                case ProviderIds.Local:
-                    translatedText = await TranslateLocalAsync(text, fromLang, toLang, cancellationToken);
-                    break;
-                default:
-                    translatedText = await TranslateUnofficialAsync(text, fromLang, toLang, cancellationToken);
-                    break;
-            }
+            var translatedText = await TranslateUnofficialAsync(text, fromLang, toLang, cancellationToken);
 
             // Store in cache
             _tm.Store(text, toLang, providerId, translatedText);
@@ -155,11 +129,6 @@ namespace TranslationFiesta.WinUI
                 Logger.Error($"Unofficial API translation failed: {ex.Message}");
                 throw new Exception($"Unofficial Google Translate failed: {ex.Message}", ex);
             }
-        }
-
-        private async Task<string> TranslateLocalAsync(string text, string fromLang, string toLang, CancellationToken cancellationToken)
-        {
-            return await _localClient.TranslateAsync(text, fromLang, toLang, cancellationToken);
         }
 
         private async Task<string> TranslateChunkAsync(string text, string fromLang, string toLang, CancellationToken cancellationToken)
@@ -359,7 +328,7 @@ namespace TranslationFiesta.WinUI
         }
 
         /// <summary>
-        /// Performs backtranslation with quality assessment
+        /// Performs backtranslation
         /// </summary>
         public async Task<BackTranslationResult> BackTranslateAsync(string text, string? sourceLang = null, string? targetLang = null, CancellationToken cancellationToken = default)
         {
@@ -377,16 +346,11 @@ namespace TranslationFiesta.WinUI
                 var backToSource = await TranslateAsync(intermediate, targetLangCode, sourceLangCode, cancellationToken);
                 Logger.Info($"{targetLangCode} -> {sourceLangCode}: {intermediate.Length} -> {backToSource.Length} chars");
 
-                // Calculate BLEU score for quality assessment
-                var bleuScorer = new BLEUScorer();
-                var qualityAssessment = bleuScorer.AssessTranslationQuality(text, backToSource);
-
                 return new BackTranslationResult
                 {
                     OriginalText = text,
                     IntermediateTranslation = intermediate,
-                    BackTranslation = backToSource,
-                    QualityAssessment = qualityAssessment
+                    BackTranslation = backToSource
                 };
             }
             catch (Exception ex)
@@ -409,10 +373,9 @@ namespace TranslationFiesta.WinUI
         {
             public int Hits { get; set; }
             public int Misses { get; set; }
-            public int FuzzyHits { get; set; }
             public int TotalLookups { get; set; }
             public double TotalTime { get; set; } = 0;
-            public double HitRate => TotalLookups > 0 ? (double)(Hits + FuzzyHits) / TotalLookups : 0;
+            public double HitRate => TotalLookups > 0 ? (double)Hits / TotalLookups : 0;
             public double AvgLookupTime => TotalLookups > 0 ? TotalTime / TotalLookups : 0;
         }
 
@@ -421,14 +384,12 @@ namespace TranslationFiesta.WinUI
             private readonly OrderedDictionary cache = new OrderedDictionary();
             private int cacheSize;
             private readonly string persistencePath;
-            private double similarityThreshold;
             public TMetrics Metrics { get; } = new TMetrics();
 
-            public TranslationMemory(int cacheSize = 1000, string persistencePath = "tm_cache.json", double similarityThreshold = 0.8)
+            public TranslationMemory(int cacheSize = 1000, string persistencePath = "tm_cache.json")
             {
                 this.cacheSize = cacheSize;
                 this.persistencePath = persistencePath;
-                this.similarityThreshold = similarityThreshold;
                 LoadCache();
             }
 
@@ -447,39 +408,6 @@ namespace TranslationFiesta.WinUI
                     Metrics.TotalTime += stopwatch.Elapsed.TotalMilliseconds;
                     Metrics.TotalLookups++;
                     return ((TranslationEntry)cache[key]!).Translation;
-                }
-                Metrics.Misses++;
-                stopwatch.Stop();
-                Metrics.TotalTime += stopwatch.Elapsed.TotalMilliseconds;
-                Metrics.TotalLookups++;
-                return null;
-            }
-
-            public Tuple<string, double>? FuzzyLookup(string source, string targetLang, string providerId)
-            {
-                var stopwatch = Stopwatch.StartNew();
-                providerId = ProviderIds.Normalize(providerId);
-                double bestScore = 0;
-                string? bestTranslation = null;
-                foreach (DictionaryEntry entry in cache)
-                {
-                    if (entry.Value is TranslationEntry e && e.TargetLang == targetLang && e.ProviderId == providerId)
-                    {
-                        var score = Fuzz.Ratio(source, e.Source) / 100.0;
-                        if (score > bestScore && score >= similarityThreshold)
-                        {
-                            bestScore = score;
-                            bestTranslation = e.Translation;
-                        }
-                    }
-                }
-                if (!string.IsNullOrEmpty(bestTranslation))
-                {
-                    Metrics.FuzzyHits++;
-                    stopwatch.Stop();
-                    Metrics.TotalTime += stopwatch.Elapsed.TotalMilliseconds;
-                    Metrics.TotalLookups++;
-                    return Tuple.Create(bestTranslation!, bestScore);
                 }
                 Metrics.Misses++;
                 stopwatch.Stop();
@@ -517,7 +445,6 @@ namespace TranslationFiesta.WinUI
                 {
                     Hits = Metrics.Hits,
                     Misses = Metrics.Misses,
-                    FuzzyHits = Metrics.FuzzyHits,
                     TotalLookups = Metrics.TotalLookups,
                     TotalTime = Metrics.TotalTime
                 };
@@ -529,7 +456,6 @@ namespace TranslationFiesta.WinUI
                 cache.Clear();
                 Metrics.Hits = 0;
                 Metrics.Misses = 0;
-                Metrics.FuzzyHits = 0;
                 Metrics.TotalLookups = 0;
                 Metrics.TotalTime = 0;
                 Persist();
@@ -541,7 +467,7 @@ namespace TranslationFiesta.WinUI
                 {
                     var data = new
                     {
-                        config = new { max_size = cacheSize, threshold = similarityThreshold },
+                        config = new { max_size = cacheSize },
                         cache = cache.Values.Cast<TranslationEntry>().ToArray(),
                         metrics = Metrics
                     };
@@ -567,10 +493,6 @@ namespace TranslationFiesta.WinUI
                         {
                             cacheSize = sizeProp.GetInt32();
                         }
-                        if (config.TryGetProperty("threshold", out var threshProp))
-                        {
-                            similarityThreshold = threshProp.GetDouble();
-                        }
                     }
                     if (data.TryGetProperty("cache", out var cacheProp) && cacheProp.ValueKind == JsonValueKind.Array)
                     {
@@ -592,7 +514,6 @@ namespace TranslationFiesta.WinUI
                         {
                             Metrics.Hits = metrics.Hits;
                             Metrics.Misses = metrics.Misses;
-                            Metrics.FuzzyHits = metrics.FuzzyHits;
                             Metrics.TotalLookups = metrics.TotalLookups;
                             Metrics.TotalTime = metrics.TotalTime;
                         }
@@ -614,16 +535,10 @@ namespace TranslationFiesta.WinUI
         public string? OriginalText { get; set; }
         public string? IntermediateTranslation { get; set; }
         public string? BackTranslation { get; set; }
-        public TranslationQualityAssessment? QualityAssessment { get; set; }
 
         public override string ToString()
         {
-            var result = $"Original: {OriginalText}\nIntermediate: {IntermediateTranslation}\nBack: {BackTranslation}";
-            if (QualityAssessment != null)
-            {
-                result += $"\nBLEU Score: {QualityAssessment.BleuPercentage} ({QualityAssessment.ConfidenceLevel})";
-            }
-            return result;
+            return $"Original: {OriginalText}\nIntermediate: {IntermediateTranslation}\nBack: {BackTranslation}";
         }
     }
 }

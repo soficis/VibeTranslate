@@ -52,13 +52,6 @@ class TranslationFailure extends Failure {
     );
   }
 
-  factory TranslationFailure.localProviderUnavailable(String details) {
-    return TranslationFailure(
-      message: 'Local provider unavailable: $details',
-      code: 'LOCAL_PROVIDER_UNAVAILABLE',
-    );
-  }
-
   factory TranslationFailure.rateLimited() {
     return TranslationFailure(
       message: 'Provider rate limited',

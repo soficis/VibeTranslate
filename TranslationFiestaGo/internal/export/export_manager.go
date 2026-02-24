@@ -5,21 +5,19 @@ import (
 	"os"
 	"strings"
 	"time"
-	"translationfiestago/internal/utils"
 )
 
 // ExportMetadata contains metadata for exported documents
 type ExportMetadata struct {
-	Title                   string   `json:"title"`
-	Author                  string   `json:"author"`
-	Subject                 string   `json:"subject"`
-	Keywords                []string `json:"keywords"`
-	CreatedDate             string   `json:"created_date"`
-	SourceLanguage          string   `json:"source_language"`
-	TargetLanguage          string   `json:"target_language"`
-	TranslationQualityScore float64  `json:"translation_quality_score"`
-	ProcessingTimeSeconds   float64  `json:"processing_time_seconds"`
-	ApiUsed                 string   `json:"api_used"`
+	Title                 string   `json:"title"`
+	Author                string   `json:"author"`
+	Subject               string   `json:"subject"`
+	Keywords              []string `json:"keywords"`
+	CreatedDate           string   `json:"created_date"`
+	SourceLanguage        string   `json:"source_language"`
+	TargetLanguage        string   `json:"target_language"`
+	ProcessingTimeSeconds float64  `json:"processing_time_seconds"`
+	ApiUsed               string   `json:"api_used"`
 }
 
 // ExportConfig contains configuration for document export
@@ -27,7 +25,6 @@ type ExportConfig struct {
 	Format                 string `json:"format"`                    // pdf, docx, html
 	TemplatePath           string `json:"template_path"`             // optional template path
 	IncludeMetadata        bool   `json:"include_metadata"`          // include metadata in output
-	IncludeQualityMetrics  bool   `json:"include_quality_metrics"`   // include quality metrics
 	IncludeTimestamps      bool   `json:"include_timestamps"`        // include timestamps
 	PageSize               string `json:"page_size"`                 // A4, letter
 	FontFamily             string `json:"font_family"`               // font family
@@ -39,40 +36,35 @@ type ExportConfig struct {
 
 // TranslationResult represents a translation result for export
 type TranslationResult struct {
-	OriginalText    string  `json:"original_text"`
-	TranslatedText  string  `json:"translated_text"`
-	SourceLanguage  string  `json:"source_language"`
-	TargetLanguage  string  `json:"target_language"`
-	QualityScore    float64 `json:"quality_score"`
-	ConfidenceLevel string  `json:"confidence_level"`
-	ProcessingTime  float64 `json:"processing_time"`
-	ApiUsed         string  `json:"api_used"`
-	Timestamp       string  `json:"timestamp"`
+	OriginalText   string  `json:"original_text"`
+	TranslatedText string  `json:"translated_text"`
+	SourceLanguage string  `json:"source_language"`
+	TargetLanguage string  `json:"target_language"`
+	ProcessingTime float64 `json:"processing_time"`
+	ApiUsed        string  `json:"api_used"`
+	Timestamp      string  `json:"timestamp"`
 }
 
 // ExportManager handles document export operations
 type ExportManager struct {
-	config     *ExportConfig
-	bleuScorer *utils.BLEUScorer
+	config *ExportConfig
 }
 
 // NewExportManager creates a new export manager
 func NewExportManager(config *ExportConfig) *ExportManager {
 	if config == nil {
 		config = &ExportConfig{
-			Format:                "html",
-			IncludeMetadata:       true,
-			IncludeQualityMetrics: true,
-			IncludeTimestamps:     true,
-			PageSize:              "A4",
-			FontFamily:            "Arial",
-			FontSize:              12,
+			Format:            "html",
+			IncludeMetadata:   true,
+			IncludeTimestamps: true,
+			PageSize:          "A4",
+			FontFamily:        "Arial",
+			FontSize:          12,
 		}
 	}
 
 	return &ExportManager{
-		config:     config,
-		bleuScorer: utils.GetBLEUScorer(),
+		config: config,
 	}
 }
 
@@ -95,8 +87,7 @@ func (em *ExportManager) ExportTranslations(translations []TranslationResult, ou
 		}
 	}
 
-	// Calculate overall quality metrics
-	finalMetadata, finalTranslations := em.calculateQualityMetrics(*metadata, translations)
+	finalMetadata, finalTranslations := em.calculateProcessingMetrics(*metadata, translations)
 
 	// Export based on format
 	switch strings.ToLower(em.config.Format) {
@@ -107,28 +98,16 @@ func (em *ExportManager) ExportTranslations(translations []TranslationResult, ou
 	}
 }
 
-func (em *ExportManager) calculateQualityMetrics(metadata ExportMetadata, translations []TranslationResult) (ExportMetadata, []TranslationResult) {
-	totalScore := 0.0
+func (em *ExportManager) calculateProcessingMetrics(metadata ExportMetadata, translations []TranslationResult) (ExportMetadata, []TranslationResult) {
 	totalTime := 0.0
 
 	for i := range translations {
 		translation := &translations[i]
-
-		// Calculate BLEU score if not already calculated
-		if translation.QualityScore == 0.0 && translation.OriginalText != "" && translation.TranslatedText != "" {
-			bleuScore := em.bleuScorer.CalculateBLEU(translation.OriginalText, translation.TranslatedText)
-			translation.QualityScore = bleuScore
-			confidenceLevel, _ := em.bleuScorer.GetConfidenceLevel(bleuScore)
-			translation.ConfidenceLevel = confidenceLevel
-		}
-
-		totalScore += translation.QualityScore
 		totalTime += translation.ProcessingTime
 	}
 
 	// Update metadata with averages
 	if len(translations) > 0 {
-		metadata.TranslationQualityScore = totalScore / float64(len(translations))
 		metadata.ProcessingTimeSeconds = totalTime / float64(len(translations))
 	}
 
@@ -193,11 +172,6 @@ func (em *ExportManager) generateHTMLContent(translations []TranslationResult, m
 	sb.WriteString("        .translated {\n")
 	sb.WriteString("            margin-bottom: 15px;\n")
 	sb.WriteString("        }\n")
-	sb.WriteString("        .quality {\n")
-	sb.WriteString("            font-style: italic;\n")
-	sb.WriteString("            color: #666;\n")
-	sb.WriteString("            font-size: 0.9em;\n")
-	sb.WriteString("        }\n")
 	sb.WriteString("        .metadata {\n")
 	sb.WriteString("            background: #e8f4fd;\n")
 	sb.WriteString("            padding: 15px;\n")
@@ -238,7 +212,6 @@ func (em *ExportManager) generateHTMLContent(translations []TranslationResult, m
 		sb.WriteString(fmt.Sprintf("                <tr><th>Created</th><td>%s</td></tr>\n", metadata.CreatedDate))
 		sb.WriteString(fmt.Sprintf("                <tr><th>Source Language</th><td>%s</td></tr>\n", metadata.SourceLanguage))
 		sb.WriteString(fmt.Sprintf("                <tr><th>Target Language</th><td>%s</td></tr>\n", metadata.TargetLanguage))
-		sb.WriteString(fmt.Sprintf("                <tr><th>Quality Score</th><td>%.3f</td></tr>\n", metadata.TranslationQualityScore))
 		sb.WriteString(fmt.Sprintf("                <tr><th>API Used</th><td>%s</td></tr>\n", metadata.ApiUsed))
 		sb.WriteString("            </table>\n")
 		sb.WriteString("        </div>\n")
@@ -248,13 +221,9 @@ func (em *ExportManager) generateHTMLContent(translations []TranslationResult, m
 	sb.WriteString("        <h2>Translation Results</h2>\n")
 
 	for i, translation := range translations {
-		qualityInfo := ""
-		if em.config.IncludeQualityMetrics {
-			qualityInfo = fmt.Sprintf("<div class=\"quality\">Quality Score: %.3f (%s)", translation.QualityScore, translation.ConfidenceLevel)
-			if translation.ProcessingTime > 0 {
-				qualityInfo += fmt.Sprintf(" | Processing Time: %.2fs", translation.ProcessingTime)
-			}
-			qualityInfo += "</div>"
+		processingInfo := ""
+		if translation.ProcessingTime > 0 {
+			processingInfo = fmt.Sprintf("<div><em>Processing Time: %.2fs</em></div>", translation.ProcessingTime)
 		}
 
 		sb.WriteString("        <div class=\"translation\">\n")
@@ -267,7 +236,7 @@ func (em *ExportManager) generateHTMLContent(translations []TranslationResult, m
 		sb.WriteString("                <strong>Translated Text:</strong><br>\n")
 		sb.WriteString(fmt.Sprintf("                %s\n", strings.ReplaceAll(translation.TranslatedText, "\n", "<br>")))
 		sb.WriteString("            </div>\n")
-		sb.WriteString(fmt.Sprintf("            %s\n", qualityInfo))
+		sb.WriteString(fmt.Sprintf("            %s\n", processingInfo))
 		sb.WriteString("        </div>\n")
 	}
 

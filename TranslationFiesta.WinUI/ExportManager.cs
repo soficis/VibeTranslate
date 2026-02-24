@@ -108,7 +108,6 @@ namespace TranslationFiesta.WinUI
         public string CreatedDate { get; set; } = DateTime.Now.ToString("O");
         public string SourceLanguage { get; set; } = "";
         public string TargetLanguage { get; set; } = "";
-        public double TranslationQualityScore { get; set; } = 0.0;
         public double ProcessingTimeSeconds { get; set; } = 0.0;
         public string ApiUsed { get; set; } = "";
     }
@@ -121,7 +120,6 @@ namespace TranslationFiesta.WinUI
         public string Format { get; set; } = "pdf"; // pdf, docx, html
         public string? TemplatePath { get; set; }
         public bool IncludeMetadata { get; set; } = true;
-        public bool IncludeQualityMetrics { get; set; } = true;
         public bool IncludeTimestamps { get; set; } = true;
         public string PageSize { get; set; } = "A4"; // A4, letter
         public string FontFamily { get; set; } = "Arial";
@@ -140,8 +138,6 @@ namespace TranslationFiesta.WinUI
         public string TranslatedText { get; set; } = "";
         public string SourceLanguage { get; set; } = "";
         public string TargetLanguage { get; set; } = "";
-        public double QualityScore { get; set; } = 0.0;
-        public string ConfidenceLevel { get; set; } = "";
         public double ProcessingTime { get; set; } = 0.0;
         public string ApiUsed { get; set; } = "";
         public string Timestamp { get; set; } = DateTime.Now.ToString("O");
@@ -153,8 +149,6 @@ namespace TranslationFiesta.WinUI
             string translatedText,
             string sourceLanguage,
             string targetLanguage,
-            double qualityScore = 0.0,
-            string confidenceLevel = "",
             double processingTime = 0.0,
             string apiUsed = "")
         {
@@ -162,8 +156,6 @@ namespace TranslationFiesta.WinUI
             TranslatedText = translatedText;
             SourceLanguage = sourceLanguage;
             TargetLanguage = targetLanguage;
-            QualityScore = qualityScore;
-            ConfidenceLevel = confidenceLevel;
             ProcessingTime = processingTime;
             ApiUsed = apiUsed;
         }
@@ -327,7 +319,7 @@ namespace TranslationFiesta.WinUI
                 if (template != null)
                 {
                     var templateManager = new TemplateManager();
-                    var content = templateManager.ApplyTemplate(translation.OriginalText, translation.TranslatedText, translation.SourceLanguage, translation.TargetLanguage, translation.QualityScore, null, template);
+                    var content = templateManager.ApplyTemplate(translation.OriginalText, translation.TranslatedText, translation.SourceLanguage, translation.TargetLanguage, template);
                     yPosition = DrawMultilineText(gfx, content, font, 70, yPosition, pageWidth - 20);
                 }
                 else
@@ -341,16 +333,10 @@ namespace TranslationFiesta.WinUI
                     yPosition = DrawMultilineText(gfx, translation.TranslatedText, font, 70, yPosition, pageWidth - 20);
                 }
 
-                // Quality metrics
-                if (_config.IncludeQualityMetrics)
+                if (translation.ProcessingTime > 0)
                 {
                     yPosition += 10;
-                    string qualityText = $"Quality Score: {translation.QualityScore:F3} ({translation.ConfidenceLevel})";
-                    if (translation.ProcessingTime > 0)
-                        qualityText += $" | Processing Time: {translation.ProcessingTime:F2}s";
-
-                    // smallFont is now created above with the same fallback logic
-                    gfx.DrawString(qualityText, smallFont, XBrushes.Gray, new XPoint(50, yPosition));
+                    gfx.DrawString($"Processing Time: {translation.ProcessingTime:F2}s", smallFont, XBrushes.Gray, new XPoint(50, yPosition));
                     yPosition += lineHeight;
                 }
 
@@ -409,7 +395,7 @@ namespace TranslationFiesta.WinUI
                 if (template != null)
                 {
                     var templateManager = new TemplateManager();
-                    var content = templateManager.ApplyTemplate(translation.OriginalText, translation.TranslatedText, translation.SourceLanguage, translation.TargetLanguage, translation.QualityScore, null, template);
+                    var content = templateManager.ApplyTemplate(translation.OriginalText, translation.TranslatedText, translation.SourceLanguage, translation.TargetLanguage, template);
                     var contentPara = body.AppendChild(new Paragraph());
                     var contentRun = contentPara.AppendChild(new Run());
                     contentRun.AppendChild(new Text(content));
@@ -431,18 +417,12 @@ namespace TranslationFiesta.WinUI
                     transRun.AppendChild(new Text(translation.TranslatedText));
                 }
 
-                // Quality metrics
-                if (_config.IncludeQualityMetrics)
+                if (translation.ProcessingTime > 0)
                 {
-                    var qualityPara = body.AppendChild(new Paragraph());
-                    var qualityRun = qualityPara.AppendChild(new Run());
-                    qualityRun.AppendChild(new RunProperties(new Italic(), new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "666666" }));
-
-                    string qualityText = $"Quality Score: {translation.QualityScore:F3} ({translation.ConfidenceLevel})";
-                    if (translation.ProcessingTime > 0)
-                        qualityText += $" | Processing Time: {translation.ProcessingTime:F2}s";
-
-                    qualityRun.AppendChild(new Text(qualityText));
+                    var processingPara = body.AppendChild(new Paragraph());
+                    var processingRun = processingPara.AppendChild(new Run());
+                    processingRun.AppendChild(new RunProperties(new Italic(), new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "666666" }));
+                    processingRun.AppendChild(new Text($"Processing Time: {translation.ProcessingTime:F2}s"));
                 }
 
                 // Add spacing
@@ -501,11 +481,6 @@ namespace TranslationFiesta.WinUI
             html.AppendLine("        .translated {");
             html.AppendLine("            margin-bottom: 15px;");
             html.AppendLine("        }");
-            html.AppendLine("        .quality {");
-            html.AppendLine("            font-style: italic;");
-            html.AppendLine("            color: #666;");
-            html.AppendLine("            font-size: 0.9em;");
-            html.AppendLine("        }");
             html.AppendLine("        .metadata {");
             html.AppendLine("            background: #e8f4fd;");
             html.AppendLine("            padding: 15px;");
@@ -547,7 +522,6 @@ namespace TranslationFiesta.WinUI
                 html.AppendLine($"                <tr><th>Created</th><td>{metadata.CreatedDate}</td></tr>");
                 html.AppendLine($"                <tr><th>Source Language</th><td>{metadata.SourceLanguage}</td></tr>");
                 html.AppendLine($"                <tr><th>Target Language</th><td>{metadata.TargetLanguage}</td></tr>");
-                html.AppendLine($"                <tr><th>Quality Score</th><td>{metadata.TranslationQualityScore:F3}</td></tr>");
                 html.AppendLine($"                <tr><th>API Used</th><td>{metadata.ApiUsed}</td></tr>");
                 html.AppendLine("            </table>");
                 html.AppendLine("        </div>");
@@ -558,14 +532,9 @@ namespace TranslationFiesta.WinUI
 
             foreach (var (translation, index) in translations.Select((t, i) => (t, i)))
             {
-                string qualityInfo = "";
-                if (_config.IncludeQualityMetrics)
-                {
-                    qualityInfo = $"<div class=\"quality\">Quality Score: {translation.QualityScore:F3} ({translation.ConfidenceLevel})";
-                    if (translation.ProcessingTime > 0)
-                        qualityInfo += $" | Processing Time: {translation.ProcessingTime:F2}s";
-                    qualityInfo += "</div>";
-                }
+                string processingInfo = translation.ProcessingTime > 0
+                    ? $"<div><em>Processing Time: {translation.ProcessingTime:F2}s</em></div>"
+                    : "";
 
                 html.AppendLine("        <div class=\"translation\">");
                 html.AppendLine($"            <h3>Translation {index + 1}</h3>");
@@ -577,7 +546,7 @@ namespace TranslationFiesta.WinUI
                 html.AppendLine("                <strong>Translated Text:</strong><br>");
                 html.AppendLine($"                {translation.TranslatedText.Replace("\n", "<br>")}");
                 html.AppendLine("            </div>");
-                html.AppendLine($"            {qualityInfo}");
+                html.AppendLine($"            {processingInfo}");
                 html.AppendLine("        </div>");
             }
 
@@ -665,7 +634,6 @@ namespace TranslationFiesta.WinUI
                 new[] { "Created", metadata.CreatedDate ?? "N/A" },
                 new[] { "Source Language", metadata.SourceLanguage ?? "N/A" },
                 new[] { "Target Language", metadata.TargetLanguage ?? "N/A" },
-                new[] { "Quality Score", metadata.TranslationQualityScore.ToString("F3") },
                 new[] { "API Used", metadata.ApiUsed ?? "N/A" },
                 new[] { "Processing Time", metadata.ProcessingTimeSeconds.ToString("F2") + "s" }
             };
@@ -721,7 +689,6 @@ namespace TranslationFiesta.WinUI
             AddTableRow(table, "Created", metadata.CreatedDate);
             AddTableRow(table, "Source Language", metadata.SourceLanguage);
             AddTableRow(table, "Target Language", metadata.TargetLanguage);
-            AddTableRow(table, "Quality Score", metadata.TranslationQualityScore.ToString("F3"));
             AddTableRow(table, "API Used", metadata.ApiUsed);
             AddTableRow(table, "Processing Time", metadata.ProcessingTimeSeconds.ToString("F2") + "s");
         }

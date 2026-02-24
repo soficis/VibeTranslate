@@ -70,8 +70,6 @@ namespace TranslationFiesta.WinUI
                 "Sample translated text.",
                 "en-US",
                 "es-ES",
-                0.85,
-                4,
                 previewTemplate);
         }
     }

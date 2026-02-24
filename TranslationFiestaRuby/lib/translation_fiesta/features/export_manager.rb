@@ -177,9 +177,7 @@ module TranslationFiesta
     end
 
     class ExportManager
-      def initialize(bleu_scorer = nil)
-        @bleu_scorer = bleu_scorer
-      end
+      def initialize; end
 
       def self.create_minimal_docx_template
         require 'tmpdir'
@@ -247,8 +245,6 @@ module TranslationFiesta
 
       private
 
-      attr_reader :bleu_scorer
-
       def export_to_text(result, file_path)
         content = format_text_content(result)
         File.write(file_path, content, encoding: 'UTF-8')
@@ -274,8 +270,6 @@ module TranslationFiesta
           # Metrics table
           metrics_data = [
             ['Metric', 'Value'],
-            ['BLEU Score', result.bleu_score ? "#{(result.bleu_score * 100).round(2)}%" : 'N/A'],
-            ['Quality Rating', result.quality_rating],
             ['API Used', result.api_type.to_s.capitalize],
             ['Timestamp', result.timestamp.strftime('%Y-%m-%d %H:%M:%S')]
           ]
@@ -315,8 +309,6 @@ module TranslationFiesta
 
               Back Translation: #{result.back_translation}
 
-              BLEU Score: #{result.bleu_score ? (result.bleu_score * 100).round(2) : 'N/A'}%
-              Quality Rating: #{result.quality_rating}
               API Used: #{result.api_type.to_s.capitalize}
               Timestamp: #{result.timestamp}
             TEXT
@@ -379,13 +371,10 @@ module TranslationFiesta
 
           # Summary statistics
           total_files = results.length
-          bleu_scores = results.map(&:bleu_score).compact
-          average_bleu = bleu_scores.empty? ? nil : bleu_scores.sum / bleu_scores.length
 
           summary_data = [
             ['Metric', 'Value'],
             ['Total Files Processed', total_files.to_s],
-            ['Average BLEU Score', average_bleu ? "#{(average_bleu * 100).round(2)}%" : 'N/A'],
             ['Processing Date', Time.now.strftime('%Y-%m-%d %H:%M:%S')]
           ]
 
@@ -410,8 +399,6 @@ module TranslationFiesta
           #{result.back_translation}
           
           ## Metrics:
-          - BLEU Score: #{result.bleu_score ? (result.bleu_score * 100).round(2) : 'N/A'}%
-          - Quality Rating: #{result.quality_rating}
           - API Used: #{result.api_type.to_s.capitalize}
           - Timestamp: #{result.timestamp}
         CONTENT
@@ -445,8 +432,6 @@ module TranslationFiesta
             
             <h2>Metrics:</h2>
             <div class="metrics">
-              <p><strong>BLEU Score:</strong> <%= result.bleu_score ? (result.bleu_score * 100).round(2) : 'N/A' %>%</p>
-              <p><strong>Quality Rating:</strong> <%= result.quality_rating %></p>
               <p><strong>API Used:</strong> <%= result.api_type.to_s.capitalize %></p>
               <p><strong>Timestamp:</strong> <%= result.timestamp %></p>
             </div>

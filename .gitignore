@@ -23,7 +23,6 @@ dist-electron/**
 *.tar.gz
 *.zip
 *.7z
-!TranslationFiestaLocal/model_packs/*.zip
 *.egg-info/
 *.egg
 *.whl
@@ -356,7 +355,6 @@ coverage/
 .nyc_output/
 
 # Local one-shot build scripts
-scripts/build_windows_x64_release.ps1
 
 # More personal/private files
 id_rsa

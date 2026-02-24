@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
 
   const providers = [
-    { id: 'local', label: 'Local (Offline)' },
     { id: 'google_unofficial', label: 'Google Translate (Unofficial / Free)' }
   ];
 
@@ -11,23 +10,10 @@
   let intermediateText = '';
   let providerId = 'google_unofficial';
   let status = '';
-  let localServiceUrl = '';
-  let localModelDir = '';
-  let localAutoStart = true;
-  let localStatus = '';
 
   onMount(async () => {
     if (window?.go?.main?.App?.GetProviderID) {
       providerId = await window.go.main.App.GetProviderID();
-    }
-    if (window?.go?.main?.App?.GetLocalServiceURL) {
-      localServiceUrl = await window.go.main.App.GetLocalServiceURL();
-    }
-    if (window?.go?.main?.App?.GetLocalModelDir) {
-      localModelDir = await window.go.main.App.GetLocalModelDir();
-    }
-    if (window?.go?.main?.App?.GetLocalAutoStart) {
-      localAutoStart = await window.go.main.App.GetLocalAutoStart();
     }
   });
 
@@ -53,54 +39,6 @@
     }
   }
 
-  async function saveLocalSettings() {
-    if (window?.go?.main?.App?.SetLocalServiceURL) {
-      await window.go.main.App.SetLocalServiceURL(localServiceUrl);
-    }
-    if (window?.go?.main?.App?.SetLocalModelDir) {
-      await window.go.main.App.SetLocalModelDir(localModelDir);
-    }
-    if (window?.go?.main?.App?.SetLocalAutoStart) {
-      await window.go.main.App.SetLocalAutoStart(localAutoStart);
-    }
-    localStatus = 'Settings saved.';
-  }
-
-  async function refreshLocalStatus() {
-    localStatus = '';
-    try {
-      localStatus = await window.go.main.App.GetLocalModelsStatus();
-    } catch (err) {
-      localStatus = err?.message || 'Failed to fetch status';
-    }
-  }
-
-  async function verifyLocalModels() {
-    localStatus = '';
-    try {
-      localStatus = await window.go.main.App.VerifyLocalModels();
-    } catch (err) {
-      localStatus = err?.message || 'Verification failed';
-    }
-  }
-
-  async function removeLocalModels() {
-    localStatus = '';
-    try {
-      localStatus = await window.go.main.App.RemoveLocalModels();
-    } catch (err) {
-      localStatus = err?.message || 'Remove failed';
-    }
-  }
-
-  async function installDefaultLocalModels() {
-    localStatus = '';
-    try {
-      localStatus = await window.go.main.App.InstallDefaultLocalModels();
-    } catch (err) {
-      localStatus = err?.message || 'Install failed';
-    }
-  }
 </script>
 
 <main>
@@ -118,34 +56,6 @@
       </select>
     </div>
   </header>
-
-  {#if providerId === 'local'}
-    <section class="panel">
-      <h2>Local Model Manager</h2>
-      <div class="panel-row">
-        <div class="stack">
-          <label for="local-url">Service URL</label>
-          <input id="local-url" type="text" bind:value={localServiceUrl} placeholder="http://127.0.0.1:5055" />
-          <label for="local-dir">Model Directory</label>
-          <input id="local-dir" type="text" bind:value={localModelDir} placeholder="Optional override path" />
-          <label class="inline">
-            <input type="checkbox" bind:checked={localAutoStart} />
-            Auto-start local service
-          </label>
-        </div>
-        <div class="actions vertical">
-          <button class="btn secondary" on:click={saveLocalSettings}>Save</button>
-          <button class="btn secondary" on:click={installDefaultLocalModels}>Install Default</button>
-          <button class="btn ghost" on:click={refreshLocalStatus}>Refresh</button>
-          <button class="btn ghost" on:click={verifyLocalModels}>Verify</button>
-          <button class="btn ghost" on:click={removeLocalModels}>Remove</button>
-        </div>
-      </div>
-      {#if localStatus}
-        <pre class="status-block">{localStatus}</pre>
-      {/if}
-    </section>
-  {/if}
 
   <section class="panel">
     <label for="input-text">Input</label>

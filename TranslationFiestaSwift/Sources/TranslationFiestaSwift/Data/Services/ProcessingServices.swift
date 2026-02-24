@@ -102,19 +102,6 @@ public final class FileProcessingService: FileRepository {
         output += "Japanese Translation:\n\(result.japanese)\n\n"
         output += "Back-translated English:\n\(result.backTranslatedEnglish)\n\n"
 
-        output += "Quality Assessment:\n"
-        output += "- BLEU Score: \(String(format: \"%.3f\", result.qualityAssessment.bleuScore))\n"
-        output += "- Confidence Level: \(result.qualityAssessment.confidenceLevel.displayName)\n"
-        output += "- Star Rating: \(result.qualityAssessment.starRating.displayString)\n\n"
-
-        if !result.qualityAssessment.recommendations.isEmpty {
-            output += "Recommendations:\n"
-            for recommendation in result.qualityAssessment.recommendations {
-                output += "- \(recommendation)\n"
-            }
-            output += "\n"
-        }
-
         output += "Timestamp: \(result.forwardTranslation.timestamp.formatted())\n"
 
         return output

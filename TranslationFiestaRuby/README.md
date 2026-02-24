@@ -2,14 +2,13 @@
 
 A professional Ruby implementation featuring a modern Sinatra web UI with dark mode (default), comprehensive file import/export, batch processing, and full feature parity with other TranslationFiesta implementations.
 
-A comprehensive Ruby implementation of the TranslationFiesta application for English ↔ Japanese back-translation with quality assessment.
+A comprehensive Ruby implementation of the TranslationFiesta application for English ↔ Japanese back-translation.
 
 ## 🌟 Features
 
 ### Core Translation Features
-- **Back-translation**: English → Japanese → English using local or unofficial providers
-- **Provider Support**: Local (offline) and Google Translate (unofficial/free)
-- **Quality Assessment**: BLEU score calculation for translation quality metrics
+- **Back-translation**: English → Japanese → English using the unofficial provider
+- **Provider Support**: Google Translate (unofficial/free)
 - **Translation Memory**: Intelligent caching system to reduce repeated API calls
 
 ### Advanced Features
@@ -106,11 +105,10 @@ TF_USE_MOCK=1 ruby bin/translation_fiesta
 **Features:**
 - 🌙 **Dark Mode (Default)**: Modern dark theme with light mode toggle
 - 📁 **File Import**: Drag & drop or click to upload TXT, MD, HTML, EPUB files
-- 📊 **Quality Metrics**: Real-time BLEU scoring and quality assessment
 - 💾 **Export Options**: Export to PDF, DOCX, HTML, TXT formats
 - 🔄 **Batch Processing**: Process multiple files simultaneously with progress tracking
 - 📈 **Analytics Dashboard**: Translation memory and activity stats
-- 🎛️ **Settings**: Configurable provider and local service preferences
+- 🎛️ **Settings**: Configurable provider preferences
 - 📱 **Responsive Design**: Works on desktop and mobile devices
 
 **Environment Variables:**
@@ -187,7 +185,7 @@ rake cli translate "Hello, world!"
 
 **Process a single file**:
 ```bash
-rake cli file sample.txt --api local --output result.pdf
+rake cli file sample.txt --api unofficial --output result.pdf
 ```
 
 **Batch process directory**:
@@ -196,7 +194,7 @@ rake cli batch ./documents --threads 8 --format pdf
 ```
 
 ### CLI Options
-- `--api [unofficial|local]`: Choose API type (default: unofficial)
+- `--api [unofficial]`: Choose API type (default: unofficial)
 - `--output FILE`: Specify output file for results
 - `--format [txt|pdf|docx|html]`: Export format
 - `--threads COUNT`: Number of threads for batch processing
@@ -220,9 +218,6 @@ TF_USE_MOCK=1 rspec spec/requests/web_app_spec.rb
 # Run all tests (may be incomplete)
 rake spec
 
-# Run specific test file
-rspec spec/domain/services/bleu_scorer_spec.rb
-
 # Run with coverage
 rake spec
 
@@ -240,15 +235,6 @@ rake rubocop
 | EPUB   | ✅   | ❌     | E-book text extraction |
 | PDF    | ❌   | ✅     | Export only |
 | DOCX   | ❌   | ✅     | Export only |
-
-## 🎯 Quality Metrics
-
-BLEU scores are calculated and interpreted as:
-- **0.9-1.0**: Excellent translation quality
-- **0.7-0.9**: Very good quality
-- **0.5-0.7**: Good quality
-- **0.3-0.5**: Fair quality
-- **0.0-0.3**: Poor quality
 
 ## 🔄 Translation Memory
 

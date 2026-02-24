@@ -4,11 +4,8 @@ import Logging
 /// Translation service implementation.
 public final class TranslationService: TranslationRepository {
     private let logger = Logger(label: "TranslationService")
-    private let localSettingsStore: LocalModelSettingsStore
 
-    public init(localSettingsStore: LocalModelSettingsStore = LocalModelSettingsStore()) {
-        self.localSettingsStore = localSettingsStore
-    }
+    public init() {}
 
     public func translate(
         text: String,
@@ -25,21 +22,11 @@ public final class TranslationService: TranslationRepository {
 
         let translatedText: String
 
-        switch apiProvider {
-        case .localOffline:
-            translatedText = try await makeLocalClient().translate(
-                text: text,
-                source: sourceLanguage.rawValue,
-                target: targetLanguage.rawValue
-            )
-
-        case .googleUnofficialAPI:
-            translatedText = try await translateWithUnofficialAPI(
-                text: text,
-                sourceLanguage: sourceLanguage,
-                targetLanguage: targetLanguage
-            )
-        }
+        translatedText = try await translateWithUnofficialAPI(
+            text: text,
+            sourceLanguage: sourceLanguage,
+            targetLanguage: targetLanguage
+        )
 
         logger.info("Translation completed successfully")
 
@@ -50,12 +37,6 @@ public final class TranslationService: TranslationRepository {
             targetLanguage: targetLanguage,
             apiProvider: apiProvider
         )
-    }
-
-    private func makeLocalClient() -> LocalServiceClient {
-        let settings = localSettingsStore.load()
-        let config = LocalServiceConfiguration.fromSettings(settings)
-        return LocalServiceClient(session: URLSession.shared, configuration: config)
     }
 
     public func backTranslate(
@@ -80,22 +61,14 @@ public final class TranslationService: TranslationRepository {
             apiProvider: apiProvider
         )
 
-        let qualityAssessment = try await assessTranslationQuality(
-            original: text,
-            backTranslated: backwardResult.translatedText
-        )
-
-        logger.info("Back-translation completed", metadata: [
-            "qualityScore": "\(qualityAssessment.bleuScore)"
-        ])
+        logger.info("Back-translation completed")
 
         return BackTranslationResult(
             originalEnglish: sourceLanguage == .english ? text : backwardResult.translatedText,
             japanese: targetLanguage == .japanese ? forwardResult.translatedText : text,
             backTranslatedEnglish: sourceLanguage == .english ? backwardResult.translatedText : text,
             forwardTranslation: forwardResult,
-            backwardTranslation: backwardResult,
-            qualityAssessment: qualityAssessment
+            backwardTranslation: backwardResult
         )
     }
 
@@ -208,20 +181,5 @@ public final class TranslationService: TranslationRepository {
         let baseMs = min(2000.0, 200.0 * pow(2.0, Double(attempt - 1)))
         let jitter = Double.random(in: 0...200)
         return UInt64((baseMs + jitter) * 1_000_000)
-    }
-
-    private func assessTranslationQuality(
-        original: String,
-        backTranslated: String
-    ) async throws -> QualityAssessment {
-        let bleuScore = QualityScorer.calculateSimpleBLEUScore(reference: original, candidate: backTranslated)
-
-        let recommendations = QualityScorer.generateQualityRecommendations(
-            bleuScore: bleuScore,
-            originalLength: original.count,
-            backTranslatedLength: backTranslated.count
-        )
-
-        return QualityAssessment(bleuScore: bleuScore, recommendations: recommendations)
     }
 }

@@ -10,14 +10,6 @@ type SettingsRepository interface {
 	GetProviderID() string
 	SetProviderID(providerID string) error
 
-	// Local model service settings
-	GetLocalServiceURL() string
-	SetLocalServiceURL(url string) error
-	GetLocalModelDir() string
-	SetLocalModelDir(path string) error
-	GetLocalAutoStart() bool
-	SetLocalAutoStart(enabled bool) error
-
 	// Language settings
 	GetSourceLanguage() string
 	SetSourceLanguage(lang string) error

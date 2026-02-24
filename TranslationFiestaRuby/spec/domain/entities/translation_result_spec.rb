@@ -8,31 +8,8 @@ RSpec.describe TranslationFiesta::Domain::Entities::TranslationResult do
       original_text: 'Hello world',
       first_translation: 'こんにちは世界',
       back_translation: 'Hello world',
-      api_type: :unofficial,
-      bleu_score: 0.95
+      api_type: :unofficial
     )
-  end
-
-  describe '#quality_rating' do
-    it 'returns the correct rating based on BLEU score' do
-      expect(result.quality_rating).to eq('Excellent')
-    end
-
-    context 'when BLEU score is nil' do
-      let(:result) do
-        described_class.new(
-          original_text: 'Hello',
-          first_translation: 'こんにちは',
-          back_translation: 'Hello',
-          api_type: :unofficial,
-          bleu_score: nil
-        )
-      end
-
-      it 'returns Unknown' do
-        expect(result.quality_rating).to eq('Unknown')
-      end
-    end
   end
 
   describe '#to_hash' do
@@ -42,8 +19,7 @@ RSpec.describe TranslationFiesta::Domain::Entities::TranslationResult do
         original_text: 'Hello world',
         first_translation: 'こんにちは世界',
         back_translation: 'Hello world',
-        api_type: :unofficial,
-        bleu_score: 0.95
+        api_type: :unofficial
       )
     end
   end
