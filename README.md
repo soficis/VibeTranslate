@@ -2,7 +2,7 @@
 
 # 🌐 VibeTranslate
 
-### A Premium Multi-Platform Translation Experience
+### A Multi-Platform Translation App
 
 ![VibeTranslate Banner](./assets/banner.png)
 
