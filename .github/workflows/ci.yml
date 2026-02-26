@@ -35,7 +35,7 @@ jobs:
       - name: Run Python tests
         run: |
           cd TranslationFiestaPy
-          pytest -q -s test_unofficial_provider.py test_theme.py
+          pytest -q -s test_unofficial_provider.py test_theme.py test_portable_paths.py
 
   go:
     runs-on: ubuntu-24.04
@@ -280,30 +280,44 @@ jobs:
         if: matrix.target == 'windows'
         shell: pwsh
         run: |
+          $pythonOutRoot = "$env:GITHUB_WORKSPACE\TranslationFiestaPy\out"
+
           python -m pip install --upgrade pip
           pip install -r TranslationFiestaPy/requirements.lock
           pip install pyinstaller
+          if (Test-Path $pythonOutRoot) {
+            Remove-Item $pythonOutRoot -Recurse -Force
+          }
+          New-Item -ItemType Directory -Force -Path $pythonOutRoot | Out-Null
 
           cd TranslationFiestaPy
-          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaPy TranslationFiesta.py
+          pyinstaller --noconfirm --clean --windowed --onedir --name TranslationFiestaPy --collect-submodules tkinterweb --collect-data tkinterweb --collect-submodules tkinterweb_tkhtml --collect-data tkinterweb_tkhtml --distpath "$pythonOutRoot\dist" --workpath "$pythonOutRoot\build" --specpath "$pythonOutRoot\spec" TranslationFiesta.py
 
       - name: Python ARM64 smoke build (non-Windows)
         if: matrix.target != 'windows'
         shell: bash
         run: |
+          python_out_root="$GITHUB_WORKSPACE/TranslationFiestaPy/out"
+
           python -m pip install --upgrade pip
           pip install -r TranslationFiestaPy/requirements.lock
           pip install pyinstaller
+          rm -rf "$python_out_root"
+          mkdir -p "$python_out_root"
 
           cd TranslationFiestaPy
-          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaPy TranslationFiesta.py
+          pyinstaller --noconfirm --clean --onedir --name TranslationFiestaPy --collect-submodules tkinterweb --collect-data tkinterweb --collect-submodules tkinterweb_tkhtml --collect-data tkinterweb_tkhtml --distpath "$python_out_root/dist" --workpath "$python_out_root/build" --specpath "$python_out_root/spec" TranslationFiesta.py
 
       - name: Flutter ARM64 smoke build
         if: matrix.target == 'windows'
         shell: pwsh
         run: |
           flutter config --enable-windows-desktop
+          if (Test-Path "$env:GITHUB_WORKSPACE\TranslationFiestaFlutter\build\windows") {
+            Remove-Item "$env:GITHUB_WORKSPACE\TranslationFiestaFlutter\build\windows" -Recurse -Force
+          }
           cd TranslationFiestaFlutter
+          flutter clean
           flutter pub get
           flutter build windows --release
 

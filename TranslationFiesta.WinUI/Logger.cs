@@ -20,7 +20,7 @@ namespace TranslationFiesta.WinUI
         private static readonly ConcurrentQueue<string> _logQueue = new ConcurrentQueue<string>();
         private static readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private static Task? _logWriterTask;
-        private static readonly string LogFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TranslationFiesta", "translationfiesta.log");
+        private static readonly string LogFile = PortablePaths.LogFile;
         private static bool _isInitialized = false;
         public static LogLevel MinimumLogLevel { get; set; } = LogLevel.Info; // Default to Info
         private static int LogFileMaxSizeKB = 5 * 1024; // 5 MB

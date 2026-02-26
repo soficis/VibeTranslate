@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require 'sqlite3'
+require_relative '../infrastructure/app_paths'
 
 module TranslationFiesta
   module Data
     class DatabaseSetup
-      def initialize(memory_db_path = 'translation_memory.db')
+      def initialize(memory_db_path = Infrastructure::AppPaths.memory_db_path)
         @memory_db_path = memory_db_path
       end
 

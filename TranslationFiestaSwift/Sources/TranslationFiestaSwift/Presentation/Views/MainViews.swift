@@ -6,7 +6,7 @@ struct TranslationFiestaSwiftApp: App {
     @StateObject private var appContainer = AppContainer()
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("TranslationFiesta Swift") {
             ContentView()
                 .environmentObject(appContainer)
                 .frame(minWidth: 900, minHeight: 650)
@@ -102,7 +102,7 @@ private struct Sidebar: View {
                 .tag(SidebarTab.settings as SidebarTab?)
         }
         .listStyle(.sidebar)
-        .navigationTitle("Translation Fiesta")
+        .navigationTitle("TranslationFiesta Swift")
     }
 }
 

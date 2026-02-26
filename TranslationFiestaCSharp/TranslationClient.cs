@@ -204,10 +204,10 @@ namespace TranslationFiestaCSharp
             private readonly JsonSerializerOptions _jsonOptions;
             public TMetrics Metrics { get; } = new TMetrics();
 
-            public TranslationMemory(int cacheSize = 1000, string persistencePath = "tm_cache.json")
+            public TranslationMemory(int cacheSize = 1000, string? persistencePath = null)
             {
                 this.cacheSize = cacheSize;
-                this.persistencePath = persistencePath;
+                this.persistencePath = persistencePath ?? PortablePaths.TranslationMemoryFile;
                 _jsonOptions = new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase

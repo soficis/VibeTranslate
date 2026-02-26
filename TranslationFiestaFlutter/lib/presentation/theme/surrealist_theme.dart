@@ -1,184 +1,158 @@
 import 'package:flutter/material.dart';
 
+/// Unified TranslationFiesta theme — dark-first, clean, professional.
 class SurrealistTheme {
-  // Light Theme
+  // Unified color constants
+  static const _background = Color(0xFF0F1419);
+  static const _surface = Color(0xFF1A1F2E);
+  static const _surfaceElevated = Color(0xFF242A38);
+  static const _border = Color(0xFF2E3648);
+  static const _textPrimary = Color(0xFFE8ECF1);
+  static const _textSecondary = Color(0xFF8B95A5);
+  static const _accent = Color(0xFF3B82F6);
+  static const _accentHover = Color(0xFF2563EB);
+  static const statusAmber = Color(0xFFF59E0B);
+  static const statusGreen = Color(0xFF10B981);
+  static const statusRed = Color(0xFFEF4444);
+
   static final ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
-    scaffoldBackgroundColor: const Color(0xFFEAEAEA),
+    scaffoldBackgroundColor: const Color(0xFFF0F2F5),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFFD5D5D5),
+      backgroundColor: Color(0xFFFFFFFF),
       elevation: 0,
       titleTextStyle: TextStyle(
-        color: Color(0xFF333333),
+        color: Color(0xFF1A1F2E),
         fontSize: 20,
-        fontWeight: FontWeight.bold,
-        fontFamily: 'Playfair Display',
+        fontWeight: FontWeight.w600,
       ),
-      iconTheme: IconThemeData(
-        color: Color(0xFF333333),
-      ),
+      iconTheme: IconThemeData(color: Color(0xFF1A1F2E)),
     ),
-    textTheme: const TextTheme(
-      bodyLarge: TextStyle(
-        fontFamily: 'Lato',
-        fontSize: 16,
-        color: Color(0xFF333333),
-      ),
-      bodyMedium: TextStyle(
-        fontFamily: 'Lato',
-        fontSize: 14,
-        color: Color(0xFF555555),
-      ),
-      displayLarge: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF333333),
-      ),
-      displayMedium: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF333333),
-      ),
-      displaySmall: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF333333),
-      ),
-      headlineMedium: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF333333),
-      ),
-      headlineSmall: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF333333),
-      ),
-      titleLarge: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF333333),
-      ),
-    ),
-    buttonTheme: const ButtonThemeData(
-      buttonColor: Color(0xFFD9534F),
-      textTheme: ButtonTextTheme.primary,
-    ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: Color(0xFFD9534F),
-    ),
-    colorScheme: ColorScheme.fromSwatch().copyWith(
-      secondary: const Color(0xFF5BC0DE),
-      primary: const Color(0xFFD9534F),
-    ),
-  );
-
-  // Dark Theme
-  static final ThemeData darkTheme = ThemeData(
-    brightness: Brightness.dark,
-    scaffoldBackgroundColor: const Color(0xFF1E1E1E),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF2D2D2D),
-      elevation: 0,
-      titleTextStyle: TextStyle(
-        color: Color(0xFFE0E0E0),
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        fontFamily: 'Playfair Display',
-      ),
-      iconTheme: IconThemeData(
-        color: Color(0xFFE0E0E0),
-      ),
-    ),
-    textTheme: const TextTheme(
-      bodyLarge: TextStyle(
-        fontFamily: 'Lato',
-        fontSize: 16,
-        color: Color(0xFFE0E0E0),
-      ),
-      bodyMedium: TextStyle(
-        fontFamily: 'Lato',
-        fontSize: 14,
-        color: Color(0xFFB0B0B0),
-      ),
-      displayLarge: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFFE0E0E0),
-      ),
-      displayMedium: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFFE0E0E0),
-      ),
-      displaySmall: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFFE0E0E0),
-      ),
-      headlineMedium: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFFE0E0E0),
-      ),
-      headlineSmall: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFFE0E0E0),
-      ),
-      titleLarge: TextStyle(
-        fontFamily: 'Playfair Display',
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFFE0E0E0),
-      ),
-    ),
-    buttonTheme: const ButtonThemeData(
-      buttonColor: Color(0xFFBB86FC),
-      textTheme: ButtonTextTheme.primary,
-    ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: Color(0xFFBB86FC),
-    ),
-    colorScheme: const ColorScheme.dark(
-      primary: Color(0xFFBB86FC),
-      secondary: Color(0xFF03DAC6),
-      surface: Color(0xFF1E1E1E),
-      onPrimary: Color(0xFF000000),
-      onSecondary: Color(0xFF000000),
-      onSurface: Color(0xFFE0E0E0),
+    colorScheme: const ColorScheme.light(
+      primary: _accent,
+      secondary: _accentHover,
+      surface: Color(0xFFFFFFFF),
+      onPrimary: Color(0xFFFFFFFF),
+      onSecondary: Color(0xFFFFFFFF),
+      onSurface: Color(0xFF1A1F2E),
     ),
     cardTheme: const CardThemeData(
-      color: Color(0xFF2D2D2D),
-      elevation: 2,
+      color: Color(0xFFFFFFFF),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(10)),
+      ),
     ),
-    inputDecorationTheme: const InputDecorationTheme(
-      fillColor: Color(0xFF2D2D2D),
+    inputDecorationTheme: InputDecorationTheme(
+      fillColor: const Color(0xFFF5F6F8),
       filled: true,
       border: OutlineInputBorder(
-        borderSide: BorderSide(color: Color(0xFFBB86FC)),
+        borderSide: const BorderSide(color: Color(0xFFDDE1E6)),
+        borderRadius: BorderRadius.circular(8),
       ),
       enabledBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: Color(0xFFBB86FC)),
+        borderSide: const BorderSide(color: Color(0xFFDDE1E6)),
+        borderRadius: BorderRadius.circular(8),
       ),
       focusedBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: Color(0xFF03DAC6), width: 2),
+        borderSide: const BorderSide(color: _accent, width: 2),
+        borderRadius: BorderRadius.circular(8),
       ),
-      labelStyle: TextStyle(color: Color(0xFFE0E0E0)),
+      labelStyle: const TextStyle(color: Color(0xFF6B7280)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _accent,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      ),
     ),
   );
 
-  // Legacy themeData (for backward compatibility)
-  static final ThemeData themeData = lightTheme;
+  static final ThemeData darkTheme = ThemeData(
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: _background,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: _surface,
+      elevation: 0,
+      titleTextStyle: TextStyle(
+        color: _textPrimary,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+      ),
+      iconTheme: IconThemeData(color: _textPrimary),
+    ),
+    textTheme: const TextTheme(
+      bodyLarge: TextStyle(fontSize: 14, color: _textPrimary),
+      bodyMedium: TextStyle(fontSize: 13, color: _textSecondary),
+      displayLarge: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: _textPrimary,
+      ),
+      displayMedium: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: _textPrimary,
+      ),
+      titleLarge: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: _textPrimary,
+      ),
+      labelSmall: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.8,
+        color: _textSecondary,
+      ),
+    ),
+    colorScheme: const ColorScheme.dark(
+      primary: _accent,
+      secondary: _accentHover,
+      surface: _surface,
+      onPrimary: Color(0xFFFFFFFF),
+      onSecondary: Color(0xFFFFFFFF),
+      onSurface: _textPrimary,
+    ),
+    cardTheme: const CardThemeData(
+      color: _surface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: _border),
+        borderRadius: BorderRadius.all(Radius.circular(10)),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      fillColor: _surfaceElevated,
+      filled: true,
+      border: OutlineInputBorder(
+        borderSide: const BorderSide(color: _border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: _border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: _accent, width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      labelStyle: const TextStyle(color: _textSecondary),
+      hintStyle: const TextStyle(color: _textSecondary),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _accent,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      ),
+    ),
+    dividerColor: _border,
+  );
+
+  // Legacy alias
+  static final ThemeData themeData = darkTheme;
 }

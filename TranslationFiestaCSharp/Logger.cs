@@ -8,7 +8,7 @@ namespace TranslationFiestaCSharp
     public static class Logger
     {
         private static readonly object _sync = new object();
-        private static readonly string LogFilePath = Path.Combine(AppContext.BaseDirectory, "translationfiestacsharp.log");
+        private static readonly string LogFilePath = PortablePaths.LogFile;
         private static readonly long MaxLogFileSize = 5 * 1024 * 1024; // 5 MB
         private static readonly int MaxLogFiles = 5; // Keep up to 5 log files
         public static bool IsDebugEnabled { get; set; } = false; // Default to false
@@ -99,5 +99,4 @@ namespace TranslationFiestaCSharp
         }
     }
 }
-
 

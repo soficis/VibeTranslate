@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ['TranslationFiesta Team']
   spec.email         = ['team@translationfiesta.com']
 
-  spec.summary       = 'English ↔ Japanese Back-Translation Tool'
-  spec.description   = 'A comprehensive Ruby application for back-translation'
+  spec.summary       = 'English ↔ Japanese Back-Translation Desktop Tool'
+  spec.description   = 'A wxRuby desktop and CLI application for back-translation'
   spec.homepage      = 'https://github.com/soficis/VibeTranslate'
   spec.license       = 'GPL-3.0-only'
   spec.required_ruby_version = Gem::Requirement.new('>= 3.2.0')
@@ -24,8 +24,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
-  # Replaced Tk GUI with Sinatra web UI
-  spec.add_runtime_dependency 'sinatra', '~> 4.2'
+  spec.add_runtime_dependency 'wxruby3', '~> 1.6'
   spec.add_runtime_dependency 'easy_translate', '~> 0.5.1'
   spec.add_runtime_dependency 'nokogiri', '>= 1.19'
   spec.add_runtime_dependency 'rouge', '~> 4.7'

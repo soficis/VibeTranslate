@@ -278,8 +278,12 @@ namespace TranslationFiesta.WinUI
             XFont titleFont = new XFont("Times-Bold", 18, XFontStyleEx.Bold);
             XFont smallFont = new XFont("Times-Italic", _config.FontSize - 2, XFontStyleEx.Regular);
 
-            double yPosition = 50;
-            double pageWidth = page.Width - 100;
+            const double horizontalMargin = 50d;
+            const double verticalMargin = 50d;
+            const double pageBottomPadding = 100d;
+
+            double yPosition = verticalMargin;
+            double pageWidth = page.Width.Point - (horizontalMargin * 2d);
             double lineHeight = _config.FontSize + 5;
 
             // Title
@@ -302,11 +306,11 @@ namespace TranslationFiesta.WinUI
                 var translation = translations[i];
 
                 // Check if we need a new page
-                if (yPosition > page.Height - 100)
+                if (yPosition > page.Height.Point - pageBottomPadding)
                 {
                     page = document.AddPage();
                     gfx = XGraphics.FromPdfPage(page);
-                    yPosition = 50;
+                    yPosition = verticalMargin;
                 }
 
                 // Translation header

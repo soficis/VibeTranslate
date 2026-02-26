@@ -4,6 +4,12 @@
 
 Port of TranslationFiesta.py to a C# WinForms app targeting .NET 9.
 
+## Portable runtime
+
+- Portable archives only (no installers).
+- Runtime data default: `./data` beside the executable.
+- Override data root with `TF_APP_HOME`.
+
 Features:
 - Back-translation English -> Japanese -> English using the unofficial Google translate web endpoint
 - Load text files (txt, md, html)

@@ -2,6 +2,13 @@
 
 This folder contains the Python version of TranslationFiesta - a desktop application for back-translation using Google's translation API.
 
+## Portable runtime
+
+- Portable archives only (no installers).
+- Runtime data default: `./data` beside the executable.
+- Override data root with `TF_APP_HOME`.
+- Startup failures are logged to `./data/logs/startup_error.log` and shown in a dialog for windowed builds.
+
 ## Files
 
 - `TranslationFiesta.py` - Main application file
@@ -20,6 +27,8 @@ This folder contains the Python version of TranslationFiesta - a desktop applica
    ```bash
    python TranslationFiesta.py
    ```
+
+For PyInstaller builds, run the executable from the **dist output** folder (portable payload), not from the temporary `build/` work folder.
 
 ## Features
 

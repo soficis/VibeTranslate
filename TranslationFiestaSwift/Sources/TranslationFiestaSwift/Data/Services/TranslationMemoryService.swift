@@ -148,6 +148,11 @@ public actor TranslationMemoryService: TranslationMemoryRepository {
 
                     let container = TranslationMemoryContainer(entries: entries, stats: stats)
                     let data = try JSONEncoder().encode(container)
+                    try fileManager.createDirectory(
+                        at: persistenceURL.deletingLastPathComponent(),
+                        withIntermediateDirectories: true,
+                        attributes: nil
+                    )
                     try data.write(to: persistenceURL)
 
                     logger.debug("Translation memory saved", metadata: [
@@ -220,8 +225,17 @@ public actor TranslationMemoryService: TranslationMemoryRepository {
     }
 
     private func getPersistenceURL() -> URL {
-        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-        return documentsDirectory.appendingPathComponent(config.persistencePath)
+        do {
+            return try PortablePaths.translationMemoryURL(
+                persistencePath: config.persistencePath,
+                fileManager: fileManager
+            )
+        } catch {
+            let fallback = URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
+                .appendingPathComponent("data", isDirectory: true)
+                .appendingPathComponent(config.persistencePath)
+            return fallback
+        }
     }
 
     // MARK: - Stats helpers

@@ -11,10 +11,12 @@ import json
 import logging
 import logging.handlers
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from app_paths import get_logs_dir
 
 
 class LogLevel(Enum):
@@ -67,11 +69,7 @@ class StructuredLogger:
     def _initialize_file_logging(self) -> None:
         """Initialize file logging with rotation"""
         try:
-            # Create logs directory if it doesn't exist
-            log_dir = Path("logs")
-            log_dir.mkdir(exist_ok=True)
-
-            log_file_path = log_dir / "translationfiesta.log"
+            log_file_path = get_logs_dir() / "translationfiesta.log"
             self._log_file = log_file_path
 
             # Rotating file handler (10MB max, keep 5 backups)
@@ -110,7 +108,7 @@ class StructuredLogger:
         """Internal logging method with structured data"""
         log_data = extra or {}
         log_data.update({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": level.value
         })
 
@@ -294,7 +292,7 @@ class StructuredFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         # Extract structured data from record
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
             "logger": record.name,

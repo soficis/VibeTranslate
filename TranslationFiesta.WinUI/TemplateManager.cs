@@ -22,9 +22,7 @@ public class TemplateManager
 
     public TemplateManager()
     {
-        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var appName = "TranslationFiesta";
-        var templatesDirectory = Path.Combine(appDataPath, appName, "Templates");
+        var templatesDirectory = PortablePaths.TemplatesDirectory;
         Directory.CreateDirectory(templatesDirectory);
         _templatesFilePath = Path.Combine(templatesDirectory, "templates.json");
         _templates = new List<TranslationTemplate>();

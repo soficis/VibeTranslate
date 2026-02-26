@@ -74,14 +74,17 @@ module Program =
     open TranslationFiestaFSharp.BatchProcessor
     open TranslationFiestaFSharp.EpubProcessor
 
+    [<Literal>]
+    let AppDisplayName = "TranslationFiesta F#"
+
     /// <summary>
     /// Initial default state for the application.
     /// </summary>
     let initialUIState = {
         IsDarkTheme = true
         ProviderId = ProviderIds.GoogleUnofficial
-        WindowWidth = 900
-        WindowHeight = 650
+        WindowWidth = 1024
+        WindowHeight = 720
         WindowX = -1
         WindowY = -1
         LastFilePath = ""
@@ -555,91 +558,103 @@ module UI =
 
     /// <summary>
     /// Adjusts the layout of controls based on the current window size for responsive design.
+    /// Uses unified 3-panel layout: Header -> Input -> Action Row -> Side-by-side outputs -> Status.
     /// </summary>
     /// <param name="width">Current window width.</param>
     /// <param name="height">Current window height.</param>
     let adjustLayoutForSize (width: int) (height: int) =
         form.Invoke(Action(fun () ->
             try
-                // Minimum sizes to prevent controls from overlapping
-                let minWidth = 600
-                let minHeight = 500
-                let effectiveWidth = Math.Max(width, minWidth)
-                let effectiveHeight = Math.Max(height, minHeight)
+                let pad = 24
+                let minWidth = 700
+                let minHeight = 550
+                let w = Math.Max(width, minWidth)
+                let h = Math.Max(height, minHeight)
+                let contentWidth = w - pad * 2 - 16 // account for form chrome
 
-                // Detect if we're in fullscreen mode (window size close to screen size)
-                let screen = System.Windows.Forms.Screen.PrimaryScreen
-                let workingArea = 
-                    match screen with
-                    | null -> System.Windows.Forms.Screen.AllScreens.[0].WorkingArea
-                    | s -> s.WorkingArea
-                let isFullscreen = effectiveWidth >= workingArea.Width - 50 && effectiveHeight >= workingArea.Height - 50
+                // -- Row 1: Header (title + provider dropdown) --
+                lblTitle.Left <- pad
+                lblTitle.Top <- pad
+                lblTitle.Width <- 260
+                lblTitle.Height <- 28
 
-                // Adjust title label position and width
-                lblTitle.Width <- effectiveWidth - 40 // 20px margin on each side
-                lblTitle.Left <- 10
-                lblTitle.Top <- 10
+                let providerWidth = Math.Min(300, contentWidth - 280)
+                cmbProvider.Width <- providerWidth
+                cmbProvider.Left <- contentWidth + pad - providerWidth
+                cmbProvider.Top <- pad
+                lblProvider.Visible <- false // hidden; provider label not needed
 
-                // Calculate text box heights - larger in fullscreen
-                let baseTextBoxHeight = if isFullscreen then 200 else 120
-                let textBoxHeight = Math.Min(baseTextBoxHeight, Math.Max(80, effectiveHeight / 8))
+                // -- Row 2: Input card --
+                let inputTop = pad + 40
+                let inputHeight = Math.Max(80, (h - 300) / 3)
+                lblFormat.Left <- pad
+                lblFormat.Top <- inputTop
+                lblFormat.Width <- 100
+                txtInput.Left <- pad
+                txtInput.Top <- inputTop + 20
+                txtInput.Width <- contentWidth
+                txtInput.Height <- inputHeight
 
-                // Adjust input textbox
-                txtInput.Width <- effectiveWidth - 40
-                txtInput.Left <- 10
-                txtInput.Top <- 35
-                txtInput.Height <- textBoxHeight
+                // -- Row 3: Action row --
+                let actionTop = txtInput.Top + txtInput.Height + 12
+                btnBacktranslate.Left <- pad
+                btnBacktranslate.Top <- actionTop
+                btnBacktranslate.Width <- 160
+                btnBacktranslate.Height <- 36
 
-                // Adjust API controls
-                let apiControlsTop = txtInput.Top + txtInput.Height + 15
-                lblProvider.Left <- 10
-                lblProvider.Top <- apiControlsTop
-                cmbProvider.Left <- 10
-                cmbProvider.Top <- apiControlsTop + 20
-                cmbProvider.Width <- effectiveWidth - 300
-                btnBacktranslate.Left <- effectiveWidth - 150
-                btnBacktranslate.Top <- apiControlsTop + 20
+                btnImportTxt.Left <- btnBacktranslate.Left + btnBacktranslate.Width + 8
+                btnImportTxt.Top <- actionTop
+                btnImportTxt.Width <- 90
+                btnImportTxt.Height <- 36
 
-                // Adjust import and batch buttons (stacked under API settings on the left)
-                btnImportTxt.Left <- 10
-                btnImportTxt.Top <- cmbProvider.Top + 40
-                btnBatchProcess.Left <- 10
-                btnBatchProcess.Top <- btnImportTxt.Top + 35
+                btnSaveResult.Left <- btnImportTxt.Left + btnImportTxt.Width + 8
+                btnSaveResult.Top <- actionTop
+                btnSaveResult.Width <- 90
+                btnSaveResult.Height <- 36
 
-                // Adjust right-side controls
-                btnCopyResult.Left <- effectiveWidth - 150
-                btnCopyResult.Top <- btnImportTxt.Top
-                btnSaveResult.Left <- effectiveWidth - 150
-                btnSaveResult.Top <- btnBatchProcess.Top
+                btnBatchProcess.Left <- btnSaveResult.Left + btnSaveResult.Width + 8
+                btnBatchProcess.Top <- actionTop
+                btnBatchProcess.Width <- 90
+                btnBatchProcess.Height <- 36
 
-                // Adjust theme toggle (no format controls)
-                tglTheme.Left <- 10
-                tglTheme.Top <- btnBatchProcess.Top + 35
+                btnCopyResult.Left <- btnBatchProcess.Left + btnBatchProcess.Width + 8
+                btnCopyResult.Top <- actionTop
+                btnCopyResult.Width <- 90
+                btnCopyResult.Height <- 36
 
-                // Adjust intermediate text area
-                lblIntermediate.Left <- 10
-                lblIntermediate.Top <- tglTheme.Top + 45
-                txtIntermediate.Left <- 10
-                txtIntermediate.Top <- lblIntermediate.Top + 20
-                txtIntermediate.Width <- effectiveWidth - 40
-                txtIntermediate.Height <- textBoxHeight
+                // Theme toggle hidden (always dark)
+                tglTheme.Visible <- false
 
-                // Adjust back translation area
-                lblBack.Left <- 10
-                lblBack.Top <- txtIntermediate.Top + txtIntermediate.Height + 15
-                txtBack.Left <- 10
-                txtBack.Top <- lblBack.Top + 20
-                txtBack.Width <- effectiveWidth - 40
-                txtBack.Height <- textBoxHeight
+                // -- Row 4: Side-by-side output panels --
+                let outputTop = actionTop + 48
+                let gap = 12
+                let panelWidth = (contentWidth - gap) / 2
+                let outputHeight = Math.Max(80, h - outputTop - 70)
 
-                // Adjust status and spinner
-                lblStatus.Left <- 10
-                lblStatus.Top <- txtBack.Top + txtBack.Height + 10
-                lblStatus.Width <- effectiveWidth - 200
-                progressSpinner.Left <- effectiveWidth - 130
+                lblIntermediate.Left <- pad
+                lblIntermediate.Top <- outputTop
+                lblIntermediate.Width <- panelWidth
+                txtIntermediate.Left <- pad
+                txtIntermediate.Top <- outputTop + 20
+                txtIntermediate.Width <- panelWidth
+                txtIntermediate.Height <- outputHeight
+
+                lblBack.Left <- pad + panelWidth + gap
+                lblBack.Top <- outputTop
+                lblBack.Width <- panelWidth
+                txtBack.Left <- pad + panelWidth + gap
+                txtBack.Top <- outputTop + 20
+                txtBack.Width <- panelWidth
+                txtBack.Height <- outputHeight
+
+                // -- Row 5: Status bar --
+                lblStatus.Left <- pad
+                lblStatus.Top <- txtIntermediate.Top + txtIntermediate.Height + 8
+                lblStatus.Width <- contentWidth - 140
+                progressSpinner.Left <- contentWidth + pad - 120
                 progressSpinner.Top <- lblStatus.Top
 
-                Logger.debug (sprintf "Layout adjusted for size: %dx%d (fullscreen: %b)" effectiveWidth effectiveHeight isFullscreen)
+                Logger.debug (sprintf "Layout adjusted for size: %dx%d" w h)
             with ex ->
                 Logger.error (sprintf "Error adjusting layout: %s" ex.Message)
         )) |> ignore
@@ -703,133 +718,71 @@ module UI =
     /// <param name="isDark">True for dark theme, false for light theme.</param>
     let applyTheme (isDark: bool) =
         form.Invoke(Action(fun () ->
-            if isDark then
-                // Modern dark theme colors inspired by VS Code Dark+
-                let darkBg = System.Drawing.Color.FromArgb(30, 30, 30)        // Main background
-                let darkControlBg = System.Drawing.Color.FromArgb(37, 37, 38) // Control background
-                let darkBorder = System.Drawing.Color.FromArgb(45, 45, 48)    // Border color
-                let lightText = System.Drawing.Color.FromArgb(220, 220, 220)  // Primary text
-                let secondaryText = System.Drawing.Color.FromArgb(156, 156, 156) // Secondary text
-                let accentBlue = System.Drawing.Color.FromArgb(86, 156, 214)   // Accent color
-                let buttonHover = System.Drawing.Color.FromArgb(51, 51, 55)    // Button hover
+            // Unified dark palette — always dark
+            let bgColor      = System.Drawing.Color.FromArgb(15, 20, 25)      // #0F1419
+            let surfaceColor = System.Drawing.Color.FromArgb(26, 31, 46)      // #1A1F2E
+            let elevated     = System.Drawing.Color.FromArgb(36, 42, 56)      // #242A38
+            let borderColor  = System.Drawing.Color.FromArgb(46, 54, 72)      // #2E3648
+            let textPrimary  = System.Drawing.Color.FromArgb(232, 236, 241)   // #E8ECF1
+            let textSecondary= System.Drawing.Color.FromArgb(139, 149, 165)   // #8B95A5
+            let accent       = System.Drawing.Color.FromArgb(59, 130, 246)    // #3B82F6
+            let accentHover  = System.Drawing.Color.FromArgb(37, 99, 235)     // #2563EB
 
-                form.BackColor <- darkBg
-                form.ForeColor <- lightText
+            form.BackColor <- bgColor
+            form.ForeColor <- textPrimary
 
-                // Title label
-                lblTitle.BackColor <- darkBg
-                lblTitle.ForeColor <- accentBlue
+            // Title
+            lblTitle.BackColor <- bgColor
+            lblTitle.ForeColor <- textPrimary
 
-                // Input controls
-                txtInput.BackColor <- darkControlBg
-                txtInput.ForeColor <- lightText
-                txtInput.BorderStyle <- BorderStyle.FixedSingle
+            // Section labels
+            lblFormat.BackColor <- bgColor
+            lblFormat.ForeColor <- textSecondary
+            lblIntermediate.BackColor <- bgColor
+            lblIntermediate.ForeColor <- textSecondary
+            lblBack.BackColor <- bgColor
+            lblBack.ForeColor <- textSecondary
+            lblStatus.BackColor <- bgColor
+            lblStatus.ForeColor <- textSecondary
+            lblProvider.BackColor <- bgColor
+            lblProvider.ForeColor <- textSecondary
 
-                txtIntermediate.BackColor <- darkControlBg
-                txtIntermediate.ForeColor <- lightText
-                txtIntermediate.BorderStyle <- BorderStyle.FixedSingle
+            // Text inputs
+            let styleTextBox (tb: TextBox) =
+                tb.BackColor <- surfaceColor
+                tb.ForeColor <- textPrimary
+                tb.BorderStyle <- BorderStyle.FixedSingle
+            styleTextBox txtInput
+            styleTextBox txtIntermediate
+            styleTextBox txtBack
 
-                txtBack.BackColor <- darkControlBg
-                txtBack.ForeColor <- lightText
-                txtBack.BorderStyle <- BorderStyle.FixedSingle
+            // Provider combo
+            cmbProvider.BackColor <- surfaceColor
+            cmbProvider.ForeColor <- textPrimary
+            cmbProvider.FlatStyle <- FlatStyle.Flat
 
-                // Labels
-                lblIntermediate.BackColor <- darkBg
-                lblIntermediate.ForeColor <- secondaryText
+            // Secondary buttons
+            let styleSecondary (btn: Button) =
+                btn.BackColor <- elevated
+                btn.ForeColor <- textPrimary
+                btn.FlatStyle <- FlatStyle.Flat
+                btn.FlatAppearance.BorderColor <- borderColor
+                btn.FlatAppearance.BorderSize <- 1
+                btn.FlatAppearance.MouseOverBackColor <- surfaceColor
+            styleSecondary btnImportTxt
+            styleSecondary btnBatchProcess
+            styleSecondary btnCopyResult
+            styleSecondary btnSaveResult
 
-                lblBack.BackColor <- darkBg
-                lblBack.ForeColor <- secondaryText
+            // Hero button (Backtranslate)
+            btnBacktranslate.BackColor <- accent
+            btnBacktranslate.ForeColor <- System.Drawing.Color.White
+            btnBacktranslate.FlatStyle <- FlatStyle.Flat
+            btnBacktranslate.FlatAppearance.BorderSize <- 0
+            btnBacktranslate.FlatAppearance.MouseOverBackColor <- accentHover
 
-                lblStatus.BackColor <- darkBg
-                lblStatus.ForeColor <- secondaryText
-
-                // Buttons with modern styling
-                let styleButton (btn: Button) =
-                    btn.BackColor <- darkControlBg
-                    btn.ForeColor <- lightText
-                    btn.FlatStyle <- FlatStyle.Flat
-                    btn.FlatAppearance.BorderColor <- darkBorder
-                    btn.FlatAppearance.BorderSize <- 1
-                    btn.FlatAppearance.MouseOverBackColor <- buttonHover
-
-                styleButton btnBacktranslate
-                styleButton btnImportTxt
-                styleButton btnBatchProcess
-                styleButton btnCopyResult
-                styleButton btnSaveResult
-
-                // Provider controls
-                lblProvider.BackColor <- darkBg
-                lblProvider.ForeColor <- secondaryText
-                cmbProvider.BackColor <- darkControlBg
-                cmbProvider.ForeColor <- lightText
-
-                tglTheme.BackColor <- darkBg
-                tglTheme.ForeColor <- lightText
-
-                // WebBrowser removed - no preview box needed
-
-                setStatus "Dark mode enabled"
-            else
-                // Light theme (default Windows colors)
-                form.BackColor <- System.Drawing.SystemColors.Control
-                form.ForeColor <- System.Drawing.SystemColors.ControlText
-                
-                // Reset all controls to default
-                lblTitle.BackColor <- System.Drawing.SystemColors.Control
-                lblTitle.ForeColor <- System.Drawing.SystemColors.ControlText
-                
-                txtInput.BackColor <- System.Drawing.SystemColors.Window
-                txtInput.ForeColor <- System.Drawing.SystemColors.WindowText
-                txtInput.BorderStyle <- BorderStyle.FixedSingle
-                
-                txtIntermediate.BackColor <- System.Drawing.SystemColors.Window
-                txtIntermediate.ForeColor <- System.Drawing.SystemColors.WindowText
-                txtIntermediate.BorderStyle <- BorderStyle.FixedSingle
-                
-                txtBack.BackColor <- System.Drawing.SystemColors.Window
-                txtBack.ForeColor <- System.Drawing.SystemColors.WindowText
-                txtBack.BorderStyle <- BorderStyle.FixedSingle
-                
-                lblIntermediate.BackColor <- System.Drawing.SystemColors.Control
-                lblIntermediate.ForeColor <- System.Drawing.SystemColors.ControlText
-                
-                lblBack.BackColor <- System.Drawing.SystemColors.Control
-                lblBack.ForeColor <- System.Drawing.SystemColors.ControlText
-                
-                lblStatus.BackColor <- System.Drawing.SystemColors.Control
-                lblStatus.ForeColor <- System.Drawing.SystemColors.ControlText
-                
-                // Reset buttons and checkboxes
-                btnBacktranslate.BackColor <- System.Drawing.SystemColors.Control
-                btnBacktranslate.ForeColor <- System.Drawing.SystemColors.ControlText
-                btnBacktranslate.FlatStyle <- FlatStyle.Standard
-                
-                btnImportTxt.BackColor <- System.Drawing.SystemColors.Control
-                btnImportTxt.ForeColor <- System.Drawing.SystemColors.ControlText
-                btnImportTxt.FlatStyle <- FlatStyle.Standard
-
-                btnBatchProcess.BackColor <- System.Drawing.SystemColors.Control
-                btnBatchProcess.ForeColor <- System.Drawing.SystemColors.ControlText
-                btnBatchProcess.FlatStyle <- FlatStyle.Standard
-                
-                btnCopyResult.BackColor <- System.Drawing.SystemColors.Control
-                btnCopyResult.ForeColor <- System.Drawing.SystemColors.ControlText
-                btnCopyResult.FlatStyle <- FlatStyle.Standard
-                
-                btnSaveResult.BackColor <- System.Drawing.SystemColors.Control
-                btnSaveResult.ForeColor <- System.Drawing.SystemColors.ControlText
-                btnSaveResult.FlatStyle <- FlatStyle.Standard
-                
-                lblProvider.BackColor <- System.Drawing.SystemColors.Control
-                lblProvider.ForeColor <- System.Drawing.SystemColors.ControlText
-                cmbProvider.BackColor <- System.Drawing.SystemColors.Window
-                cmbProvider.ForeColor <- System.Drawing.SystemColors.WindowText
-                
-                tglTheme.BackColor <- System.Drawing.SystemColors.Control
-                tglTheme.ForeColor <- System.Drawing.SystemColors.ControlText
-
-                setStatus "Light mode enabled"
+            tglTheme.BackColor <- bgColor
+            tglTheme.ForeColor <- textPrimary
         )) |> ignore
 
     /// <summary>
@@ -838,12 +791,11 @@ module UI =
     /// <param name="uiState">The initial application state.</param>
     let initializeControls (uiState: UIState) =
         Logger.info "Initializing UI controls..."
-        // Adjust height since preview box was removed (was ~120px tall)
-        let adjustedHeight = Math.Max(500, uiState.WindowHeight - 140) // Minimum 500px height
-        form <- new Form(Text = "F# TranslationFiesta", Width = uiState.WindowWidth, Height = adjustedHeight)
+        form <- new Form(Text = Program.AppDisplayName, Width = uiState.WindowWidth, Height = uiState.WindowHeight)
         form.WindowState <- FormWindowState.Normal
         form.ShowInTaskbar <- true
         form.Visible <- true
+        form.MinimumSize <- new System.Drawing.Size(700, 550)
 
         // Set window position - ensure it's not stuck in top-left corner
         form.StartPosition <- FormStartPosition.CenterScreen // Always start centered for better UX
@@ -877,10 +829,15 @@ module UI =
 
         initializeDynamicText()
 
-        lblTitle <- new Label(Text = "Backtranslation (English -> Japanese -> English)", Left = 10, Top = 30, Width = 600, Height = 25, Font = new System.Drawing.Font("Segoe UI", 10.0f, System.Drawing.FontStyle.Bold), TextAlign = System.Drawing.ContentAlignment.MiddleCenter)
-        txtInput <- new TextBox(Left = 10, Top = 65, Width = 600, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, Text = uiState.InputText)
-        lblProvider <- new Label(Text = "Provider:", Left = 620, Top = 65, Width = 160)
-        cmbProvider <- new ComboBox(Left = 620, Top = 85, Width = 260, Height = 25, DropDownStyle = ComboBoxStyle.DropDownList)
+        let uiFont = new System.Drawing.Font("Segoe UI", 10.0f)
+        let labelFont = new System.Drawing.Font("Segoe UI", 8.0f, System.Drawing.FontStyle.Bold)
+        let titleFont = new System.Drawing.Font("Segoe UI", 14.0f, System.Drawing.FontStyle.Bold)
+        let heroFont  = new System.Drawing.Font("Segoe UI", 10.0f, System.Drawing.FontStyle.Bold)
+
+        lblTitle <- new Label(Text = Program.AppDisplayName, Left = 24, Top = 24, Width = 320, Height = 28, Font = titleFont, TextAlign = System.Drawing.ContentAlignment.MiddleLeft)
+
+        lblProvider <- new Label(Text = "Provider:", Left = 0, Top = 0, Width = 0, Height = 0, Visible = false) // hidden
+        cmbProvider <- new ComboBox(Left = 0, Top = 24, Width = 280, Height = 28, DropDownStyle = ComboBoxStyle.DropDownList, Font = uiFont)
         let providerOptions =
             [|
                 { Id = ProviderIds.GoogleUnofficial; Name = "Google Translate (Unofficial / Free)" }
@@ -889,19 +846,29 @@ module UI =
         cmbProvider.DisplayMember <- "Name"
         cmbProvider.ValueMember <- "Id"
         cmbProvider.SelectedValue <- uiState.ProviderId
-        btnBacktranslate <- new Button(Text = "Backtranslate", Left = 620, Top = 145, Width = 140)
-        btnImportTxt <- new Button(Text = "Import .txt", Left = 620, Top = 150, Width = 140)
-        btnBatchProcess <- new Button(Text = "Batch Process", Left = 620, Top = 185, Width = 140)
-        btnCopyResult <- new Button(Text = "Copy Result", Left = 620, Top = 220, Width = 140)
-        btnSaveResult <- new Button(Text = "Save Result", Left = 620, Top = 255, Width = 140)
-        tglTheme <- new CheckBox(Text = "Dark Mode", Left = 620, Top = 290, Width = 140, Checked = uiState.IsDarkTheme)
-        lblIntermediate <- new Label(Text = "Intermediate (ja):", Left = 10, Top = 195, Width = 200, Font = new System.Drawing.Font("Segoe UI", 9.0f, System.Drawing.FontStyle.Bold))
-        txtIntermediate <- new TextBox(Left = 10, Top = 215, Width = 600, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Text = uiState.IntermediateTranslation)
-        lblBack <- new Label(Text = "Back to English:", Left = 10, Top = 345, Width = 200, Font = new System.Drawing.Font("Segoe UI", 9.0f, System.Drawing.FontStyle.Bold))
-        txtBack <- new TextBox(Left = 10, Top = 365, Width = 600, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Text = uiState.FinalTranslation)
-        lblStatus <- new Label(Text = uiState.CurrentStatus, Left = 10, Top = 495, Width = 500)
-        progressSpinner <- new ProgressBar(Left = 520, Top = 495, Width = 120, Height = 20, Style = ProgressBarStyle.Marquee)
-        progressSpinner.Visible <- false // Always start hidden, will be controlled by state
+
+        // Section label for input card
+        lblFormat <- new Label(Text = "INPUT", Left = 24, Top = 64, Width = 100, Height = 16, Font = labelFont)
+        txtInput <- new TextBox(Left = 24, Top = 84, Width = 600, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, Text = uiState.InputText, Font = uiFont)
+
+        // Action row buttons
+        btnBacktranslate <- new Button(Text = "\u29BF Backtranslate", Left = 24, Top = 220, Width = 160, Height = 36, Font = heroFont)
+        btnImportTxt <- new Button(Text = "Import", Left = 192, Top = 220, Width = 90, Height = 36, Font = uiFont)
+        btnSaveResult <- new Button(Text = "Save", Left = 290, Top = 220, Width = 90, Height = 36, Font = uiFont)
+        btnBatchProcess <- new Button(Text = "Batch", Left = 388, Top = 220, Width = 90, Height = 36, Font = uiFont)
+        btnCopyResult <- new Button(Text = "Copy", Left = 486, Top = 220, Width = 90, Height = 36, Font = uiFont)
+
+        tglTheme <- new CheckBox(Text = "Dark Mode", Left = 0, Top = 0, Width = 0, Checked = true, Visible = false) // always dark
+
+        // Side-by-side output panels
+        lblIntermediate <- new Label(Text = "INTERMEDIATE (JA)", Left = 24, Top = 270, Width = 300, Height = 16, Font = labelFont)
+        txtIntermediate <- new TextBox(Left = 24, Top = 290, Width = 300, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Text = uiState.IntermediateTranslation, Font = uiFont)
+        lblBack <- new Label(Text = "RESULT (EN)", Left = 336, Top = 270, Width = 300, Height = 16, Font = labelFont)
+        txtBack <- new TextBox(Left = 336, Top = 290, Width = 300, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Text = uiState.FinalTranslation, Font = uiFont)
+
+        lblStatus <- new Label(Text = uiState.CurrentStatus, Left = 24, Top = 420, Width = 500, Font = uiFont)
+        progressSpinner <- new ProgressBar(Left = 520, Top = 420, Width = 120, Height = 20, Style = ProgressBarStyle.Marquee)
+        progressSpinner.Visible <- false
 
         // Set up initial responsive layout after controls are created
         adjustLayoutForSize form.Width form.Height
@@ -911,8 +878,8 @@ module UI =
             lblTitle :> Control; txtInput :> Control; lblProvider :> Control; cmbProvider :> Control;
             btnBacktranslate :> Control; btnImportTxt :> Control; btnBatchProcess :> Control;
             btnCopyResult :> Control; btnSaveResult :> Control; tglTheme :> Control;
-            lblIntermediate :> Control; txtIntermediate :> Control; lblBack :> Control;
-            txtBack :> Control; lblStatus :> Control; progressSpinner :> Control
+            lblFormat :> Control; lblIntermediate :> Control; txtIntermediate :> Control;
+            lblBack :> Control; txtBack :> Control; lblStatus :> Control; progressSpinner :> Control
         |])
 
         // Set up window event handlers
@@ -936,8 +903,12 @@ module UI =
         cmbProvider.SelectedIndexChanged.Add(fun _ ->
             let selected = cmbProvider.SelectedValue
             let providerId =
-                if isNull selected then ProviderIds.GoogleUnofficial
-                else selected.ToString()
+                match selected with
+                | null -> ProviderIds.GoogleUnofficial
+                | value ->
+                    match value.ToString() with
+                    | null -> ProviderIds.GoogleUnofficial
+                    | text -> ProviderIds.normalize text
             SharedState.dispatch (UpdateProvider providerId)
         )
 
@@ -956,8 +927,16 @@ module UI =
             dlg.DefaultExt <- ".txt"
             dlg.Filter <- "Text documents (.txt)|*.txt|All files|*.*"
             dlg.FileName <- "backtranslation.txt"
+            let currentState = SharedState.getState()
+            dlg.InitialDirectory <-
+                if String.IsNullOrWhiteSpace(currentState.LastSavePath) then
+                    PortablePaths.exportsDirectory
+                else
+                    match Path.GetDirectoryName(currentState.LastSavePath) with
+                    | null -> PortablePaths.exportsDirectory
+                    | directory when String.IsNullOrWhiteSpace(directory) -> PortablePaths.exportsDirectory
+                    | directory -> directory
             if dlg.ShowDialog() = DialogResult.OK then
-                let currentState = SharedState.getState() // Get current state for saving
                 SharedState.dispatch (SaveFile (dlg.FileName, currentState.InputText, currentState.FinalTranslation))
             )
 
@@ -965,6 +944,15 @@ module UI =
             use ofd = new OpenFileDialog()
             ofd.Filter <- "Supported files (*.txt;*.md;*.html;*.epub)|*.txt;*.md;*.html;*.epub|Text files (*.txt)|*.txt|Markdown files (*.md)|*.md|HTML files (*.html)|*.html|EPUB files (*.epub)|*.epub|All files (*.*)|*.*"
             ofd.Multiselect <- false
+            let currentState = SharedState.getState()
+            ofd.InitialDirectory <-
+                if String.IsNullOrWhiteSpace(currentState.LastFilePath) then
+                    PortablePaths.dataRoot
+                else
+                    match Path.GetDirectoryName(currentState.LastFilePath) with
+                    | null -> PortablePaths.dataRoot
+                    | directory when String.IsNullOrWhiteSpace(directory) -> PortablePaths.dataRoot
+                    | directory -> directory
             if ofd.ShowDialog() = DialogResult.OK then
                 SharedState.dispatch (ImportFile ofd.FileName)
         )
@@ -996,11 +984,18 @@ module UI =
                         txtBack.Text <- state.FinalTranslation
                         // Use setStatus to prevent flashing from redundant updates
                         setStatus state.CurrentStatus
-                        if cmbProvider.SelectedValue = null || cmbProvider.SelectedValue.ToString() <> state.ProviderId then
-                            cmbProvider.SelectedValue <- state.ProviderId
-                        tglTheme.Checked <- state.IsDarkTheme
+                        let selectedProviderId =
+                            match cmbProvider.SelectedValue with
+                            | null -> None
+                            | value ->
+                                match value.ToString() with
+                                | null -> None
+                                | text -> Some text
 
-                        applyTheme state.IsDarkTheme // Reapply theme on state change
+                        if selectedProviderId <> Some state.ProviderId then
+                            cmbProvider.SelectedValue <- state.ProviderId
+
+                        applyTheme true // Always dark theme
 
                         if state.IsProcessing then disableUi() else enableUi()
                         showSpinner state.IsProcessing

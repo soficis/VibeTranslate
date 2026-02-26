@@ -3,101 +3,49 @@ library;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/translation_provider.dart';
-import '../../domain/entities/translation.dart';
 
-/// Status bar widget for displaying application status
-/// Single Responsibility: Display current application status and progress
+/// Minimal status bar — status text + loading indicator.
 class StatusBar extends StatelessWidget {
   const StatusBar({super.key});
+
+  static const _amber = Color(0xFFF59E0B);
+  static const _green = Color(0xFF10B981);
+  static const _red = Color(0xFFEF4444);
+  static const _muted = Color(0xFF8B95A5);
+
+  Color _statusColor(String message, bool isLoading) {
+    if (isLoading) return _amber;
+    final lower = message.toLowerCase();
+    if (lower.contains('error') || lower.contains('fail')) return _red;
+    if (lower.contains('done') || lower.contains('complet')) return _green;
+    return _muted;
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TranslationProvider>();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest
-            .withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          // Status text
-          Expanded(
-            child: Text(
-              provider.statusMessage,
-              style: Theme.of(context).textTheme.bodyMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
-          // Progress indicator when loading
-          if (provider.isLoading) ...[
-            const SizedBox(width: 12),
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ],
-
-          // API status indicator
-          const SizedBox(width: 12),
-          _ApiStatusIndicator(
-            providerId: provider.providerId,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// API status indicator widget
-class _ApiStatusIndicator extends StatelessWidget {
-  final TranslationProviderId providerId;
-
-  const _ApiStatusIndicator({
-    required this.providerId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _getStatusColor();
-    final statusText = _getStatusText();
+    final color = _statusColor(provider.statusMessage, provider.isLoading);
 
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          _getStatusIcon(),
-          size: 16,
-          color: color,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          statusText,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w500,
-              ),
+        if (provider.isLoading)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+            ),
+          ),
+        Expanded(
+          child: Text(
+            provider.statusMessage.isEmpty ? 'Ready' : provider.statusMessage,
+            style: TextStyle(fontSize: 13, color: color),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
-  }
-
-  Color _getStatusColor() {
-    return Colors.green;
-  }
-
-  IconData _getStatusIcon() {
-    return Icons.check_circle;
-  }
-
-  String _getStatusText() {
-    return providerId.displayName;
   }
 }

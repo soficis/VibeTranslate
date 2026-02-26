@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"translationfiestago/internal/domain/entities"
@@ -125,6 +126,11 @@ func (tm *TranslationMemory) persist() {
 	bytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		fmt.Printf("Failed to marshal cache: %v\\n", err)
+		return
+	}
+
+	if err := os.MkdirAll(filepath.Dir(tm.persistencePath), 0o755); err != nil {
+		fmt.Printf("Failed to create cache directory: %v\\n", err)
 		return
 	}
 

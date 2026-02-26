@@ -159,7 +159,7 @@ namespace TranslationFiestaCSharp
             var titleFont = new XFont(_config.FontFamily, 18, XFontStyleEx.Bold);
 
             double yPosition = 50;
-            double pageWidth = page.Width - 100;
+            double pageWidth = page.Width.Point - 100.0;
             double lineHeight = _config.FontSize + 5;
 
             // Title
@@ -182,7 +182,7 @@ namespace TranslationFiestaCSharp
                 var translation = translations[i];
 
                 // Check if we need a new page
-                if (yPosition > page.Height - 100)
+                if (yPosition > page.Height.Point - 100.0)
                 {
                     page = document.AddPage();
                     gfx = XGraphics.FromPdfPage(page);

@@ -7,7 +7,7 @@ Custom exception classes and error taxonomy for TranslationFiestaPy.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -25,7 +25,7 @@ class TranslationFiestaError(Exception):
         self.message = message
         self.code = code
         self.details = details
-        self.timestamp = timestamp or datetime.utcnow()
+        self.timestamp = timestamp or datetime.now(timezone.utc)
 
     def __str__(self) -> str:
         parts = [self.message]

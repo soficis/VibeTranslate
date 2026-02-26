@@ -16,7 +16,7 @@ void main() {
 
     // Verify that the main page is displayed.
     expect(
-      find.text('Backtranslation (English -> Japanese -> English)'),
+      find.text('Backtranslation EN → JA → EN'),
       findsOneWidget,
     );
   });

@@ -29,9 +29,7 @@ module Settings =
         AutoSaveResults: bool
     }
 
-    let private settingsFilePath =
-        let appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-        Path.Combine(appData, "TranslationFiestaFSharp", "settings.json")
+    let private settingsFilePath = PortablePaths.settingsFilePath
 
     let loadSettings () : Result<AppSettings> =
         try

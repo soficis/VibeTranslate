@@ -26,6 +26,9 @@ task :run do
   TranslationFiesta::Application.new.run
 end
 
+desc 'Run the native desktop application (wxRuby)'
+task :desktop => :run
+
 desc 'Run the CLI version'
 task :cli do
   require_relative 'lib/translation_fiesta'
@@ -36,17 +39,4 @@ desc 'Setup database'
 task :setup_db do
   require_relative 'lib/translation_fiesta/data/database_setup'
   TranslationFiesta::Data::DatabaseSetup.new.create_tables
-end
-
-desc 'Start the Sinatra web UI (TF_USE_MOCK=1 to enable mock translations)'
-task :web do
-  sh "ruby bin/translation_fiesta"
-end
-
-desc 'Start web UI and open default browser'
-task 'web:open' do
-  port = ENV.fetch('TF_WEB_PORT', '4567')
-  url = "http://127.0.0.1:#{port}"
-  Thread.new { sleep 1; system("start #{url}") }
-  sh "ruby bin/translation_fiesta"
 end

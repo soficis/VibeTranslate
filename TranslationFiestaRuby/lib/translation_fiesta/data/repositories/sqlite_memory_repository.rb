@@ -2,13 +2,14 @@
 
 require 'sqlite3'
 require 'digest'
+require_relative '../../infrastructure/app_paths'
 require_relative '../../domain/repositories/memory_repository'
 
 module TranslationFiesta
   module Data
     module Repositories
       class SqliteMemoryRepository < TranslationFiesta::Domain::Repositories::MemoryRepository
-        def initialize(db_path = 'translation_memory.db')
+        def initialize(db_path = Infrastructure::AppPaths.memory_db_path)
           @db_path = db_path
           ensure_database_exists
         end

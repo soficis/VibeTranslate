@@ -31,11 +31,12 @@ dist-electron/**
 .eslintcache
 
 # Documentation and reference files
-docs/
+docs/*
 *.md
 *.pdf
 *.docx
 *.txt
+!docs/portable-policy.md
 !CMakeLists.txt
 !requirements.txt
 !*README.md
@@ -167,6 +168,7 @@ TranslationFiestaElectron/node_modules/
 TranslationFiestaElectron/dist/
 TranslationFiestaElectron/dist-electron/
 TranslationFiestaElectron/.vite/
+TranslationFiestaElectron/data/**
 
 # IDE and Editor files
 .vscode/
@@ -408,3 +410,4 @@ sosumi_app_task.txt
 context7_res.txt
 context7_log_docs.txt
 context7_di_docs.txt
+docs/portable-policy.md

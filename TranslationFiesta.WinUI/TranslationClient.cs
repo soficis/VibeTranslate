@@ -178,7 +178,7 @@ namespace TranslationFiesta.WinUI
 
                     // Additional string cleaning
                     responseJson = CleanJsonResponseString(responseJson);
-                    
+
                     if (string.IsNullOrWhiteSpace(responseJson))
                         throw new TranslationProviderException("invalid_response", "Empty response from unofficial API");
 
@@ -201,8 +201,8 @@ namespace TranslationFiesta.WinUI
 
                     for (int i = 0; i < resultArray.GetArrayLength(); i++)
                     {
-                        if (resultArray[i].ValueKind == JsonValueKind.Array && 
-                            resultArray[i].GetArrayLength() > 0 && 
+                        if (resultArray[i].ValueKind == JsonValueKind.Array &&
+                            resultArray[i].GetArrayLength() > 0 &&
                             resultArray[i][0].ValueKind == JsonValueKind.String)
                         {
                             var translation = resultArray[i][0].GetString();
@@ -386,10 +386,10 @@ namespace TranslationFiesta.WinUI
             private readonly string persistencePath;
             public TMetrics Metrics { get; } = new TMetrics();
 
-            public TranslationMemory(int cacheSize = 1000, string persistencePath = "tm_cache.json")
+            public TranslationMemory(int cacheSize = 1000, string? persistencePath = null)
             {
                 this.cacheSize = cacheSize;
-                this.persistencePath = persistencePath;
+                this.persistencePath = persistencePath ?? PortablePaths.TranslationMemoryFile;
                 LoadCache();
             }
 

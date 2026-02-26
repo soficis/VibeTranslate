@@ -69,11 +69,11 @@ lint-ruby:
 
 lint-winui:
 	$(call require_cmd,dotnet,lint-winui)
-	cd TranslationFiesta.WinUI && dotnet format --verify-no-changes
+	cd TranslationFiesta.WinUI && dotnet format TranslationFiesta.WinUI.csproj --verify-no-changes -v q
 
 lint-csharp:
 	$(call require_cmd,dotnet,lint-csharp)
-	cd TranslationFiestaCSharp && dotnet format --verify-no-changes
+	cd TranslationFiestaCSharp && dotnet format TranslationFiestaCSharp.csproj --verify-no-changes -v q
 
 define run_targets
 	@failed=0; \

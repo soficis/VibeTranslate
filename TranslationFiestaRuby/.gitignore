@@ -24,9 +24,6 @@ vendor/cache
 vendor/gems
 vendor/ruby
 
-# Sinatra specific
-config.ru
-
 # Build artifacts
 build/
 *.o

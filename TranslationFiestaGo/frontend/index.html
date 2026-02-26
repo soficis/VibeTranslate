@@ -3,10 +3,25 @@
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TempWailsProject</title>
+    <title>TranslationFiesta Go</title>
 </head>
 <body>
+<div id="boot-fallback" style="padding:24px;color:#f8fafc;font-family:Segoe UI, sans-serif;">
+    Starting TranslationFiesta Go…
+</div>
 <div id="app"></div>
+<script>
+    window.__tfFrontendStarted = false;
+    setTimeout(function () {
+        if (window.__tfFrontendStarted) {
+            return;
+        }
+        var fallback = document.getElementById('boot-fallback');
+        if (fallback) {
+            fallback.textContent = 'Frontend failed to initialize. Rebuild the app bundle and ensure WebView2 is installed.';
+        }
+    }, 4000);
+</script>
 <script src="./src/main.js" type="module"></script>
 </body>
 </html>

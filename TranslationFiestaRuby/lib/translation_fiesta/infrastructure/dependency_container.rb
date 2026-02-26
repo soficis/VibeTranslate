@@ -9,6 +9,7 @@ require_relative '../use_cases/translate_text_use_case'
 require_relative '../use_cases/process_file_use_case'
 require_relative '../features/batch_processor'
 require_relative '../features/export_manager'
+require_relative 'app_paths'
 
 module TranslationFiesta
   module Infrastructure
@@ -32,7 +33,7 @@ module TranslationFiesta
           @translation_repository = Data::Repositories::GoogleTranslationRepository.new(:unofficial)
         end
         @file_repository = Data::Repositories::FileSystemRepository.new
-        @memory_repository = Data::Repositories::SqliteMemoryRepository.new
+        @memory_repository = Data::Repositories::SqliteMemoryRepository.new(AppPaths.memory_db_path)
       end
 
       def setup_services

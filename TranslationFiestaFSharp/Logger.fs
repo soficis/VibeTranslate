@@ -3,16 +3,15 @@ namespace TranslationFiestaFSharp
 module Logger =
 
     open System
-    open System.IO
 
     let private lockObj = obj()
-    let private logFile = Path.Combine(AppContext.BaseDirectory, "fsharptranslate.log")
+    let private logFile = PortablePaths.logFilePath
 
     let private write level message =
         try
             lock lockObj (fun () ->
-                let logEntry = sprintf "[%s] %s: %s%s" (DateTime.UtcNow.ToString("O")) level message Environment.NewLine
-                File.AppendAllText(logFile, logEntry)
+                    let logEntry = sprintf "[%s] %s: %s%s" (DateTime.UtcNow.ToString("O")) level message Environment.NewLine
+                    System.IO.File.AppendAllText(logFile, logEntry)
             )
         with
         | _ -> () // Best effort logging; don't crash app

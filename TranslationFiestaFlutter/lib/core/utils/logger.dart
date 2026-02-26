@@ -3,8 +3,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
+import 'app_paths.dart';
 
 /// Log levels.
 enum LogLevel {
@@ -21,7 +21,6 @@ enum LogLevel {
 /// Single Responsibility: Handle all logging operations
 class Logger {
   static Logger? _instance;
-  static const String _logFileName = 'TranslationFiestaFlutter.log';
   static final DateFormat _dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss.SSS');
 
   late File _logFile;
@@ -43,8 +42,7 @@ class Logger {
     if (_isInitialized) return;
 
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final logPath = '${directory.path}/$_logFileName';
+      final logPath = AppPaths.instance.logFile.path;
       _logFile = File(logPath);
 
       // Ensure log file exists

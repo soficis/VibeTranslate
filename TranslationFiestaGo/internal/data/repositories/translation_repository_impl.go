@@ -16,9 +16,9 @@ type TranslationRepositoryImpl struct {
 }
 
 // NewTranslationRepository creates a new translation repository
-func NewTranslationRepository() repositories.TranslationRepository {
+func NewTranslationRepository(translationMemoryPath string) repositories.TranslationRepository {
 	return &TranslationRepositoryImpl{
-		translationService: services.NewTranslationService(),
+		translationService: services.NewTranslationService(translationMemoryPath),
 		logger:             utils.GetLogger(),
 	}
 }

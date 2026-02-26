@@ -17,6 +17,7 @@ from typing import Callable, Optional
 
 import requests
 
+from app_paths import get_tm_cache_file
 from enhanced_logger import get_logger
 from exceptions import (
     BlockedError,
@@ -70,9 +71,9 @@ class TranslationResponse:
 class TranslationMemory:
     """Translation Memory with LRU, persistence, and metrics."""
 
-    def __init__(self, cache_size: int = 1000, persistence_path: str = "tm_cache.json"):
+    def __init__(self, cache_size: int = 1000, persistence_path: str | None = None):
         self.cache_size = cache_size
-        self.persistence_path = persistence_path
+        self.persistence_path = persistence_path or str(get_tm_cache_file())
         self.cache = OrderedDict()  # key: f"{source}:{target_lang}"
         self.metrics = {
             'hits': 0,
@@ -176,7 +177,7 @@ class TranslationService:
         self.logger = get_logger()
         self.rate_limiter = RateLimiter()
         self.session = session or requests.Session()
-        self.tm = TranslationMemory(cache_size=1000, persistence_path="tm_cache.json")
+        self.tm = TranslationMemory(cache_size=1000)
 
     def _extract_text_from_unofficial_response(self, data: object) -> Result[str, TranslationFiestaError]:
         """Extract translated text from unofficial Google Translate API response"""

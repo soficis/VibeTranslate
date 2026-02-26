@@ -20,7 +20,7 @@ namespace TranslationFiesta.WinUI
 
     public static class SettingsService
     {
-        private static readonly string PathFile = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TranslationFiesta", "settings.json");
+        private static readonly string PathFile = PortablePaths.SettingsFile;
         private static AppSettings? _cached;
 
         public static AppSettings Load()

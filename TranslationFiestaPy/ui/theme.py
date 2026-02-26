@@ -1,29 +1,43 @@
-"""Theme configuration for the TranslationFiesta Tkinter UI."""
+"""Unified dark theme configuration for the TranslationFiesta Tkinter UI."""
 
 from __future__ import annotations
 
 
 def build_themes() -> dict[str, dict[str, str]]:
     return {
-        "light": {
-            "bg": "#f0f0f0",
-            "fg": "#000000",
-            "text_bg": "#ffffff",
-            "text_fg": "#000000",
-            "button_bg": "#e0e0e0",
-            "button_fg": "#000000",
-            "label_bg": "#f0f0f0",
-            "label_fg": "#000000",
-        },
         "dark": {
-            "bg": "#2b2b2b",
-            "fg": "#ffffff",
-            "text_bg": "#3c3c3c",
-            "text_fg": "#ffffff",
-            "button_bg": "#4a4a4a",
-            "button_fg": "#ffffff",
-            "label_bg": "#2b2b2b",
-            "label_fg": "#ffffff",
+            "bg": "#0F1419",
+            "fg": "#E8ECF1",
+            "text_bg": "#1A1F2E",
+            "text_fg": "#E8ECF1",
+            "button_bg": "#242A38",
+            "button_fg": "#E8ECF1",
+            "label_bg": "#0F1419",
+            "label_fg": "#8B95A5",
+            "accent": "#3B82F6",
+            "accent_hover": "#2563EB",
+            "accent_fg": "#FFFFFF",
+            "border": "#2E3648",
+            "amber": "#F59E0B",
+            "green": "#10B981",
+            "red": "#EF4444",
+        },
+        "light": {
+            "bg": "#F8FAFC",
+            "fg": "#1E293B",
+            "text_bg": "#FFFFFF",
+            "text_fg": "#1E293B",
+            "button_bg": "#E2E8F0",
+            "button_fg": "#1E293B",
+            "label_bg": "#F8FAFC",
+            "label_fg": "#64748B",
+            "accent": "#3B82F6",
+            "accent_hover": "#2563EB",
+            "accent_fg": "#FFFFFF",
+            "border": "#CBD5E1",
+            "amber": "#F59E0B",
+            "green": "#10B981",
+            "red": "#EF4444",
         },
     }
 

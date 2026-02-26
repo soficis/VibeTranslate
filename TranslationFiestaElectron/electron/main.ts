@@ -10,7 +10,28 @@ type SettingsData = { providerId: ProviderId };
 
 const defaultSettings: SettingsData = { providerId: "google_unofficial" };
 
+const resolvePortableDataRoot = () => {
+  const override = process.env.TF_APP_HOME?.trim();
+  if (override) {
+    return path.resolve(override);
+  }
+
+  const appRoot = app.isPackaged
+    ? path.dirname(app.getPath("exe"))
+    : path.resolve(process.cwd());
+  return path.join(appRoot, "data");
+};
+
+const portableDataRoot = resolvePortableDataRoot();
+fs.mkdirSync(portableDataRoot, { recursive: true });
+app.setPath("userData", portableDataRoot);
+
 const getSettingsPath = () => path.join(app.getPath("userData"), "settings.json");
+const getExportsDir = () => {
+  const exportsDir = path.join(app.getPath("userData"), "exports");
+  fs.mkdirSync(exportsDir, { recursive: true });
+  return exportsDir;
+};
 
 const readSettings = (): SettingsData => {
   try {
@@ -30,9 +51,10 @@ const writeSettings = (settings: SettingsData) => {
 
 const createWindow = () => {
   const win = new BrowserWindow({
+    title: "TranslationFiesta TypeScript",
     width: 1100,
     height: 800,
-    backgroundColor: "#0f172a",
+    backgroundColor: "#0F1419",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -89,8 +111,9 @@ app.whenReady().then(() => {
 
   ipcMain.handle("files-save", async (_event, payload: { content: string; defaultPath?: string }) => {
     try {
+      const defaultPath = payload.defaultPath ?? path.join(getExportsDir(), "backtranslation.txt");
       const result = await dialog.showSaveDialog({
-        defaultPath: payload.defaultPath,
+        defaultPath,
         filters: [
           { name: "Text", extensions: ["txt", "md", "html"] },
           { name: "All Files", extensions: ["*"] }

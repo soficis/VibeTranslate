@@ -30,6 +30,7 @@ except ImportError:
     # Fallback if tkinterweb is not available or doesn't have HtmlFrame
     HtmlFrame = None
 
+from app_paths import get_exports_dir
 from batch_processor import BatchProcessor
 from enhanced_logger import get_logger
 from epub_processor import EpubProcessor
@@ -45,11 +46,13 @@ from translation_services import TranslationService
 
 from .theme import build_themes, toggle_button_label
 
+APP_DISPLAY_NAME = "TranslationFiesta Python"
+
 
 class TranslationFiesta:
     def __init__(self, root):
         self.root = root
-        self.root.title("TranslationFiesta - English ↔ Japanese Backtranslation")
+        self.root.title(APP_DISPLAY_NAME)
 
         # DPI Awareness and Scaling
         self.dpi_factor = self.get_dpi_factor()
@@ -70,8 +73,9 @@ class TranslationFiesta:
         # Theme management
         self.themes = build_themes()
 
-        # Load theme from settings
-        self.current_theme = self.settings.get_theme()
+        # Load theme from settings — default to dark
+        saved_theme = self.settings.get_theme()
+        self.current_theme = saved_theme if saved_theme in self.themes else "dark"
 
         # Enhanced logging
         self.logger = get_logger()
@@ -133,169 +137,150 @@ class TranslationFiesta:
         return int(size * self.scale_factor)
 
     def create_widgets(self):
-        """Create and layout all GUI widgets"""
+        """Create and layout all GUI widgets — unified 3-panel design."""
         theme = self.themes[self.current_theme]
+        font_family = "Segoe UI" if platform.system() == "Windows" else "Helvetica"
 
         # Apply theme to root window
         self.root.configure(bg=theme['bg'])
 
+        # Configure grid: header, input-label, input, action-row, output-label-row, output, status
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_columnconfigure(1, weight=1)
+        self.root.grid_rowconfigure(5, weight=1)  # output row expands
+
         # Menu
         self.build_menu()
 
-        # Toolbar section
-        toolbar_frame = tk.Frame(self.root, bg=theme['bg'])
-        toolbar_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
-        toolbar_frame.grid_columnconfigure(3, weight=1)
+        # === Row 0: Header (title + provider) ===
+        header_frame = tk.Frame(self.root, bg=theme['bg'])
+        header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=24, pady=(16, 8))
+        header_frame.grid_columnconfigure(1, weight=1)
 
-        # Theme toggle button
-        self.btn_theme = tk.Button(
-            toolbar_frame, text=toggle_button_label(self.current_theme), command=self.toggle_theme,
-            bg=theme['button_bg'], fg=theme['button_fg'], font=("Arial", self.scale_font(9))
-        )
-        self.btn_theme.grid(row=0, column=0, padx=(0, 10))
-
-        # File load button
-        self.btn_load_file = tk.Button(
-            toolbar_frame, text="📁 Load File", command=self.load_file,
-            bg=theme['button_bg'], fg=theme['button_fg'], font=("Arial", self.scale_font(9))
-        )
-        self.btn_load_file.grid(row=0, column=1, padx=(0, 10))
-
-        # Batch process button
-        self.btn_batch_process = tk.Button(
-            toolbar_frame, text="📦 Batch Process", command=self.show_batch_processor,
-            bg=theme['button_bg'], fg=theme['button_fg'], font=("Arial", self.scale_font(9))
-        )
-        self.btn_batch_process.grid(row=0, column=2, padx=(0, 10))
-
-        # Mysterious "Panic" Button
-        self.btn_panic = tk.Button(
-            toolbar_frame, text="Panic", command=self.on_panic,
-            bg="#ff4d4d", fg="#ffffff", font=("Arial", self.scale_font(9), "bold")
-        )
-        self.btn_panic.grid(row=0, column=3, padx=(0, 10))
-
-        # File info label
-        self.lbl_file_info = tk.Label(
-            toolbar_frame, text="", anchor="w", bg=theme['bg'], fg=theme['fg'], font=("Arial", self.scale_font(9))
-        )
-        self.lbl_file_info.grid(row=0, column=4, sticky="ew")
-
-        # Provider selection
         tk.Label(
-            toolbar_frame,
-            text="Provider:",
-            bg=theme['bg'],
-            fg=theme['fg'],
-            font=("Arial", self.scale_font(9)),
-        ).grid(row=1, column=0, sticky="w", pady=(6, 0))
+            header_frame, text=APP_DISPLAY_NAME,
+            bg=theme['bg'], fg=theme['fg'],
+            font=(font_family, self.scale_font(16), "bold"),
+        ).grid(row=0, column=0, sticky="w")
 
         self.cmb_provider = ttk.Combobox(
-            toolbar_frame,
+            header_frame,
             textvariable=self.provider_var,
             values=self.provider_labels,
             state="readonly",
             width=36,
         )
-        self.cmb_provider.grid(row=1, column=1, sticky="w", pady=(6, 0))
+        self.cmb_provider.grid(row=0, column=1, sticky="e")
         self.cmb_provider.bind("<<ComboboxSelected>>", lambda _event: self.on_provider_changed())
+
+        # === Row 1: Input label ===
+        self.lbl_input = tk.Label(
+            self.root, text="INPUT", anchor="w",
+            bg=theme['label_bg'], fg=theme['label_fg'],
+            font=(font_family, self.scale_font(8), "bold"),
+        )
+        self.lbl_input.grid(row=1, column=0, columnspan=2, sticky="ew", padx=24, pady=(4, 0))
+
+        # === Row 2: Input text area ===
+        self.txt_input = scrolledtext.ScrolledText(
+            self.root, height=6, wrap=tk.WORD,
+            font=(font_family, self.scale_font(10)),
+            bg=theme['text_bg'], fg=theme['text_fg'],
+            insertbackground=theme['text_fg'],
+            relief="flat", bd=0, highlightthickness=1,
+            highlightcolor=theme.get('accent', '#3B82F6'),
+            highlightbackground=theme.get('border', '#2E3648'),
+        )
+        self.txt_input.grid(row=2, column=0, columnspan=2, sticky="ew", padx=24, pady=(2, 8))
+
+        # === Row 3: Action row ===
+        action_frame = tk.Frame(self.root, bg=theme['bg'])
+        action_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=24, pady=(0, 8))
+
+        # Hero button
+        self.btn_translate = tk.Button(
+            action_frame, text="\u29BF Backtranslate", command=self.start_translation,
+            font=(font_family, self.scale_font(10), "bold"),
+            bg=theme.get('accent', '#3B82F6'),
+            fg=theme.get('accent_fg', '#FFFFFF'),
+            activebackground=theme.get('accent_hover', '#2563EB'),
+            activeforeground=theme.get('accent_fg', '#FFFFFF'),
+            relief="flat", bd=0, padx=16, pady=6,
+        )
+        self.btn_translate.pack(side=tk.LEFT, padx=(0, 8))
+
+        # Secondary buttons
+        for text, cmd in [
+            ("Import", self.load_file),
+            ("Save", self.save_results),
+            ("Copy", self.copy_results),
+            ("Batch", self.show_batch_processor),
+        ]:
+            tk.Button(
+                action_frame, text=text, command=cmd,
+                font=(font_family, self.scale_font(9)),
+                bg=theme['button_bg'], fg=theme['button_fg'],
+                activebackground=theme['text_bg'],
+                activeforeground=theme['button_fg'],
+                relief="flat", bd=0, padx=10, pady=6,
+            ).pack(side=tk.LEFT, padx=(0, 4))
+
+        # Status label (right side of action row)
+        self.lbl_status = tk.Label(
+            action_frame, text=self.lbl_status_text, anchor="e",
+            bg=theme['bg'], fg=theme['label_fg'],
+            font=(font_family, self.scale_font(9)),
+        )
+        self.lbl_status.pack(side=tk.RIGHT)
 
         self.on_provider_changed()
 
-        # Input section
-        self.lbl_input = tk.Label(self.root, text=self.lbl_input_text, anchor="w",
-                           bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", self.scale_font(10)))
-        self.lbl_input.grid(row=1, column=0, sticky="ew", padx=10, pady=(5, 2))
+        # Progress bar (hidden by default)
+        self.progress_bar = ttk.Progressbar(action_frame, mode='indeterminate')
+        self.progress_bar.pack(side=tk.RIGHT, padx=(0, 8))
+        self.progress_bar.pack_forget()
 
-        self.txt_input = scrolledtext.ScrolledText(
-            self.root, height=10, wrap=tk.WORD, font=("Arial", self.scale_font(10)),
-            bg=theme['text_bg'], fg=theme['text_fg'], insertbackground=theme['text_fg']
+        # === Row 4: Output labels (side by side) ===
+        self.lbl_ja = tk.Label(
+            self.root, text="INTERMEDIATE (JA)", anchor="w",
+            bg=theme['label_bg'], fg=theme['label_fg'],
+            font=(font_family, self.scale_font(8), "bold"),
         )
-        self.txt_input.grid(row=2, column=0, sticky="ew", padx=10, pady=(0, 10))
+        self.lbl_ja.grid(row=4, column=0, sticky="ew", padx=(24, 6), pady=(4, 0))
 
-        # Button and status
-        button_frame = tk.Frame(self.root, bg=theme['bg'])
-        button_frame.grid(row=3, column=0, sticky="ew", padx=10)
-        button_frame.grid_columnconfigure(1, weight=1)
-
-        self.btn_translate = tk.Button(
-            button_frame, text=self.btn_translate_text, command=self.start_translation,
-            height=2, font=("Arial", self.scale_font(10), "bold"),
-            bg=theme['button_bg'], fg=theme['button_fg']
+        self.lbl_back = tk.Label(
+            self.root, text="RESULT (EN)", anchor="w",
+            bg=theme['label_bg'], fg=theme['label_fg'],
+            font=(font_family, self.scale_font(8), "bold"),
         )
-        self.btn_translate.grid(row=0, column=0, padx=(0, 10))
+        self.lbl_back.grid(row=4, column=1, sticky="ew", padx=(6, 24), pady=(4, 0))
 
-        self.lbl_status = tk.Label(
-            button_frame, text=self.lbl_status_text, anchor="w", fg="blue",
-            bg=theme['bg'], font=("Arial", self.scale_font(9))
-        )
-        self.lbl_status.grid(row=0, column=1, sticky="ew")
-
-        # Progress bar (visible only during translation)
-        self.progress_bar = ttk.Progressbar(button_frame, mode='indeterminate')
-        self.progress_bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
-        self.progress_bar.grid_remove()
-
-        # Japanese intermediate section
-        self.lbl_ja = tk.Label(self.root, text=self.lbl_ja_text, anchor="w",
-                         bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", self.scale_font(10)))
-        self.lbl_ja.grid(row=4, column=0, sticky="ew", padx=10, pady=(10, 2))
-
+        # === Row 5: Side-by-side output text areas ===
         self.txt_ja = scrolledtext.ScrolledText(
-            self.root, height=10, wrap=tk.WORD, state="disabled", font=("Arial", self.scale_font(10)),
-            bg=theme['text_bg'], fg=theme['text_fg']
+            self.root, height=8, wrap=tk.WORD, state="disabled",
+            font=(font_family, self.scale_font(10)),
+            bg=theme['text_bg'], fg=theme['text_fg'],
+            relief="flat", bd=0, highlightthickness=1,
+            highlightbackground=theme.get('border', '#2E3648'),
         )
-        self.txt_ja.grid(row=5, column=0, sticky="ew", padx=10, pady=(0, 10))
-
-        # Back to English section
-        self.lbl_back = tk.Label(self.root, text=self.lbl_back_text, anchor="w",
-                           bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", self.scale_font(10)))
-        self.lbl_back.grid(row=6, column=0, sticky="ew", padx=10, pady=(10, 2))
+        self.txt_ja.grid(row=5, column=0, sticky="nsew", padx=(24, 6), pady=(2, 16))
 
         self.txt_back = scrolledtext.ScrolledText(
-            self.root, height=8, wrap=tk.WORD, state="disabled", font=("Arial", self.scale_font(10)),
-            bg=theme['text_bg'], fg=theme['text_fg']
+            self.root, height=8, wrap=tk.WORD, state="disabled",
+            font=(font_family, self.scale_font(10)),
+            bg=theme['text_bg'], fg=theme['text_fg'],
+            relief="flat", bd=0, highlightthickness=1,
+            highlightbackground=theme.get('border', '#2E3648'),
         )
-        self.txt_back.grid(row=7, column=0, sticky="ew", padx=10, pady=(0, 10))
+        self.txt_back.grid(row=5, column=1, sticky="nsew", padx=(6, 24), pady=(2, 16))
 
-        # Output format selection
-        format_frame = tk.Frame(self.root, bg=theme['bg'])
-        format_frame.grid(row=8, column=0, sticky="ew", padx=10, pady=(10, 0))
-
-        tk.Label(format_frame, text="Output Format:", bg=theme['bg'], fg=theme['fg'], font=("Arial", self.scale_font(9))).pack(side=tk.LEFT, padx=(0, 5))
-        self.format_combo = ttk.Combobox(
-            format_frame, textvariable=self.output_format_var,
-            values=["HTML", "Markdown", "Plain Text"], state="readonly",
-            font=("Arial", self.scale_font(9))
-        )
-        self.format_combo.pack(side=tk.LEFT, padx=(0, 10))
-        self.format_combo.bind("<<ComboboxSelected>>", self.on_format_selected)
-
-        # Preview pane
-        self.lbl_preview = tk.Label(self.root, text="Preview:", anchor="w",
-                                    bg=theme['label_bg'], fg=theme['label_fg'], font=("Arial", self.scale_font(10)))
-        self.lbl_preview.grid(row=9, column=0, sticky="ew", padx=10, pady=(10, 2))
-
-        # Webview for HTML preview (fallback to Text widget if not available)
-        if HtmlFrame is not None:
-            try:
-                self.webview = HtmlFrame(self.root, width=600, height=200)
-                self.webview.grid(row=10, column=0, sticky="nsew", padx=10, pady=(0, 10))
-                self.root.grid_rowconfigure(10, weight=1) # Make webview expandable
-            except Exception as e:
-                print(f"Warning: Could not create HTML preview: {e}")
-                self.create_fallback_preview()
-        else:
-            self.create_fallback_preview()
-
-    def create_fallback_preview(self):
-        """Create a fallback text preview when HTML preview is not available"""
-        theme = self.themes[self.current_theme]
-        self.webview = tk.Text(self.root, height=10, wrap=tk.WORD, state="disabled",
-                              font=("Arial", self.scale_font(10)),
-                              bg=theme['text_bg'], fg=theme['text_fg'])
-        self.webview.grid(row=10, column=0, sticky="nsew", padx=10, pady=(0, 10))
-        self.root.grid_rowconfigure(10, weight=1)
+        # Hidden controls kept for compatibility
+        self.lbl_file_info = tk.Label(self.root, text="", bg=theme['bg'], fg=theme['fg'])
+        self.lbl_file_info.grid_forget()
+        self.btn_theme = tk.Button(self.root, text="", command=self.toggle_theme)
+        self.btn_theme.grid_forget()
+        self.webview = None  # preview removed
+        self.output_format_var = tk.StringVar(value="Plain Text")
 
         # Configure padding for grid-managed widgets only
         for child in self.root.winfo_children():
@@ -537,7 +522,8 @@ class TranslationFiesta:
         """Persist provider selection and update status."""
         provider_id = self.get_selected_provider_id()
         self.settings.set_provider_id(provider_id)
-        self.set_status("Using unofficial provider.", "blue")
+        if hasattr(self, "lbl_status"):
+            self.set_status("Using unofficial provider.", "blue")
 
     def set_status(self, text: str, color: str = "blue"):
         self.lbl_status.config(text=text, fg=color)
@@ -546,7 +532,7 @@ class TranslationFiesta:
         if not self.progress_bar:
             return
         if show:
-            self.progress_bar.grid()
+            self.progress_bar.pack(side=tk.RIGHT, padx=(0, 8))
             try:
                 self.progress_bar.start(12)
             except Exception:
@@ -556,7 +542,7 @@ class TranslationFiesta:
                 self.progress_bar.stop()
             except Exception:
                 pass
-            self.progress_bar.grid_remove()
+            self.progress_bar.pack_forget()
 
     def save_results(self, *_):
         """Save the Japanese and back-translated text to a UTF-8 file."""
@@ -571,6 +557,7 @@ class TranslationFiesta:
             title="Save results",
             defaultextension=".txt",
             initialfile=initial,
+            initialdir=str(get_exports_dir()),
             filetypes=[('Text files', '*.txt')]
         )
         if not filename:
@@ -682,34 +669,12 @@ class TranslationFiesta:
         self.root.destroy()
 
     def on_format_selected(self, event):
-        """Handle format selection change."""
-        selected_format = self.output_format_var.get()
-        self.logger.info(f"Output format selected: {selected_format}")
-        # Update preview immediately if there's content
-        if self.txt_back.get("1.0", tk.END).strip():
-            self.update_preview(self.txt_back.get("1.0", tk.END).strip())
+        """Handle format selection change — preview removed."""
+        pass
 
     def update_preview(self, content):
-        """Update the WebView with formatted content."""
-        selected_format = self.output_format_var.get()
-
-        # Handle HtmlFrame (tkinterweb) case
-        if hasattr(self.webview, 'load_html'):
-            if selected_format == "HTML":
-                self.webview.load_html(content)
-            elif selected_format == "Markdown":
-                # Basic Markdown to HTML conversion for preview
-                html_content = f"<html><body><pre>{content}</pre></body></html>" # Placeholder
-                self.webview.load_html(html_content)
-            else: # Plain Text
-                html_content = f"<html><body><pre>{content}</pre></body></html>"
-                self.webview.load_html(html_content)
-        else:
-            # Handle Text widget fallback case
-            self.webview.config(state="normal")
-            self.webview.delete(1.0, tk.END)
-            self.webview.insert(tk.END, content)
-            self.webview.config(state="disabled")
+        """Preview pane removed — no-op."""
+        pass
 
     def toggle_api_shortcut(self):
         """Cycle through providers and provide user feedback."""
@@ -788,8 +753,8 @@ class TranslationFiesta:
 
 
     def on_panic(self):
-        """Handle the 'Panic' button click."""
-        messagebox.showinfo("Emergency Stop", "Translation process has been stopped.")
+        """Panic button removed — no-op."""
+        pass
 
 
 def main():

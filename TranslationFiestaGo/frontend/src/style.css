@@ -1,26 +1,195 @@
+/* === Unified TranslationFiesta palette === */
+:root {
+  --bg: #0F1419;
+  --surface: #1A1F2E;
+  --elevated: #242A38;
+  --border: #2E3648;
+  --text: #E8ECF1;
+  --text-secondary: #8B95A5;
+  --accent: #3B82F6;
+  --accent-hover: #2563EB;
+  --amber: #F59E0B;
+  --green: #10B981;
+  --red: #EF4444;
+}
+
 html {
-    background-color: rgba(27, 38, 54, 1);
-    text-align: center;
-    color: white;
+  background-color: var(--bg);
+  color: var(--text);
 }
 
 body {
-    margin: 0;
-    color: white;
-    font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
-}
-
-@font-face {
-    font-family: "Nunito";
-    font-style: normal;
-    font-weight: 400;
-    src: local(""),
-    url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
+  margin: 0;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 #app {
-    height: 100vh;
-    text-align: center;
+  min-height: 100vh;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* --- Header --- */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.subtitle {
+  display: none;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.controls label {
+  display: none;
+}
+
+/* --- Inputs --- */
+select,
+textarea {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+}
+
+textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+/* --- Cards / Panels --- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin: 0 0 8px 0;
+}
+
+h2 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin: 0 0 8px 0;
+}
+
+/* --- Buttons --- */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  background: var(--elevated);
+  color: var(--text);
+  transition: background 0.15s;
+}
+
+.btn:hover {
+  background: var(--surface);
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 24px;
+}
+
+.btn.primary:hover {
+  background: var(--accent-hover);
+}
+
+/* --- Grid (side-by-side output) --- */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.output {
+  min-height: 80px;
+  white-space: pre-wrap;
+  margin: 0;
+  color: var(--text);
+}
+
+.output:empty::before {
+  content: '\u2014';
+  color: var(--text-secondary);
+}
+
+/* --- Status --- */
+.status {
+  color: var(--amber);
+  font-size: 13px;
+}
+
+.status.done {
+  color: var(--green);
+}
+
+.status.error {
+  color: var(--red);
 }

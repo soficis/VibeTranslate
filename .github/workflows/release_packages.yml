@@ -137,7 +137,12 @@ jobs:
           $root = "$env:GITHUB_WORKSPACE\dist\release\windows-${{ matrix.arch }}"
 
           flutter config --enable-windows-desktop
+          $flutterBuildRoot = "$env:GITHUB_WORKSPACE\TranslationFiestaFlutter\build\windows"
+          if (Test-Path $flutterBuildRoot) {
+            Remove-Item $flutterBuildRoot -Recurse -Force
+          }
           Push-Location TranslationFiestaFlutter
+          flutter clean
           flutter pub get
           flutter build windows --release
           Pop-Location
@@ -173,37 +178,44 @@ jobs:
           $target = "$root\TranslationFiestaGo"
           New-Item -ItemType Directory -Force -Path $target | Out-Null
 
-          $binary = "$env:GITHUB_WORKSPACE\TranslationFiestaGo\build\bin\TranslationFiestaGo.exe"
-          if (!(Test-Path $binary)) {
-            $binary = "$env:GITHUB_WORKSPACE\TranslationFiestaGo\build\bin\TranslationFiestaGo"
-          }
-          if (!(Test-Path $binary)) {
-            $binary = Get-ChildItem "$env:GITHUB_WORKSPACE\TranslationFiestaGo\build\bin" -File |
-              Where-Object { $_.Name -like 'TranslationFiestaGo*' } |
-              Select-Object -First 1 -ExpandProperty FullName
+          $buildRoot = "$env:GITHUB_WORKSPACE\TranslationFiestaGo\build\bin"
+          if (!(Test-Path $buildRoot)) {
+            throw "Unable to locate Wails Windows build output directory: $buildRoot"
           }
 
-          if (-not $binary) {
-            throw "Unable to locate Wails Windows binary."
-          }
+          Copy-Item "$buildRoot\*" $target -Recurse -Force
 
-          Copy-Item $binary "$target\TranslationFiestaGo.exe" -Force
+          $binary = "$target\TranslationFiestaGo.exe"
+          if (!(Test-Path $binary)) {
+            $binaryNoExt = "$target\TranslationFiestaGo"
+            if (Test-Path $binaryNoExt) {
+              Copy-Item $binaryNoExt $binary -Force
+            } else {
+              throw "Unable to locate Wails Windows binary in $buildRoot."
+            }
+          }
 
       - name: Build Python apps
         shell: pwsh
         run: |
           $root = "$env:GITHUB_WORKSPACE\dist\release\windows-${{ matrix.arch }}"
+          $pythonOutRoot = "$env:GITHUB_WORKSPACE\TranslationFiestaPy\out"
 
           python -m pip install --upgrade pip
           pip install -r TranslationFiestaPy/requirements.lock
           pip install pyinstaller
 
+          if (Test-Path $pythonOutRoot) {
+            Remove-Item $pythonOutRoot -Recurse -Force
+          }
+          New-Item -ItemType Directory -Force -Path $pythonOutRoot | Out-Null
+
           Push-Location TranslationFiestaPy
-          pyinstaller --noconfirm --clean --windowed --onefile --name TranslationFiestaPy TranslationFiesta.py
+          pyinstaller --noconfirm --clean --windowed --onedir --name TranslationFiestaPy --collect-submodules tkinterweb --collect-data tkinterweb --collect-submodules tkinterweb_tkhtml --collect-data tkinterweb_tkhtml --distpath "$pythonOutRoot\dist" --workpath "$pythonOutRoot\build" --specpath "$pythonOutRoot\spec" TranslationFiesta.py
           Pop-Location
 
           New-Item -ItemType Directory -Force -Path "$root\TranslationFiestaPy" | Out-Null
-          Copy-Item "$env:GITHUB_WORKSPACE\TranslationFiestaPy\dist\TranslationFiestaPy.exe" "$root\TranslationFiestaPy\TranslationFiestaPy.exe" -Force
+          Copy-Item "$pythonOutRoot\dist\TranslationFiestaPy\*" "$root\TranslationFiestaPy" -Recurse -Force
 
 
       - name: Build TranslationFiestaRuby
@@ -269,6 +281,12 @@ jobs:
           ) -join [Environment]::NewLine
           Set-Content -Path "$target\run.cmd" -Value $runCmd
 
+      - name: Create Windows portable launchers
+        shell: pwsh
+        run: |
+          $root = "$env:GITHUB_WORKSPACE\dist\release\windows-${{ matrix.arch }}"
+          & "$env:GITHUB_WORKSPACE\scripts\create_windows_launchers.ps1" -Root $root
+
       - name: Verify expected Windows artifacts
         shell: pwsh
         run: |
@@ -287,6 +305,35 @@ jobs:
           foreach ($dir in $requiredDirs) {
             if (!(Test-Path (Join-Path $root $dir))) {
               throw "Missing build output directory: $dir"
+            }
+            if (!(Test-Path (Join-Path $root "$dir\run.cmd"))) {
+              throw "Missing launcher script: $dir\\run.cmd"
+            }
+            if (!(Test-Path (Join-Path $root "$dir\run.ps1"))) {
+              throw "Missing launcher script: $dir\\run.ps1"
+            }
+          }
+
+          $bundleLaunchers = @(
+            "$root\launch.cmd",
+            "$root\launch.ps1"
+          )
+
+          foreach ($launcherPath in $bundleLaunchers) {
+            if (!(Test-Path $launcherPath)) {
+              throw "Missing bundle launcher: $launcherPath"
+            }
+          }
+
+          $launcherChecks = @(
+            "$root\TranslationFiesta.WinUI\TranslationFiesta.WinUI.exe",
+            "$root\TranslationFiestaGo\TranslationFiestaGo.exe",
+            "$root\TranslationFiestaPy\TranslationFiestaPy.exe"
+          )
+
+          foreach ($launcher in $launcherChecks) {
+            if (!(Test-Path $launcher)) {
+              throw "Missing expected launcher binary: $launcher"
             }
           }
 
@@ -315,6 +362,7 @@ jobs:
             $zipName = "$appName-windows-${{ matrix.arch }}.zip"
             $zipPath = Join-Path $zipRoot $zipName
 
+            New-Item -ItemType Directory -Force -Path (Join-Path $_.FullName 'data') | Out-Null
             if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
             Compress-Archive -Path (Join-Path $_.FullName '*') -DestinationPath $zipPath -CompressionLevel Optimal
 
@@ -324,6 +372,26 @@ jobs:
 
           $manifestPath = Join-Path $zipRoot 'SHA256SUMS-windows-${{ matrix.arch }}.txt'
           Get-ChildItem -Path $zipRoot -Filter '*.sha256' | Sort-Object Name | Get-Content | Set-Content $manifestPath
+
+          $archives = Get-ChildItem -Path $zipRoot -Filter '*.zip'
+          if ($archives.Count -eq 0) {
+            throw "No Windows portable zip archives were produced."
+          }
+
+          $checksumFiles = Get-ChildItem -Path $zipRoot -Filter '*.sha256'
+          if ($checksumFiles.Count -ne $archives.Count) {
+            throw "Checksum count mismatch: found $($checksumFiles.Count) checksum files for $($archives.Count) archives."
+          }
+
+          if (!(Test-Path $manifestPath)) {
+            throw "Missing Windows checksum manifest: $manifestPath"
+          }
+
+          $disallowed = Get-ChildItem -Path $zipRoot -File | Where-Object { $_.Extension -in '.msi', '.msix', '.dmg', '.pkg', '.appimage' }
+          if ($disallowed.Count -gt 0) {
+            $disallowed | ForEach-Object { Write-Error "Disallowed installer artifact found: $($_.FullName)" }
+            throw "Installer artifacts are not allowed in portable releases."
+          }
 
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v6
@@ -393,7 +461,6 @@ jobs:
             cmake \
             ninja-build \
             pkg-config \
-            zip \
             libgtk-3-dev \
             liblzma-dev \
             libwebkit2gtk-4.1-dev \
@@ -450,27 +517,39 @@ jobs:
           wails build -platform "${{ matrix.go_platform }}" -tags webkit2_41 -clean -o TranslationFiestaGo
 
           mkdir -p "$root/TranslationFiestaGo"
-          binary="$(find "$GITHUB_WORKSPACE/TranslationFiestaGo/build/bin" -maxdepth 1 -type f -name 'TranslationFiestaGo*' | head -n1)"
-          if [[ -z "$binary" ]]; then
-            echo "Unable to locate Wails Linux binary." >&2
+          build_root="$GITHUB_WORKSPACE/TranslationFiestaGo/build/bin"
+          if [[ ! -d "$build_root" ]]; then
+            echo "Unable to locate Wails Linux build output directory: $build_root" >&2
             exit 1
           fi
-          cp "$binary" "$root/TranslationFiestaGo/TranslationFiestaGo"
+          cp -R "$build_root"/. "$root/TranslationFiestaGo/"
+          if [[ ! -f "$root/TranslationFiestaGo/TranslationFiestaGo" ]]; then
+            binary="$(find "$root/TranslationFiestaGo" -maxdepth 1 -type f -name 'TranslationFiestaGo*' | head -n1)"
+            if [[ -z "$binary" ]]; then
+              echo "Unable to locate Wails Linux binary in $build_root." >&2
+              exit 1
+            fi
+            cp "$binary" "$root/TranslationFiestaGo/TranslationFiestaGo"
+          fi
 
       - name: Build Python apps
         run: |
           set -euo pipefail
           root="$GITHUB_WORKSPACE/dist/release/linux-${{ matrix.arch }}"
+          python_out_root="$GITHUB_WORKSPACE/TranslationFiestaPy/out"
 
           python -m pip install --upgrade pip
           pip install -r TranslationFiestaPy/requirements.lock
           pip install pyinstaller
 
+          rm -rf "$python_out_root"
+          mkdir -p "$python_out_root"
+
           cd TranslationFiestaPy
-          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaPy TranslationFiesta.py
+          pyinstaller --noconfirm --clean --onedir --name TranslationFiestaPy --collect-submodules tkinterweb --collect-data tkinterweb --collect-submodules tkinterweb_tkhtml --collect-data tkinterweb_tkhtml --distpath "$python_out_root/dist" --workpath "$python_out_root/build" --specpath "$python_out_root/spec" TranslationFiesta.py
 
           mkdir -p "$root/TranslationFiestaPy"
-          cp "$GITHUB_WORKSPACE/TranslationFiestaPy/dist/TranslationFiestaPy" "$root/TranslationFiestaPy/TranslationFiestaPy"
+          cp -R "$python_out_root/dist/TranslationFiestaPy/"* "$root/TranslationFiestaPy/"
 
 
       - name: Build TranslationFiestaRuby runtime bundle
@@ -481,17 +560,28 @@ jobs:
 
           cd TranslationFiestaRuby
           gem install rake --no-document
-          bundle install --jobs 4 --retry 3
+          bundle install --deployment --path vendor/bundle --jobs 4 --retry 3
+          ruby_prefix="$(ruby -e "require 'rbconfig'; print RbConfig::CONFIG['prefix']")"
 
           mkdir -p "$bundle_dir"
-          cp -R Gemfile Gemfile.lock translation_fiesta.gemspec bin lib config "$bundle_dir/"
+          cp -R Gemfile Gemfile.lock translation_fiesta.gemspec bin lib config vendor "$bundle_dir/"
+          cp -R "$ruby_prefix" "$bundle_dir/ruby-runtime"
           printf '%s\n' \
             '#!/usr/bin/env bash' \
             'set -euo pipefail' \
             'cd "$(dirname "$0")"' \
-            'bundle install' \
-            'bundle exec ruby bin/translation_fiesta' > "$bundle_dir/run.sh"
+            'runtime_bin="$PWD/ruby-runtime/bin"' \
+            'export PATH="$runtime_bin:$PATH"' \
+            'export BUNDLE_GEMFILE="$PWD/Gemfile"' \
+            'export BUNDLE_PATH="$PWD/vendor/bundle"' \
+            'exec "$runtime_bin/ruby" bin/translation_fiesta' > "$bundle_dir/run.sh"
           chmod +x "$bundle_dir/run.sh"
+
+      - name: Create Linux portable launchers
+        run: |
+          set -euo pipefail
+          chmod +x scripts/create_unix_launchers.sh
+          scripts/create_unix_launchers.sh --root "dist/release/linux-${{ matrix.arch }}" --platform linux
 
       - name: Verify expected Linux artifacts
         run: |
@@ -500,37 +590,74 @@ jobs:
 
           for app in TranslationFiestaElectron TranslationFiestaFlutter TranslationFiestaGo TranslationFiestaPy TranslationFiestaRuby; do
             [[ -d "$root/$app" ]] || { echo "Missing build output directory: $app" >&2; exit 1; }
+            [[ -f "$root/$app/run.sh" ]] || { echo "Missing launcher script: $root/$app/run.sh" >&2; exit 1; }
+          done
+
+          [[ -f "$root/launch.sh" ]] || { echo "Missing bundle launcher: $root/launch.sh" >&2; exit 1; }
+
+          for ruby_path in \
+            "$root/TranslationFiestaRuby/run.sh" \
+            "$root/TranslationFiestaRuby/ruby-runtime/bin/ruby"; do
+            [[ -e "$ruby_path" ]] || { echo "Missing expected Ruby payload: $ruby_path" >&2; exit 1; }
           done
 
       - name: Package Linux release artifacts
         run: |
           set -euo pipefail
           source_root="$GITHUB_WORKSPACE/dist/release/linux-${{ matrix.arch }}"
-          zip_root="$GITHUB_WORKSPACE/dist/release/linux-${{ matrix.arch }}-zips"
+          archive_root="$GITHUB_WORKSPACE/dist/release/linux-${{ matrix.arch }}-archives"
 
-          mkdir -p "$zip_root"
+          mkdir -p "$archive_root"
           for app_dir in "$source_root"/*; do
             [[ -d "$app_dir" ]] || continue
             app_name="$(basename "$app_dir")"
-            zip_name="${app_name}-linux-${{ matrix.arch }}.zip"
-            zip_path="$zip_root/$zip_name"
+            archive_name="${app_name}-linux-${{ matrix.arch }}.tar.gz"
+            archive_path="$archive_root/$archive_name"
 
-            rm -f "$zip_path"
+            mkdir -p "$app_dir/data"
+
+            rm -f "$archive_path"
             (
               cd "$source_root"
-              zip -r "$zip_path" "$app_name" >/dev/null
+              tar -czf "$archive_path" "$app_name"
             )
-            hash="$(sha256sum "$zip_path" | cut -d' ' -f1)"
-            echo "$hash  $zip_name" > "$zip_path.sha256"
+            hash="$(sha256sum "$archive_path" | cut -d' ' -f1)"
+            echo "$hash  $archive_name" > "$archive_path.sha256"
           done
 
-          cat "$zip_root"/*.sha256 | sort > "$zip_root/SHA256SUMS-linux-${{ matrix.arch }}.txt"
+          cat "$archive_root"/*.sha256 | sort > "$archive_root/SHA256SUMS-linux-${{ matrix.arch }}.txt"
+
+          shopt -s nullglob
+          archives=("$archive_root"/*.tar.gz)
+          if (( ${#archives[@]} == 0 )); then
+            echo "No Linux portable archives were produced." >&2
+            exit 1
+          fi
+
+          checksum_files=("$archive_root"/*.sha256)
+          if (( ${#checksum_files[@]} != ${#archives[@]} )); then
+            echo "Checksum count mismatch: found ${#checksum_files[@]} checksum files for ${#archives[@]} archives." >&2
+            exit 1
+          fi
+
+          [[ -f "$archive_root/SHA256SUMS-linux-${{ matrix.arch }}.txt" ]] || {
+            echo "Missing Linux checksum manifest." >&2
+            exit 1
+          }
+
+          disallowed=("$archive_root"/*.msi "$archive_root"/*.msix "$archive_root"/*.dmg "$archive_root"/*.pkg "$archive_root"/*.appimage)
+          for artifact in "${disallowed[@]}"; do
+            if [[ -e "$artifact" ]]; then
+              echo "Disallowed installer artifact found: $artifact" >&2
+              exit 1
+            fi
+          done
 
       - name: Upload Linux release artifacts
         uses: actions/upload-artifact@v6
         with:
           name: release-linux-${{ matrix.arch }}
-          path: dist/release/linux-${{ matrix.arch }}-zips/*
+          path: dist/release/linux-${{ matrix.arch }}-archives/*
           if-no-files-found: error
 
   macos-matrix:
@@ -641,29 +768,38 @@ jobs:
           wails build -platform "${{ matrix.go_platform }}" -clean -o TranslationFiestaGo
 
           mkdir -p "$root/TranslationFiestaGo"
-          if [[ -d "$GITHUB_WORKSPACE/TranslationFiestaGo/build/bin/TranslationFiestaGo.app" ]]; then
-            cp -R "$GITHUB_WORKSPACE/TranslationFiestaGo/build/bin/TranslationFiestaGo.app" "$root/TranslationFiestaGo/"
+          build_root="$GITHUB_WORKSPACE/TranslationFiestaGo/build/bin"
+          if [[ ! -d "$build_root" ]]; then
+            echo "Unable to locate Wails macOS build output directory: $build_root" >&2
+            exit 1
           fi
+          cp -R "$build_root"/. "$root/TranslationFiestaGo/"
 
-          binary="$(find "$GITHUB_WORKSPACE/TranslationFiestaGo/build/bin" -maxdepth 1 -type f -name 'TranslationFiestaGo*' | head -n1)"
-          if [[ -n "$binary" ]]; then
-            cp "$binary" "$root/TranslationFiestaGo/TranslationFiestaGo"
+          if [[ ! -d "$root/TranslationFiestaGo/TranslationFiestaGo.app" && ! -f "$root/TranslationFiestaGo/TranslationFiestaGo" ]]; then
+            binary="$(find "$root/TranslationFiestaGo" -maxdepth 1 -type f -name 'TranslationFiestaGo*' | head -n1)"
+            if [[ -n "$binary" ]]; then
+              cp "$binary" "$root/TranslationFiestaGo/TranslationFiestaGo"
+            fi
           fi
 
       - name: Build Python apps
         run: |
           set -euo pipefail
           root="$GITHUB_WORKSPACE/dist/release/macos-${{ matrix.arch }}"
+          python_out_root="$GITHUB_WORKSPACE/TranslationFiestaPy/out"
 
           python -m pip install --upgrade pip
           pip install -r TranslationFiestaPy/requirements.lock
           pip install pyinstaller
 
+          rm -rf "$python_out_root"
+          mkdir -p "$python_out_root"
+
           cd TranslationFiestaPy
-          pyinstaller --noconfirm --clean --onefile --name TranslationFiestaPy TranslationFiesta.py
+          pyinstaller --noconfirm --clean --onedir --name TranslationFiestaPy --collect-submodules tkinterweb --collect-data tkinterweb --collect-submodules tkinterweb_tkhtml --collect-data tkinterweb_tkhtml --distpath "$python_out_root/dist" --workpath "$python_out_root/build" --specpath "$python_out_root/spec" TranslationFiesta.py
 
           mkdir -p "$root/TranslationFiestaPy"
-          cp "$GITHUB_WORKSPACE/TranslationFiestaPy/dist/TranslationFiestaPy" "$root/TranslationFiestaPy/TranslationFiestaPy"
+          cp -R "$python_out_root/dist/TranslationFiestaPy/"* "$root/TranslationFiestaPy/"
 
 
       - name: Build TranslationFiestaRuby runtime bundle
@@ -674,17 +810,28 @@ jobs:
 
           cd TranslationFiestaRuby
           gem install rake --no-document
-          bundle install --jobs 4 --retry 3
+          bundle install --deployment --path vendor/bundle --jobs 4 --retry 3
+          ruby_prefix="$(ruby -e "require 'rbconfig'; print RbConfig::CONFIG['prefix']")"
 
           mkdir -p "$bundle_dir"
-          cp -R Gemfile Gemfile.lock translation_fiesta.gemspec bin lib config "$bundle_dir/"
+          cp -R Gemfile Gemfile.lock translation_fiesta.gemspec bin lib config vendor "$bundle_dir/"
+          cp -R "$ruby_prefix" "$bundle_dir/ruby-runtime"
           printf '%s\n' \
             '#!/usr/bin/env bash' \
             'set -euo pipefail' \
             'cd "$(dirname "$0")"' \
-            'bundle install' \
-            'bundle exec ruby bin/translation_fiesta' > "$bundle_dir/run.command"
+            'runtime_bin="$PWD/ruby-runtime/bin"' \
+            'export PATH="$runtime_bin:$PATH"' \
+            'export BUNDLE_GEMFILE="$PWD/Gemfile"' \
+            'export BUNDLE_PATH="$PWD/vendor/bundle"' \
+            'exec "$runtime_bin/ruby" bin/translation_fiesta' > "$bundle_dir/run.command"
           chmod +x "$bundle_dir/run.command"
+
+      - name: Create macOS portable launchers
+        run: |
+          set -euo pipefail
+          chmod +x scripts/create_unix_launchers.sh
+          scripts/create_unix_launchers.sh --root "dist/release/macos-${{ matrix.arch }}" --platform macos
 
       - name: Verify expected macOS artifacts
         run: |
@@ -693,6 +840,15 @@ jobs:
 
           for app in TranslationFiestaSwift TranslationFiestaElectron TranslationFiestaFlutter TranslationFiestaGo TranslationFiestaPy TranslationFiestaRuby; do
             [[ -d "$root/$app" ]] || { echo "Missing build output directory: $app" >&2; exit 1; }
+            [[ -f "$root/$app/run.command" ]] || { echo "Missing launcher script: $root/$app/run.command" >&2; exit 1; }
+          done
+
+          [[ -f "$root/launch.command" ]] || { echo "Missing bundle launcher: $root/launch.command" >&2; exit 1; }
+
+          for ruby_path in \
+            "$root/TranslationFiestaRuby/run.command" \
+            "$root/TranslationFiestaRuby/ruby-runtime/bin/ruby"; do
+            [[ -e "$ruby_path" ]] || { echo "Missing expected Ruby payload: $ruby_path" >&2; exit 1; }
           done
 
       - name: Package macOS release artifacts
@@ -707,6 +863,8 @@ jobs:
             app_name="$(basename "$app_dir")"
             zip_path="$zip_root/${app_name}-macos-${{ matrix.arch }}.zip"
 
+            mkdir -p "$app_dir/data"
+
             rm -f "$zip_path"
             ditto -c -k --sequesterRsrc --keepParent "$app_dir" "$zip_path"
             zip_name="$(basename "$zip_path")"
@@ -715,6 +873,32 @@ jobs:
           done
 
           cat "$zip_root"/*.sha256 | sort > "$zip_root/SHA256SUMS-macos-${{ matrix.arch }}.txt"
+
+          shopt -s nullglob
+          archives=("$zip_root"/*.zip)
+          if (( ${#archives[@]} == 0 )); then
+            echo "No macOS portable zip archives were produced." >&2
+            exit 1
+          fi
+
+          checksum_files=("$zip_root"/*.sha256)
+          if (( ${#checksum_files[@]} != ${#archives[@]} )); then
+            echo "Checksum count mismatch: found ${#checksum_files[@]} checksum files for ${#archives[@]} archives." >&2
+            exit 1
+          fi
+
+          [[ -f "$zip_root/SHA256SUMS-macos-${{ matrix.arch }}.txt" ]] || {
+            echo "Missing macOS checksum manifest." >&2
+            exit 1
+          }
+
+          disallowed=("$zip_root"/*.msi "$zip_root"/*.msix "$zip_root"/*.dmg "$zip_root"/*.pkg "$zip_root"/*.appimage)
+          for artifact in "${disallowed[@]}"; do
+            if [[ -e "$artifact" ]]; then
+              echo "Disallowed installer artifact found: $artifact" >&2
+              exit 1
+            fi
+          done
 
       - name: Upload macOS release artifacts
         uses: actions/upload-artifact@v6

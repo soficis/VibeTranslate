@@ -44,7 +44,7 @@ class FlutterTranslateApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'Flutter Translate',
+        title: 'TranslationFiesta Dart',
         theme: SurrealistTheme.lightTheme,
         darkTheme: SurrealistTheme.darkTheme,
         themeMode: ThemeMode.dark, // Make dark mode the default

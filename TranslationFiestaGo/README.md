@@ -2,6 +2,14 @@
 
 A comprehensive back-translation application written in Go, combining all features from the existing TranslationFiesta implementations (Flutter, F#, C#, Python). This application performs back-translation using the Google Translate unofficial endpoint.
 
+## Portable runtime
+
+- Portable archives only (no installers).
+- Runtime data default: `./data` beside the executable.
+- WebView2 user data path (Windows): `./data/webview2`.
+- Override data root with `TF_APP_HOME`.
+- Optional bundled WebView2 fixed runtime folder names: `webview2-runtime/` or `WebView2Runtime/` beside the executable.
+
 ## Features
 
 ### Core Translation Features

@@ -14,7 +14,9 @@ import threading
 from logging.handlers import RotatingFileHandler
 from typing import Optional
 
-DEFAULT_LOG_FILE = "translationfiesta.log"
+from app_paths import get_logs_dir
+
+DEFAULT_LOG_FILE = str(get_logs_dir() / "translationfiesta.log")
 
 
 def create_logger(name: str = "translationfiesta", log_file: Optional[str] = None) -> logging.Logger:

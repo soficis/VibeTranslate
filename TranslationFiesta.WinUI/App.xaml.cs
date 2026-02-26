@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using System;
 
 namespace TranslationFiesta.WinUI
@@ -34,9 +35,18 @@ namespace TranslationFiesta.WinUI
             catch (Exception ex)
             {
                 Logger.Error($"Failed to create main window: {ex.Message}", ex);
-                // Fallback: try to show a basic window
+                // Show explicit startup error details instead of a blank window.
                 m_window = new Microsoft.UI.Xaml.Window();
                 m_window.Title = "Translation Fiesta - Error";
+                m_window.Content = new ScrollViewer
+                {
+                    Content = new TextBlock
+                    {
+                        Text = $"Startup failed:\n{ex.Message}\n\nCheck data\\logs\\translationfiesta.log for details.",
+                        TextWrapping = TextWrapping.Wrap,
+                        Margin = new Thickness(16)
+                    }
+                };
                 m_window.Activate();
             }
         }

@@ -8,10 +8,10 @@ Enhanced with comprehensive error handling and Result pattern.
 
 import json
 import os
-import platform
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from app_paths import get_settings_file
 from enhanced_logger import get_logger
 from exceptions import (
     FilePermissionError,
@@ -30,7 +30,7 @@ class SettingsStorage:
 
     def __init__(self, app_name: str = "TranslationFiesta"):
         self.app_name = app_name
-        self.system = platform.system().lower()
+        self.system = os.name
         self._settings_file = self._get_settings_file_path()
         self._defaults = self._get_default_settings()
         load_result = self._load_settings_enhanced()
@@ -38,20 +38,12 @@ class SettingsStorage:
 
     def _get_settings_file_path(self) -> Path:
         """Get the path for settings file."""
-        if self.system == "windows":
-            base_dir = Path(os.environ.get("APPDATA", "~/.config"))
-        elif self.system == "darwin":  # macOS
-            base_dir = Path.home() / "Library" / "Preferences"
-        else:  # Linux and others
-            base_dir = Path.home() / ".config"
-
-        base_dir.mkdir(parents=True, exist_ok=True)
-        return base_dir / f"{self.app_name.lower()}_settings.json"
+        return get_settings_file()
 
     def _get_default_settings(self) -> Dict[str, Any]:
         """Get default settings values."""
         return {
-            "theme": "light",
+            "theme": "dark",
             "window_geometry": "820x640",
             "provider_id": PROVIDER_GOOGLE_UNOFFICIAL,
             "max_retries": 4,
@@ -287,7 +279,7 @@ class SettingsStorage:
     # Convenience methods for common settings
     def get_theme(self) -> str:
         """Get current theme setting."""
-        return self.get("theme", "light")
+        return self.get("theme", "dark")
 
     def set_theme(self, theme: str) -> bool:
         """Set theme setting."""

@@ -2,6 +2,14 @@
 
 A comprehensive English ↔ Japanese translation application built with Swift and SwiftUI, featuring advanced translation capabilities and batch processing.
 
+> ⚠️ Current status: the Swift version is presently untested.
+
+## 📦 Portable runtime
+
+- Portable archives only (no installers).
+- Runtime data default: `./data` beside the executable.
+- Override data root with `TF_APP_HOME`.
+
 ## 🌟 Features
 
 ### Core Translation

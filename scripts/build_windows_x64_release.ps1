@@ -4,9 +4,61 @@ $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 Set-Location $repoRoot
 
 $root = Join-Path $repoRoot "dist\release\windows-x64"
-if (Test-Path $root) {
-  Remove-Item $root -Recurse -Force
+
+function Stop-ProcessesRunningFromPath([string]$pathPrefix) {
+  $fullPrefix = [System.IO.Path]::GetFullPath($pathPrefix).TrimEnd('\')
+  $candidates = @()
+  foreach ($process in (Get-Process -ErrorAction SilentlyContinue)) {
+    try {
+      if ($process.Path -and $process.Path.StartsWith($fullPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $candidates += $process
+      }
+    } catch {
+      # Ignore processes that do not expose a readable Path.
+    }
+  }
+
+  foreach ($process in $candidates) {
+    try {
+      Write-Host "Stopping process locking release folder: $($process.ProcessName) (PID $($process.Id))"
+      Stop-Process -Id $process.Id -Force -ErrorAction Stop
+    } catch {
+      Write-Warning "Could not stop process PID $($process.Id): $($_.Exception.Message)"
+    }
+  }
 }
+
+function Remove-DirectoryWithRetries([string]$targetPath, [int]$maxAttempts = 3) {
+  if (!(Test-Path $targetPath)) {
+    return
+  }
+
+  for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+    try {
+      # Clear read-only attributes that can block deletion.
+      Get-ChildItem -LiteralPath $targetPath -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
+        try { $_.IsReadOnly = $false } catch {}
+      }
+
+      Remove-Item -LiteralPath $targetPath -Recurse -Force -ErrorAction Stop
+      return
+    } catch {
+      if ($attempt -eq 1) {
+        Stop-ProcessesRunningFromPath $targetPath
+      }
+
+      if ($attempt -lt $maxAttempts) {
+        Write-Warning "Failed to delete '$targetPath' (attempt $attempt/$maxAttempts): $($_.Exception.Message). Retrying..."
+        Start-Sleep -Seconds 1
+        continue
+      }
+
+      throw "Failed to clean release directory '$targetPath'. Close any running binaries from that folder and retry."
+    }
+  }
+}
+
+Remove-DirectoryWithRetries $root
 New-Item -ItemType Directory -Force -Path $root | Out-Null
 
 Write-Host "Building TranslationFiesta Windows x64 release bundle from: $repoRoot"
@@ -28,9 +80,13 @@ dotnet publish TranslationFiestaFSharp/TranslationFiestaFSharp.fsproj `
   -o "$root\TranslationFiestaFSharp"
 
 # WinUI
+Remove-DirectoryWithRetries (Join-Path $repoRoot "TranslationFiesta.WinUI\obj")
+Remove-DirectoryWithRetries (Join-Path $repoRoot "TranslationFiesta.WinUI\bin")
+dotnet restore TranslationFiesta.WinUI/TranslationFiesta.WinUI.csproj -r win-x64 -p:Platform=x64
 dotnet publish TranslationFiesta.WinUI/TranslationFiesta.WinUI.csproj `
-  -c Release -r win-x64 --self-contained true `
+  -c Release -r win-x64 --no-restore --self-contained true `
   -p:Platform=x64 -p:RuntimeIdentifier=win-x64 `
+  -p:UseXamlCompilerExecutable=true `
   -p:WindowsAppSDKSelfContained=true `
   -p:WindowsPackageType=None -p:AppxPackage=false -p:GenerateAppxPackageOnBuild=false `
   -o "$root\TranslationFiesta.WinUI"
@@ -44,7 +100,9 @@ Pop-Location
 
 # Flutter
 flutter config --enable-windows-desktop
+Remove-DirectoryWithRetries (Join-Path $repoRoot "TranslationFiestaFlutter\build\windows")
 Push-Location TranslationFiestaFlutter
+flutter clean
 flutter pub get
 flutter build windows --release
 Pop-Location
@@ -56,31 +114,45 @@ Push-Location TranslationFiestaGo
 go run github.com/wailsapp/wails/v2/cmd/wails@v2.11.0 build -platform windows/amd64 -clean -o TranslationFiestaGo
 Pop-Location
 New-Item -ItemType Directory -Force -Path "$root\TranslationFiestaGo" | Out-Null
-$goExePath = "TranslationFiestaGo\build\bin\TranslationFiestaGo.exe"
-$goNoExtPath = "TranslationFiestaGo\build\bin\TranslationFiestaGo"
-if (Test-Path $goExePath) {
-  Copy-Item $goExePath "$root\TranslationFiestaGo\TranslationFiestaGo.exe" -Force
-} elseif (Test-Path $goNoExtPath) {
-  Copy-Item $goNoExtPath "$root\TranslationFiestaGo\TranslationFiestaGo.exe" -Force
-} else {
-  throw "Go build output not found. Expected either '$goExePath' or '$goNoExtPath'."
+$goBuildRoot = Join-Path $repoRoot "TranslationFiestaGo\build\bin"
+if (!(Test-Path $goBuildRoot)) {
+  throw "Go build output directory not found: $goBuildRoot"
+}
+
+Copy-Item (Join-Path $goBuildRoot "*") "$root\TranslationFiestaGo" -Recurse -Force
+
+$goExePath = Join-Path "$root\TranslationFiestaGo" "TranslationFiestaGo.exe"
+if (!(Test-Path $goExePath)) {
+  $goNoExtPath = Join-Path "$root\TranslationFiestaGo" "TranslationFiestaGo"
+  if (Test-Path $goNoExtPath) {
+    Copy-Item $goNoExtPath $goExePath -Force
+  } else {
+    throw "Go build output not found. Expected TranslationFiestaGo(.exe) in $goBuildRoot."
+  }
 }
 
 # Python app
 python -m pip install --upgrade pip
 pip install -r TranslationFiestaPy/requirements.lock
 pip install pyinstaller
+$pythonOutRoot = Join-Path $repoRoot "TranslationFiestaPy\out"
+Remove-DirectoryWithRetries $pythonOutRoot
+New-Item -ItemType Directory -Force -Path $pythonOutRoot | Out-Null
 Push-Location TranslationFiestaPy
-pyinstaller --noconfirm --clean --windowed --onefile --name TranslationFiestaPy TranslationFiesta.py
+pyinstaller --noconfirm --clean --windowed --onedir --name TranslationFiestaPy --collect-submodules tkinterweb --collect-data tkinterweb --collect-submodules tkinterweb_tkhtml --collect-data tkinterweb_tkhtml --distpath "$pythonOutRoot\dist" --workpath "$pythonOutRoot\build" --specpath "$pythonOutRoot\spec" TranslationFiesta.py
 Pop-Location
 New-Item -ItemType Directory -Force -Path "$root\TranslationFiestaPy" | Out-Null
-Copy-Item "TranslationFiestaPy\dist\TranslationFiestaPy.exe" "$root\TranslationFiestaPy\TranslationFiestaPy.exe" -Force
+Copy-Item "$pythonOutRoot\dist\TranslationFiestaPy\*" "$root\TranslationFiestaPy" -Recurse -Force
 
 
 # Ruby self-contained runtime bundle (no system Ruby required)
 Push-Location TranslationFiestaRuby
 gem install rake --no-document
-bundle install --deployment --path vendor/bundle --jobs 4 --retry 3
+$env:BUNDLE_PATH = "vendor/bundle"
+$env:BUNDLE_DEPLOYMENT = "false"
+$env:BUNDLE_FROZEN = "false"
+bundle install --jobs 4 --retry 3
+Remove-Item Env:BUNDLE_PATH, Env:BUNDLE_DEPLOYMENT, Env:BUNDLE_FROZEN -ErrorAction SilentlyContinue
 $rubyPrefix = (& ruby -e "require 'rbconfig'; print RbConfig::CONFIG['prefix']").Trim()
 Pop-Location
 
@@ -135,6 +207,10 @@ $runCmd = @(
 ) -join [Environment]::NewLine
 Set-Content -Path "$rubyTarget\run.cmd" -Value $runCmd
 
+$launcherScript = Join-Path $repoRoot "scripts\create_windows_launchers.ps1"
+& $launcherScript -Root $root
+
 Write-Host ""
 Write-Host "Done. Built Windows x64 apps (except Swift) under:"
 Write-Host "  $root"
+Write-Host "From repo root, run '.\\launch_portable.cmd' for the interactive launcher wizard."

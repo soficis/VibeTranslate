@@ -5,8 +5,8 @@ require_relative 'infrastructure/dependency_container'
 
 module TranslationFiesta
   class CLI
-    def initialize
-      @container = Infrastructure::DependencyContainer.new
+    def initialize(container: Infrastructure::DependencyContainer.new)
+      @container = container
       @options = {}
     end
 
@@ -67,7 +67,7 @@ module TranslationFiesta
       end
 
       @remaining_args = parser.parse(args)
-      @options[:api_type] ||= :unofficial
+      @options[:api_type] ||= ENV.fetch('TF_DEFAULT_API', 'unofficial').to_sym
       @options[:threads] ||= 4
     end
 
@@ -126,7 +126,10 @@ module TranslationFiesta
       # Set up progress callback
       container.batch_processor.on_progress do |progress|
         if @options[:verbose]
-          puts "Progress: #{progress[:current]}/#{progress[:total]} (#{progress[:percentage]}%) - #{progress[:current_file]}"
+          puts(
+            "Progress: #{progress[:current]}/#{progress[:total]} "\
+            "(#{progress[:percentage]}%) - #{progress[:current_file]}"
+          )
         else
           print "."
         end

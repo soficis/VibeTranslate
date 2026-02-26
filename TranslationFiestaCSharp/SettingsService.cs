@@ -18,7 +18,7 @@ namespace TranslationFiestaCSharp
 
     public static class SettingsService
     {
-        private static readonly string SettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CsharpTranslationFiesta", "settings.json");
+        private static readonly string SettingsPath = PortablePaths.SettingsFile;
         private static AppSettings? _cached;
 
         public static AppSettings Load()

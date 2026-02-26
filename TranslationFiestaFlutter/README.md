@@ -4,6 +4,12 @@
 
 A Flutter port of the TranslationFiestaFSharp application, implementing Clean Code principles and Clean Architecture. This application provides backtranslation functionality using the unofficial provider with a modern, responsive UI.
 
+## Portable runtime
+
+- Portable archives only (no installers).
+- Runtime data default: `./data` beside the executable.
+- Override data root with `TF_APP_HOME`.
+
 ## Overview
 
 TranslationFiestaFlutter is a complete rewrite of the TranslationFiestaFSharp Windows Forms application in Flutter/Dart. It maintains all original functionality while following modern mobile/desktop development best practices and Clean Code principles.
@@ -106,7 +112,7 @@ lib/
 #### Core Dependencies
 - **flutter**: UI framework
 - **http**: HTTP client for API calls
-- **shared_preferences**: Local storage for preferences
+- **file-based settings**: Stored under portable data root (`./data/settings.json`)
 - **provider**: State management
 
 #### Development Dependencies

@@ -4,6 +4,12 @@
 
 A clean, modern Windows Forms application for backtranslation testing built with F# and .NET 9. This tool translates English text to Japanese and back to English, helping you identify potential issues in your content.
 
+## Portable runtime
+
+- Portable archives only (no installers).
+- Runtime data default: `./data` beside the executable.
+- Override data root with `TF_APP_HOME`.
+
 ## ✨ Features
 
 ### 🎯 Simplified Workflow
@@ -29,7 +35,7 @@ A clean, modern Windows Forms application for backtranslation testing built with
 - **Error Handling**: Robust error management with detailed logging
 
 ### 📝 Logging & Debugging
-- **Comprehensive Logging**: All operations logged to `fsharptranslate.log`
+- **Comprehensive Logging**: All operations logged to `./data/logs/fsharptranslate.log`
 - **Thread-safe**: Concurrent logging without conflicts
 - **Error Tracking**: Detailed error information for troubleshooting
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable, Optional, TypeVar
 
 from exceptions import MaxRetriesExceededError, NetworkError, TimeoutError, UnexpectedError
@@ -283,7 +283,7 @@ class RetryService:
         Returns:
             Result containing tuple of (first_result, second_result)
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         config = custom_config or self.config
 
         # First translation
@@ -320,7 +320,7 @@ class RetryService:
             return Failure(second_result.error)  # type: ignore
 
         second_value = second_result.value  # type: ignore
-        total_duration = datetime.utcnow() - start_time
+        total_duration = datetime.now(timezone.utc) - start_time
 
         self._log_backtranslation_success(
             len(original_text),

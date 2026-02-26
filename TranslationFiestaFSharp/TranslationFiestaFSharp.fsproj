@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="PortablePaths.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="ProviderIds.fs" />
     <Compile Include="Settings.fs" />
@@ -23,8 +24,6 @@
   <ItemGroup>
     <PackageReference Include="PdfSharp" Version="6.2.4" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
-    <PackageReference Include="System.Text.Json" Version="10.0.3" />
-    <PackageReference Include="System.Drawing.Common" Version="10.0.3" />
     <PackageReference Include="VersOne.Epub" Version="3.3.5" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,4 @@
-/// Clean Code output section widget
-/// Following Single Responsibility and meaningful naming
+/// Output section — two side-by-side cards: Intermediate (JA) and Result (EN).
 library;
 
 import 'package:flutter/material.dart';
@@ -9,8 +8,6 @@ import 'package:provider/provider.dart';
 import '../../domain/entities/output_format.dart';
 import '../providers/translation_provider.dart';
 
-/// Output section widget for displaying translation results
-/// Single Responsibility: Display intermediate and final translation results
 class OutputSection extends StatelessWidget {
   const OutputSection({super.key});
 
@@ -20,24 +17,19 @@ class OutputSection extends StatelessWidget {
 
     return Row(
       children: [
-        // Intermediate result
         Expanded(
-          child: _TranslationResultCard(
-            title: 'Intermediate (ja)',
+          child: _OutputCard(
+            label: 'INTERMEDIATE (JA)',
             content: provider.intermediateText,
             isLoading: provider.isLoading,
           ),
         ),
-
-        const SizedBox(width: 16),
-
-        // Final result
+        const SizedBox(width: 12),
         Expanded(
-          child: _TranslationResultCard(
-            title: 'Back to English',
+          child: _OutputCard(
+            label: 'RESULT (EN)',
             content: provider.finalText,
             isLoading: provider.isLoading,
-            showCopyButton: true,
           ),
         ),
       ],
@@ -45,18 +37,15 @@ class OutputSection extends StatelessWidget {
   }
 }
 
-/// Individual translation result card
-class _TranslationResultCard extends StatelessWidget {
-  final String title;
+class _OutputCard extends StatelessWidget {
+  final String label;
   final String content;
   final bool isLoading;
-  final bool showCopyButton;
 
-  const _TranslationResultCard({
-    required this.title,
+  const _OutputCard({
+    required this.label,
     required this.content,
     required this.isLoading,
-    this.showCopyButton = false,
   });
 
   @override
@@ -64,85 +53,29 @@ class _TranslationResultCard extends StatelessWidget {
     final provider = context.watch<TranslationProvider>();
 
     return Card(
-      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                Row(
-                  children: [
-                    if (content.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${content.length} chars',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSecondaryContainer,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                        ),
-                      ),
-                    if (showCopyButton && content.isNotEmpty)
-                      IconButton(
-                        onPressed: provider.isLoading
-                            ? null
-                            : provider.copyTextToClipboard,
-                        icon: const Icon(Icons.copy),
-                        tooltip: 'Copy to clipboard',
-                        iconSize: 20,
-                      ),
-                  ],
-                ),
-              ],
-            ),
+            Text(label, style: Theme.of(context).textTheme.labelSmall),
             const SizedBox(height: 8),
             Expanded(
               child: Container(
-                constraints: const BoxConstraints(
-                  minHeight: 180, // Minimum height for larger output areas
-                  maxHeight: 350, // Maximum height to maintain layout balance
-                ),
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
                   borderRadius: BorderRadius.circular(8),
-                  color: Theme.of(context).colorScheme.surface,
+                  color: Theme.of(context).inputDecorationTheme.fillColor,
                 ),
                 child: isLoading && content.isEmpty
                     ? const Center(
-                        child: CircularProgressIndicator(),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
                       )
                     : SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
-                        child: _buildFormattedText(
-                          context,
-                          provider,
-                          content,
-                        ),
+                        padding: const EdgeInsets.all(12),
+                        child: _buildContent(context, provider, content),
                       ),
               ),
             ),
@@ -151,52 +84,41 @@ class _TranslationResultCard extends StatelessWidget {
       ),
     );
   }
-}
 
-Widget _buildFormattedText(
-  BuildContext context,
-  TranslationProvider provider,
-  String content,
-) {
-  if (content.isEmpty) {
-    return Text(
-      'Translation result will appear here...',
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            fontSize: 15,
-            height: 1.6,
-          ),
-    );
+  Widget _buildContent(
+    BuildContext context,
+    TranslationProvider provider,
+    String text,
+  ) {
+    if (text.isEmpty) {
+      return Text(
+        'Translation will appear here…',
+        style: Theme.of(context).textTheme.bodyMedium,
+      );
+    }
+
+    switch (provider.outputFormat) {
+      case OutputFormat.markdown:
+        return MarkdownBody(data: text);
+      case OutputFormat.html:
+        return SelectableText(
+          _stripHtml(text),
+          style: const TextStyle(fontSize: 14, height: 1.6),
+        );
+      case OutputFormat.plain:
+        return SelectableText(
+          text,
+          style: const TextStyle(fontSize: 14, height: 1.6),
+        );
+    }
   }
 
-  switch (provider.outputFormat) {
-    case OutputFormat.markdown:
-      return MarkdownBody(data: content);
-    case OutputFormat.html:
-      return SelectableText(
-        _stripHtmlIfNeeded(content),
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontSize: 15,
-              height: 1.6,
-            ),
-      );
-    case OutputFormat.plain:
-      return SelectableText(
-        content,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontSize: 15,
-              height: 1.6,
-            ),
-      );
-  }
-}
-
-String _stripHtmlIfNeeded(String text) {
-  try {
-    final document = html_parser.parse(text);
-    final parsedString =
-        html_parser.parse(document.body?.text).documentElement?.text ?? '';
-    return parsedString;
-  } catch (e) {
-    return text;
+  String _stripHtml(String text) {
+    try {
+      final document = html_parser.parse(text);
+      return html_parser.parse(document.body?.text).documentElement?.text ?? '';
+    } catch (_) {
+      return text;
+    }
   }
 }

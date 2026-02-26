@@ -2,20 +2,14 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../domain/entities/translation.dart';
 import '../providers/translation_provider.dart';
-import '../providers/epub_provider.dart';
 import '../widgets/input_section.dart';
 import '../widgets/output_section.dart';
 import '../widgets/control_panel.dart';
 import '../widgets/status_bar.dart';
-import '../widgets/epub_chapter_selection_dialog.dart';
-import '../widgets/epub_preview_pane.dart';
-import '../widgets/surrealist_file_drop_target.dart';
-import '../widgets/surrealist_dialog.dart';
-import '../widgets/uncooperative_button.dart';
 
-/// Main application page
-/// Single Responsibility: Display the main translation interface
+/// Main application page — unified three-panel layout.
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -39,149 +33,101 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Backtranslation (English -> Japanese -> English)'),
-        centerTitle: true,
-        elevation: 2,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.book),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => SurrealistDialog(
-                  title: 'Upload ePub',
-                  content: SurrealistFileDropTarget(
-                    label: 'Drop your ePub here',
-                    onFileSelected: (filePath) async {
-                      await context.read<EpubProvider>().loadBook(filePath);
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
-                        await showDialog(
-                          context: context,
-                          builder: (context) =>
-                              const EpubChapterSelectionDialog(),
-                        );
-                      }
-                    },
-                  ),
-                  actions: [
-                    UncooperativeButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      label: 'Cancel',
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth > 900;
-            final isMedium =
-                constraints.maxWidth > 600 && constraints.maxWidth <= 900;
-
-            if (isWide) {
-              return const Column(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: InputSection(),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          flex: 3,
-                          child: OutputSection(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ControlPanel(),
-                ],
-              );
-            }
-
-            if (isMedium) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      constraints: const BoxConstraints(
-                        minHeight: 200,
-                        maxHeight: 300,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'TranslationFiesta Dart',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      child: const InputSection(),
-                    ),
-                    const SizedBox(height: 12),
-                    const ControlPanel(),
-                    const SizedBox(height: 12),
-                    Container(
-                      constraints: const BoxConstraints(
-                        minHeight: 250,
-                        maxHeight: 400,
+                      const SizedBox(height: 2),
+                      Text(
+                        'Backtranslation EN → JA → EN',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      child: const OutputSection(),
-                    ),
-                    const SizedBox(height: 8),
-                    const StatusBar(),
-                  ],
-                ),
-              );
-            }
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Consumer<EpubProvider>(
-                    builder: (context, epubProvider, child) {
-                      if (epubProvider.book != null) {
-                        return Container(
-                          constraints: const BoxConstraints(
-                            minHeight: 300,
-                            maxHeight: 400,
-                          ),
-                          child: const EpubPreviewPane(),
-                        );
-                      }
-
-                      return Container(
-                        constraints: const BoxConstraints(
-                          minHeight: 200,
-                          maxHeight: 300,
-                        ),
-                        child: const InputSection(),
-                      );
-                    },
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  const ControlPanel(),
-                  const SizedBox(height: 12),
-                  Container(
-                    constraints: const BoxConstraints(
-                      minHeight: 300,
-                      maxHeight: 400,
-                    ),
-                    child: const OutputSection(),
-                  ),
-                  const SizedBox(height: 8),
-                  const StatusBar(),
+                  const SizedBox(width: 16),
+                  const Flexible(child: _ProviderSelector()),
                 ],
               ),
-            );
-          },
+              const SizedBox(height: 16),
+
+              // Input card
+              const Expanded(flex: 2, child: InputSection()),
+              const SizedBox(height: 12),
+
+              // Action row
+              const ControlPanel(),
+              const SizedBox(height: 12),
+
+              // Output panels (side by side on wide, stacked on narrow)
+              Expanded(
+                flex: 3,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth > 600) {
+                      return const Row(
+                        children: [
+                          Expanded(child: OutputSection()),
+                        ],
+                      );
+                    }
+                    return const OutputSection();
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              const StatusBar(),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// Provider dropdown selector in the header.
+class _ProviderSelector extends StatelessWidget {
+  const _ProviderSelector();
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<TranslationProvider>();
+    return SizedBox(
+      width: 280,
+      child: DropdownButtonFormField<TranslationProviderId>(
+        initialValue: provider.providerId,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'PROVIDER',
+          labelStyle: Theme.of(context).textTheme.labelSmall,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        items: TranslationProviderId.values.map((id) {
+          return DropdownMenuItem(
+            value: id,
+            child: Text(id.displayName, overflow: TextOverflow.ellipsis),
+          );
+        }).toList(),
+        onChanged: provider.isLoading
+            ? null
+            : (value) {
+                if (value != null) provider.updateApiConfiguration(value);
+              },
       ),
     );
   }

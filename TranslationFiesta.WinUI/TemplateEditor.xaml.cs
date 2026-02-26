@@ -48,12 +48,28 @@ namespace TranslationFiesta.WinUI
 
         private void VariableButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.Content?.ToString() is string content)
+            if (sender is Button button)
             {
+                string token = string.Empty;
+
+                if (button.Tag is string tag && !string.IsNullOrWhiteSpace(tag))
+                {
+                    token = $"{{{tag.Trim()}}}";
+                }
+                else if (button.Content?.ToString() is string content && !string.IsNullOrWhiteSpace(content))
+                {
+                    token = content;
+                }
+
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    return;
+                }
+
                 var selectionStart = TemplateContentTextBox.SelectionStart;
                 var currentText = TemplateContentTextBox.Text ?? string.Empty;
-                TemplateContentTextBox.Text = currentText.Insert(selectionStart, content);
-                TemplateContentTextBox.SelectionStart = selectionStart + content.Length;
+                TemplateContentTextBox.Text = currentText.Insert(selectionStart, token);
+                TemplateContentTextBox.SelectionStart = selectionStart + token.Length;
             }
         }
 

@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -13,7 +14,7 @@ namespace TranslationFiesta.WinUI
 {
     public sealed partial class MainWindow : Window
     {
-       private enum OutputFormat { Plain, Markdown, Html }
+        private enum OutputFormat { Plain, Markdown, Html }
         private sealed class ProviderOption
         {
             public string Id { get; set; } = string.Empty;
@@ -60,8 +61,8 @@ namespace TranslationFiesta.WinUI
             // Initialize language selectors
             InitializeLanguageSelectors();
 
-           // Initialize format selector
-           InitializeFormatSelector();
+            // Initialize format selector
+            InitializeFormatSelector();
 
             _templateManager = new TemplateManager();
             _ = LoadTemplatesAsync();
@@ -210,11 +211,11 @@ namespace TranslationFiesta.WinUI
             TargetLanguageCombo.SelectedIndex = 7; // Japanese (common for back-translation)
         }
 
-       private void InitializeFormatSelector()
-       {
-           FormatComboBox.ItemsSource = Enum.GetValues(typeof(OutputFormat));
-           FormatComboBox.SelectedIndex = 2; // Default to HTML
-       }
+        private void InitializeFormatSelector()
+        {
+            FormatComboBox.ItemsSource = Enum.GetValues(typeof(OutputFormat));
+            FormatComboBox.SelectedIndex = 2; // Default to HTML
+        }
 
         private string GetSelectedLanguageCode(ComboBox comboBox)
         {
@@ -242,11 +243,11 @@ namespace TranslationFiesta.WinUI
                 var sourceText = SourceTextBox.Text?.Trim();
                 if (string.IsNullOrWhiteSpace(sourceText))
                 {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    if (TargetTextBox != null)
-                        TargetTextBox.Text = "Please enter text to translate.";
-                });
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        if (TargetTextBox != null)
+                            TargetTextBox.Text = "Please enter text to translate.";
+                    });
                     return;
                 }
 
@@ -452,79 +453,57 @@ namespace TranslationFiesta.WinUI
 
             try
             {
-                var savePicker = new FileSavePicker();
-                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-                WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
+                // Portable-only contract: export to app-local ./data/exports by default.
+                string normalizedFormat = format.ToLowerInvariant();
+                string outputPath = BuildPortableExportPath("translation_results", normalizedFormat);
 
-                savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+                // Get selected languages
+                var sourceLang = GetSelectedLanguageCode(SourceLanguageCombo);
+                var targetLang = GetSelectedLanguageCode(TargetLanguageCombo);
 
-                // Set file type based on format
-                switch (format.ToLower())
+                // Create translation result
+                var translationResult = new TranslationResult(
+                    SourceTextBox.Text,
+                    TargetTextBox.Text,
+                    sourceLang,
+                    targetLang,
+                    0.0, // Processing time - could be tracked if needed
+                    "TranslationFiesta"
+                );
+
+                var translations = new List<TranslationResult> { translationResult };
+
+                // Create metadata
+                var metadata = new ExportMetadata
+                {
+                    Title = "Translation Results",
+                    SourceLanguage = sourceLang,
+                    TargetLanguage = targetLang,
+                    CreatedDate = DateTime.Now.ToString("O")
+                };
+
+                // Export based on format
+                switch (normalizedFormat)
                 {
                     case "pdf":
-                        savePicker.FileTypeChoices.Add("PDF Files", new System.Collections.Generic.List<string>() { ".pdf" });
-                        savePicker.SuggestedFileName = "translation_results.pdf";
+                        ExportManager.ExportToPdf(translations, outputPath, metadata);
                         break;
                     case "docx":
-                        savePicker.FileTypeChoices.Add("Word Documents", new System.Collections.Generic.List<string>() { ".docx" });
-                        savePicker.SuggestedFileName = "translation_results.docx";
+                        ExportManager.ExportToDocx(translations, outputPath, metadata);
                         break;
                     case "txt":
-                        savePicker.FileTypeChoices.Add("Text Files", new System.Collections.Generic.List<string>() { ".txt" });
-                        savePicker.SuggestedFileName = "translation_results.txt";
+                        var exportContent = GenerateExportContent();
+                        await global::System.IO.File.WriteAllTextAsync(outputPath, exportContent);
                         break;
+                    case "md":
+                        var markdownContent = $"# Translation Result\n\n**Source:**\n{SourceTextBox.Text}\n\n**Translation:**\n{TargetTextBox.Text}";
+                        await global::System.IO.File.WriteAllTextAsync(outputPath, markdownContent);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unsupported export format: {format}");
                 }
 
-                var file = await savePicker.PickSaveFileAsync();
-                if (file != null)
-                {
-                    // Get selected languages
-                    var sourceLang = GetSelectedLanguageCode(SourceLanguageCombo);
-                    var targetLang = GetSelectedLanguageCode(TargetLanguageCombo);
-
-                    // Create translation result
-                    var translationResult = new TranslationResult(
-                        SourceTextBox.Text,
-                        TargetTextBox.Text,
-                        sourceLang,
-                        targetLang,
-                        0.0, // Processing time - could be tracked if needed
-                        "TranslationFiesta"
-                    );
-
-                    var translations = new List<TranslationResult> { translationResult };
-
-                    // Create metadata
-                    var metadata = new ExportMetadata
-                    {
-                        Title = "Translation Results",
-                        SourceLanguage = sourceLang,
-                        TargetLanguage = targetLang,
-                        CreatedDate = DateTime.Now.ToString("O")
-                    };
-
-                    // Export based on format
-                    string outputPath = file.Path;
-                    switch (format.ToLower())
-                    {
-                        case "pdf":
-                            ExportManager.ExportToPdf(translations, outputPath, metadata);
-                            break;
-                        case "docx":
-                            ExportManager.ExportToDocx(translations, outputPath, metadata);
-                            break;
-                        case "txt":
-                            var exportContent = GenerateExportContent();
-                            await FileIO.WriteTextAsync(file, exportContent);
-                            break;
-                       case "md":
-                           var markdownContent = $"# Translation Result\n\n**Source:**\n{SourceTextBox.Text}\n\n**Translation:**\n{TargetTextBox.Text}";
-                           await FileIO.WriteTextAsync(file, markdownContent);
-                           break;
-                   }
-
-                    Logger.Info($"Translation exported to {format.ToUpper()}: {file.Name}");
-                }
+                Logger.Info($"Translation exported to {normalizedFormat.ToUpperInvariant()}: {outputPath}");
             }
             catch (Exception ex)
             {
@@ -618,35 +597,28 @@ namespace TranslationFiesta.WinUI
 
             try
             {
-                var savePicker = new FileSavePicker();
-                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-                WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
-
-                savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-
-                switch (format.ToLower())
-                {
-                    case "pdf":
-                        savePicker.FileTypeChoices.Add("PDF Files", new System.Collections.Generic.List<string>() { ".pdf" });
-                        savePicker.SuggestedFileName = "batch_translation_results.pdf";
-                        break;
-                    case "docx":
-                        savePicker.FileTypeChoices.Add("Word Documents", new System.Collections.Generic.List<string>() { ".docx" });
-                        savePicker.SuggestedFileName = "batch_translation_results.docx";
-                        break;
-                }
-
-                var file = await savePicker.PickSaveFileAsync();
-                if (file != null)
-                {
-                    _currentBatchProcessor.ExportBatchResults(file.Path, format);
-                    Logger.Info($"Batch results exported to {format.ToUpper()}: {file.Name}");
-                }
+                string normalizedFormat = format.ToLowerInvariant();
+                string outputPath = BuildPortableExportPath("batch_translation_results", normalizedFormat);
+                _currentBatchProcessor.ExportBatchResults(outputPath, normalizedFormat);
+                Logger.Info($"Batch results exported to {normalizedFormat.ToUpperInvariant()}: {outputPath}");
             }
             catch (Exception ex)
             {
                 Logger.Error($"Batch export failed: {ex.Message}", ex);
             }
+        }
+
+        private static string BuildPortableExportPath(string filePrefix, string format)
+        {
+            var safeFormat = format.Trim().TrimStart('.').ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(safeFormat))
+            {
+                safeFormat = "txt";
+            }
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            var fileName = $"{filePrefix}-{timestamp}.{safeFormat}";
+            return Path.Combine(PortablePaths.ExportsDirectory, fileName);
         }
 
         // New methods for modern UI functionality
@@ -766,40 +738,14 @@ namespace TranslationFiesta.WinUI
         }
         private void ManageTemplatesButton_Click(object sender, RoutedEventArgs e)
         {
-            try
+            Logger.Info("Template editor is not available in the WinUI portable build.");
+            DispatcherQueue.TryEnqueue(() =>
             {
-                if (_templateManager == null)
-                {
-                    Logger.Error("TemplateManager not initialized in ManageTemplatesButton_Click");
-                    return;
-                }
-
-                var editorWindow = new TemplateEditor(_templateManager);
-                editorWindow.Activate();
-                editorWindow.Closed += async (s, args) =>
-                {
-                    try
-                    {
-                        await LoadTemplatesAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"Failed to reload templates after editor closed: {ex.Message}", ex);
-                    }
-                };
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Failed to open template editor: {ex.Message}", ex);
                 if (TargetTextBox != null)
                 {
-                    DispatcherQueue.TryEnqueue(() =>
-                    {
-                        if (TargetTextBox != null)
-                            TargetTextBox.Text = $"Failed to open template editor: {ex.Message}";
-                    });
+                    TargetTextBox.Text = "Template editor is not available in TranslationFiesta C# WinUI.";
                 }
-            }
+            });
         }
 
         private async Task LoadTemplatesAsync()
@@ -834,12 +780,12 @@ namespace TranslationFiesta.WinUI
             }
         }
 
-        private async void UpdatePreview(string content)
+        private void UpdatePreview(string content)
         {
             try
             {
                 // Null checks for UI elements
-                if (FormatComboBox == null || PreviewWebView == null)
+                if (PreviewTextBox == null)
                 {
                     Logger.Warning("UI elements not initialized in UpdatePreview");
                     return;
@@ -852,24 +798,15 @@ namespace TranslationFiesta.WinUI
                 }
 
                 // Ensure we're on the UI thread
-                DispatcherQueue.TryEnqueue(async () =>
+                DispatcherQueue.TryEnqueue(() =>
                 {
                     try
                     {
-                        if (FormatComboBox?.SelectedItem is OutputFormat format && format == OutputFormat.Html)
-                        {
-                            await PreviewWebView?.EnsureCoreWebView2Async();
-                            PreviewWebView?.NavigateToString(content);
-                        }
-                        else
-                        {
-                            await PreviewWebView?.EnsureCoreWebView2Async();
-                            PreviewWebView?.NavigateToString($"<pre>{content}</pre>");
-                        }
+                        PreviewTextBox.Text = content;
                     }
                     catch (Exception ex)
                     {
-                        Logger.Error($"WebView2 operation failed in UpdatePreview: {ex.Message}", ex);
+                        Logger.Error($"Preview update failed in UpdatePreview: {ex.Message}", ex);
                         // Don't re-throw to prevent crash
                     }
                 });

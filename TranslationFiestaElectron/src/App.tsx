@@ -31,6 +31,7 @@ const App: React.FC = () => {
   >([]);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [batchStatus, setBatchStatus] = useState("");
+  const [batchVisible, setBatchVisible] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const batchAbortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
@@ -220,8 +221,8 @@ const App: React.FC = () => {
     <div className="app">
       <header className="header">
         <div>
-          <h1>TranslationFiestaElectron</h1>
-          <p>Backtranslation EN -&gt; JA -&gt; EN</p>
+          <h1>TranslationFiesta TypeScript</h1>
+          <p>Backtranslation EN → JA → EN</p>
         </div>
         <div className="provider">
           <label htmlFor="provider">Provider</label>
@@ -238,6 +239,7 @@ const App: React.FC = () => {
           </select>
         </div>
       </header>
+
       <section className="panel">
         <label htmlFor="input">Input</label>
         <textarea
@@ -247,8 +249,8 @@ const App: React.FC = () => {
           placeholder="Enter text to backtranslate..."
         />
         <div className="actions">
-          <button onClick={handleBacktranslate} disabled={isBusy}>
-            {isBusy ? "Working..." : "Backtranslate"}
+          <button className="primary" onClick={handleBacktranslate} disabled={isBusy}>
+            {isBusy ? "Translating…" : "⦿ Backtranslate"}
           </button>
           <button onClick={handleImportFile} disabled={isBusy}>
             Import
@@ -259,52 +261,57 @@ const App: React.FC = () => {
           <button onClick={handleCancel} disabled={!isBusy}>
             Cancel
           </button>
-          <span className="status">{status}</span>
+          <button onClick={() => setBatchVisible(!batchVisible)}>
+            Batch
+          </button>
+          <span className={`status${status === "Done" ? " done" : ""}${status.startsWith("Error") || status.startsWith("Network") || status.startsWith("Parsing") ? " error" : ""}`}>{status}</span>
         </div>
       </section>
 
-      <section className="panel">
-        <h2>Batch Processing</h2>
-        <div className="actions">
-          <button onClick={handleBatchSelect} disabled={isBusy}>
-            Select Files
-          </button>
-          <button onClick={handleBatchRun} disabled={isBusy || batchFiles.length === 0}>
-            Run Batch
-          </button>
-          <button onClick={handleBatchCancel} disabled={!batchProgress}>
-            Cancel
-          </button>
-          <button onClick={handleBatchExport} disabled={!batchResults.length}>
-            Export Batch
-          </button>
-        </div>
-        {batchProgress && (
-          <p className="status">
-            {batchProgress.done}/{batchProgress.total} processed
-          </p>
-        )}
-        {batchStatus && <p className="status">{batchStatus}</p>}
-        {batchResults.length > 0 && (
-          <div className="batch-results">
-            {batchResults.map((item) => (
-              <div key={item.path} className="batch-item">
-                <strong>{item.path}</strong>
-                <pre>{item.output}</pre>
-              </div>
-            ))}
+      {batchVisible && (
+        <section className="panel batch-section">
+          <h2>Batch Processing</h2>
+          <div className="actions">
+            <button onClick={handleBatchSelect} disabled={isBusy}>
+              Select Files
+            </button>
+            <button onClick={handleBatchRun} disabled={isBusy || batchFiles.length === 0}>
+              Run Batch
+            </button>
+            <button onClick={handleBatchCancel} disabled={!batchProgress}>
+              Cancel
+            </button>
+            <button onClick={handleBatchExport} disabled={!batchResults.length}>
+              Export Batch
+            </button>
           </div>
-        )}
-      </section>
+          {batchProgress && (
+            <p className="status">
+              {batchProgress.done}/{batchProgress.total} processed
+            </p>
+          )}
+          {batchStatus && <p className="status">{batchStatus}</p>}
+          {batchResults.length > 0 && (
+            <div className="batch-results">
+              {batchResults.map((item) => (
+                <div key={item.path} className="batch-item">
+                  <strong>{item.path}</strong>
+                  <pre>{item.output}</pre>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="grid">
         <div className="panel">
           <h2>Intermediate (JA)</h2>
-          <pre>{intermediateText}</pre>
+          <pre>{intermediateText || "Translation will appear here…"}</pre>
         </div>
         <div className="panel">
           <h2>Result (EN)</h2>
-          <pre>{outputText}</pre>
+          <pre>{outputText || "Back-translation will appear here…"}</pre>
         </div>
       </section>
     </div>

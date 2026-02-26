@@ -24,12 +24,12 @@ type TranslationService struct {
 }
 
 // NewTranslationService creates a new translation service
-func NewTranslationService() *TranslationService {
+func NewTranslationService(translationMemoryPath string) *TranslationService {
 	httpClient := utils.NewHTTPClient()
 	return &TranslationService{
 		httpClient: httpClient,
 		logger:     utils.GetLogger(),
-		tm:         NewTranslationMemory(1000, "tm_cache.json"),
+		tm:         NewTranslationMemory(1000, translationMemoryPath),
 	}
 }
 

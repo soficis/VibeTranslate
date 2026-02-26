@@ -2,6 +2,7 @@
 
 require 'json'
 require 'fileutils'
+require_relative 'app_paths'
 
 module TranslationFiesta
   module Infrastructure
@@ -11,7 +12,7 @@ module TranslationFiesta
       }.freeze
 
       def initialize(path = nil)
-        @path = path || File.join(Dir.home, '.translation_fiesta', 'settings.json')
+        @path = path || AppPaths.settings_path
       end
 
       def load

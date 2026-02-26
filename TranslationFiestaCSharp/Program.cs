@@ -11,6 +11,8 @@ namespace TranslationFiestaCSharp
 {
     static class Program
     {
+        private const string AppDisplayName = "TranslationFiesta C#";
+
         static string ExtractTextFromHtml(string htmlContent)
         {
             return HtmlProcessor.ExtractTextFromHtml(htmlContent);
@@ -48,14 +50,14 @@ namespace TranslationFiestaCSharp
                 throw;
             }
         }
-    // Use TranslationClient for parsing and HTTP
-    static readonly TranslationClient Translator = new TranslationClient();
+        // Use TranslationClient for parsing and HTTP
+        static readonly TranslationClient Translator = new TranslationClient();
 
-    private sealed class ProviderOption
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-    }
+        private sealed class ProviderOption
+        {
+            public string Id { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+        }
 
         static void Main(string[] args)
         {
@@ -81,8 +83,9 @@ namespace TranslationFiestaCSharp
             var defaultWidth = Math.Min((int)(screenWidth * 0.8), Math.Max(settings.WindowWidth, 900));
             var defaultHeight = Math.Min((int)(screenHeight * 0.8), Math.Max(settings.WindowHeight, 800));
 
-            var form = new Form {
-                Text = "TranslationFiesta - English ↔ Japanese",
+            var form = new Form
+            {
+                Text = AppDisplayName,
                 Width = defaultWidth,
                 Height = defaultHeight,
                 MinimumSize = new System.Drawing.Size(800, 600),
@@ -113,95 +116,143 @@ namespace TranslationFiestaCSharp
             // layout helpers under menu
             var yTop = menu.Height + 6;
 
-            // Create controls with responsive sizing
-            var margin = 10;
-            var availableWidth = form.ClientSize.Width - (2 * margin);
+            // Common fonts
+            var uiFont = new System.Drawing.Font("Segoe UI", 10f);
+            var labelFont = new System.Drawing.Font("Segoe UI", 8.25f, System.Drawing.FontStyle.Bold);
+            var titleFont = new System.Drawing.Font("Segoe UI", 14f, System.Drawing.FontStyle.Bold);
+            var heroFont = new System.Drawing.Font("Segoe UI", 10f, System.Drawing.FontStyle.Bold);
 
-            var btnTheme = new Button { Text = settings.DarkMode ? "Light" : "Dark", Left = margin, Top = yTop, Width = 80 };
-            var btnLoad = new Button { Text = "Load File", Left = margin + 90, Top = yTop, Width = 100 };
-            var btnBatch = new Button { Text = "Batch Process", Left = margin + 200, Top = yTop, Width = 120 };
+            // Create controls with responsive sizing
+            var pad = 24;
+            var availableWidth = form.ClientSize.Width - (2 * pad);
+
+            // Header row
+            var lblTitle = new Label { Text = AppDisplayName, Left = pad, Top = yTop, Width = 320, Height = 28, Font = titleFont };
             var providerOptions = new[]
             {
                 new ProviderOption { Id = ProviderIds.GoogleUnofficial, Name = "Google Translate (Unofficial / Free)" }
             };
-            var lblProvider = new Label { Text = "Provider:", Left = margin + 330, Top = yTop + 5, Width = 70 };
-            var cmbProvider = new ComboBox { Left = margin + 400, Top = yTop + 2, Width = 210, DropDownStyle = ComboBoxStyle.DropDownList };
+            var cmbProvider = new ComboBox { Left = pad + 280, Top = yTop, Width = 280, Height = 28, DropDownStyle = ComboBoxStyle.DropDownList, Font = uiFont };
             cmbProvider.DataSource = providerOptions;
             cmbProvider.DisplayMember = "Name";
             cmbProvider.ValueMember = "Id";
             cmbProvider.SelectedValue = providerId;
-            var lblFile = new Label { Text = "", Left = margin, Top = yTop + 34, Width = availableWidth };
 
-            var lblInput = new Label { Text = "Input (English):", Left = margin, Top = yTop + 60, Width = 200 };
-            var txtInput = new TextBox { Left = margin, Top = yTop + 82, Width = availableWidth, Height = 180, Multiline = true, ScrollBars = ScrollBars.Vertical };
+            // Input section
+            var lblInput = new Label { Text = "INPUT", Left = pad, Top = yTop + 40, Width = 100, Font = labelFont };
+            var txtInput = new TextBox { Left = pad, Top = yTop + 58, Width = availableWidth, Height = 120, Multiline = true, ScrollBars = ScrollBars.Vertical, Font = uiFont };
 
-            var btnTranslate = new Button { Text = "Translate", Left = margin, Top = yTop + 272, Width = 140 };
-            var btnCancel = new Button { Text = "Cancel", Left = margin + 150, Top = yTop + 272, Width = 100, Enabled = false };
-            btnCancel.FlatStyle = FlatStyle.System;
-            var lblStatus = new Label { Text = "Ready", Left = margin + 260, Top = yTop + 277, Width = Math.Max(400, availableWidth - 270) };
-            var progress = new ProgressBar { Left = margin + 260, Top = yTop + 298, Width = Math.Max(400, availableWidth - 270), Height = 10, Visible = false, Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30 };
+            // Action row
+            var actionTop = yTop + 188;
+            var btnTranslate = new Button { Text = "\u29BF Backtranslate", Left = pad, Top = actionTop, Width = 160, Height = 36, Font = heroFont };
+            var btnLoad = new Button { Text = "Import", Left = pad + 168, Top = actionTop, Width = 90, Height = 36, Font = uiFont };
+            var btnSave = new Button { Text = "Save", Left = pad + 266, Top = actionTop, Width = 90, Height = 36, Font = uiFont };
+            var btnCopy = new Button { Text = "Copy", Left = pad + 364, Top = actionTop, Width = 90, Height = 36, Font = uiFont };
+            var btnBatch = new Button { Text = "Batch", Left = pad + 462, Top = actionTop, Width = 90, Height = 36, Font = uiFont };
+            var btnCancel = new Button { Text = "Cancel", Left = pad + 560, Top = actionTop, Width = 90, Height = 36, Enabled = false, Font = uiFont };
 
-            var lblJa = new Label { Text = "Japanese (intermediate):", Left = margin, Top = yTop + 318, Width = 300 };
-            var txtJa = new TextBox { Left = margin, Top = yTop + 340, Width = availableWidth, Height = 180, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true };
+            var lblStatus = new Label { Text = "Ready", Left = pad, Top = actionTop + 44, Width = availableWidth, Font = uiFont };
+            var progress = new ProgressBar { Left = pad, Top = actionTop + 68, Width = availableWidth, Height = 4, Visible = false, Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30 };
 
-            var lblBack = new Label { Text = "Back to English:", Left = margin, Top = yTop + 530, Width = 200 };
-            var txtBack = new TextBox { Left = margin, Top = yTop + 552, Width = availableWidth, Height = 180, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true };
+            // Side-by-side output panels
+            var outputTop = actionTop + 80;
+            var gap = 12;
+            var panelWidth = (availableWidth - gap) / 2;
 
-            var btnCopy = new Button { Text = "Copy Back", Left = margin, Top = yTop + 742, Width = 100 };
-            var btnSave = new Button { Text = "Save Back...", Left = margin + 110, Top = yTop + 742, Width = 120 };
+            var lblJa = new Label { Text = "INTERMEDIATE (JA)", Left = pad, Top = outputTop, Width = panelWidth, Font = labelFont };
+            var txtJa = new TextBox { Left = pad, Top = outputTop + 18, Width = panelWidth, Height = 160, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Font = uiFont };
 
-            form.Controls.AddRange(new Control[] { btnTheme, btnLoad, btnBatch, lblProvider, cmbProvider, lblFile, lblInput, txtInput, btnTranslate, btnCancel, lblStatus, progress, lblJa, txtJa, lblBack, txtBack, btnCopy, btnSave });
+            var lblBack = new Label { Text = "RESULT (EN)", Left = pad + panelWidth + gap, Top = outputTop, Width = panelWidth, Font = labelFont };
+            var txtBack = new TextBox { Left = pad + panelWidth + gap, Top = outputTop + 18, Width = panelWidth, Height = 160, Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Font = uiFont };
 
-            var dark = settings.DarkMode;
+            // Hidden controls (kept for compatibility)
+            var btnTheme = new Button { Text = "", Width = 0, Height = 0, Visible = false };
+            var lblFile = new Label { Text = "", Width = 0, Height = 0, Visible = false };
+            var lblProvider = new Label { Text = "", Width = 0, Height = 0, Visible = false };
+
+            form.Controls.AddRange(new Control[] { lblTitle, cmbProvider, lblInput, txtInput, btnTranslate, btnLoad, btnSave, btnCopy, btnBatch, btnCancel, lblStatus, progress, lblJa, txtJa, lblBack, txtBack, btnTheme, lblFile, lblProvider });
+
+            var dark = true; // Always dark mode
             // Apply initial theme
             ApplyTheme();
 
             void ApplyTheme()
             {
-                var bg = dark ? System.Drawing.Color.FromArgb(45, 45, 48) : System.Drawing.SystemColors.Control;
-                var fg = dark ? System.Drawing.Color.White : System.Drawing.Color.Black;
-                form.BackColor = bg;
+                // Unified dark palette
+                var bgColor = System.Drawing.Color.FromArgb(15, 20, 25);    // #0F1419
+                var surface = System.Drawing.Color.FromArgb(26, 31, 46);    // #1A1F2E
+                var elevated = System.Drawing.Color.FromArgb(36, 42, 56);    // #242A38
+                var borderColor = System.Drawing.Color.FromArgb(46, 54, 72);    // #2E3648
+                var textPrimary = System.Drawing.Color.FromArgb(232, 236, 241); // #E8ECF1
+                var textSecondary = System.Drawing.Color.FromArgb(139, 149, 165); // #8B95A5
+                var accent = System.Drawing.Color.FromArgb(59, 130, 246);  // #3B82F6
+                var accentHover = System.Drawing.Color.FromArgb(37, 99, 235);   // #2563EB
 
+                form.BackColor = bgColor;
+                form.ForeColor = textPrimary;
+
+                // Apply to all controls
                 foreach (Control c in form.Controls)
                 {
-                    c.BackColor = bg;
-                    c.ForeColor = fg;
-
-                    // Special handling for buttons to ensure disabled state is visible
-                    if (c is Button button)
-                    {
-                        if (dark)
-                        {
-                            button.BackColor = button.Enabled ? System.Drawing.Color.FromArgb(70, 70, 74) : System.Drawing.Color.FromArgb(55, 55, 58);
-                            button.ForeColor = System.Drawing.Color.White;
-                            button.FlatStyle = FlatStyle.Flat;
-                            button.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(100, 100, 104);
-                        }
-                        else
-                        {
-                            button.BackColor = System.Drawing.SystemColors.Control;
-                            button.ForeColor = System.Drawing.Color.Black;
-                            button.FlatStyle = FlatStyle.Standard;
-                        }
-                    }
+                    if (c is MenuStrip) continue;
+                    c.BackColor = bgColor;
+                    c.ForeColor = textPrimary;
                 }
 
-                txtInput.BackColor = dark ? System.Drawing.Color.FromArgb(30, 30, 30) : System.Drawing.Color.White;
-                txtInput.ForeColor = fg;
-                txtJa.BackColor = dark ? System.Drawing.Color.FromArgb(30, 30, 30) : System.Drawing.Color.White;
-                txtJa.ForeColor = fg;
-                txtBack.BackColor = dark ? System.Drawing.Color.FromArgb(30, 30, 30) : System.Drawing.Color.White;
-                txtBack.ForeColor = fg;
+                // Section labels
+                lblInput.ForeColor = textSecondary;
+                lblJa.ForeColor = textSecondary;
+                lblBack.ForeColor = textSecondary;
+                lblStatus.ForeColor = textSecondary;
+
+                // Text inputs
+                txtInput.BackColor = surface;
+                txtInput.ForeColor = textPrimary;
+                txtInput.BorderStyle = BorderStyle.FixedSingle;
+                txtJa.BackColor = surface;
+                txtJa.ForeColor = textPrimary;
+                txtJa.BorderStyle = BorderStyle.FixedSingle;
+                txtBack.BackColor = surface;
+                txtBack.ForeColor = textPrimary;
+                txtBack.BorderStyle = BorderStyle.FixedSingle;
+
+                // Provider combo
+                cmbProvider.BackColor = surface;
+                cmbProvider.ForeColor = textPrimary;
+                cmbProvider.FlatStyle = FlatStyle.Flat;
+
+                // Secondary buttons
+                void StyleSecondary(Button btn)
+                {
+                    btn.BackColor = elevated;
+                    btn.ForeColor = textPrimary;
+                    btn.FlatStyle = FlatStyle.Flat;
+                    btn.FlatAppearance.BorderColor = borderColor;
+                    btn.FlatAppearance.BorderSize = 1;
+                    btn.FlatAppearance.MouseOverBackColor = surface;
+                }
+                StyleSecondary(btnLoad);
+                StyleSecondary(btnSave);
+                StyleSecondary(btnCopy);
+                StyleSecondary(btnBatch);
+                StyleSecondary(btnCancel);
+
+                // Hero button (Backtranslate)
+                btnTranslate.BackColor = accent;
+                btnTranslate.ForeColor = System.Drawing.Color.White;
+                btnTranslate.FlatStyle = FlatStyle.Flat;
+                btnTranslate.FlatAppearance.BorderSize = 0;
+                btnTranslate.FlatAppearance.MouseOverBackColor = accentHover;
+
+                // Menu
+                menu.BackColor = bgColor;
+                menu.ForeColor = textPrimary;
+                menu.Renderer = new ToolStripProfessionalRenderer(new DarkColorTable());
             }
 
             btnTheme.Click += (s, e) =>
             {
-                dark = !dark;
-                btnTheme.Text = dark ? "Light" : "Dark";
-                ApplyTheme();
-
-                // Save theme setting
-                SettingsService.SaveCurrentSettings(dark, GetSelectedProviderId(), form.Width, form.Height, form.Location.X, form.Location.Y);
+                // Theme toggle disabled — always dark
             };
 
             // Provider selection
@@ -215,6 +266,9 @@ namespace TranslationFiestaCSharp
             {
                 using var ofd = new OpenFileDialog();
                 ofd.Filter = "Supported files (*.txt;*.md;*.html;*.epub)|*.txt;*.md;*.html;*.epub|Text files (*.txt)|*.txt|Markdown files (*.md)|*.md|HTML files (*.html)|*.html|EPUB files (*.epub)|*.epub|All files (*.*)|*.*";
+                ofd.InitialDirectory = !string.IsNullOrWhiteSpace(settings.LastFilePath)
+                    ? Path.GetDirectoryName(settings.LastFilePath) ?? PortablePaths.DataRoot
+                    : PortablePaths.DataRoot;
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     try
@@ -286,6 +340,9 @@ namespace TranslationFiestaCSharp
                 using var sfd = new SaveFileDialog();
                 sfd.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
                 sfd.FileName = "backtranslation.txt";
+                sfd.InitialDirectory = !string.IsNullOrWhiteSpace(settings.LastSavePath)
+                    ? Path.GetDirectoryName(settings.LastSavePath) ?? PortablePaths.ExportsDirectory
+                    : PortablePaths.ExportsDirectory;
                 if (sfd.ShowDialog() == DialogResult.OK)
                 {
                     var content = txtBack.Text ?? string.Empty;
@@ -310,15 +367,51 @@ namespace TranslationFiestaCSharp
             // Handle window resizing for responsive layout
             void ResizeControls()
             {
-                var margin = 10;
-                var availableWidth = form.ClientSize.Width - (2 * margin);
+                var pad = 24;
+                var availableWidth = form.ClientSize.Width - (2 * pad);
+                var yTop = menu.Height + 6;
+                var gap = 12;
+                var panelWidth = (availableWidth - gap) / 2;
 
-                lblFile.Width = availableWidth;
+                // Header
+                cmbProvider.Left = pad + 280;
+                cmbProvider.Width = Math.Min(280, availableWidth - 280);
+
+                // Input
                 txtInput.Width = availableWidth;
-                txtJa.Width = availableWidth;
-                txtBack.Width = availableWidth;
-                lblStatus.Width = Math.Max(400, availableWidth - 270);
-                progress.Width = Math.Max(400, availableWidth - 270);
+                var inputHeight = Math.Max(80, (form.ClientSize.Height - 360) / 3);
+                txtInput.Height = inputHeight;
+
+                // Action row
+                var actionTop = txtInput.Top + txtInput.Height + 10;
+                btnTranslate.Top = actionTop;
+                btnLoad.Top = actionTop;
+                btnSave.Top = actionTop;
+                btnCopy.Top = actionTop;
+                btnBatch.Top = actionTop;
+                btnCancel.Top = actionTop;
+                lblStatus.Top = actionTop + 44;
+                lblStatus.Width = availableWidth;
+                progress.Top = actionTop + 68;
+                progress.Width = availableWidth;
+
+                // Side-by-side outputs
+                var outputTop = actionTop + 80;
+                var outputHeight = Math.Max(80, form.ClientSize.Height - outputTop - 40);
+                lblJa.Top = outputTop;
+                lblJa.Width = panelWidth;
+                txtJa.Left = pad;
+                txtJa.Top = outputTop + 18;
+                txtJa.Width = panelWidth;
+                txtJa.Height = outputHeight;
+
+                lblBack.Left = pad + panelWidth + gap;
+                lblBack.Top = outputTop;
+                lblBack.Width = panelWidth;
+                txtBack.Left = pad + panelWidth + gap;
+                txtBack.Top = outputTop + 18;
+                txtBack.Width = panelWidth;
+                txtBack.Height = outputHeight;
             }
 
             form.Resize += (s, e) => ResizeControls();
@@ -458,10 +551,30 @@ namespace TranslationFiestaCSharp
                     Task.Run(() => batchProcessor.ProcessDirectoryAsync(fbd.SelectedPath));
                 }
             };
-            
+
             // Initialize and start the UI update timer
 
             Application.Run(form);
         }
+    }
+
+    /// <summary>
+    /// Custom color table for dark-mode MenuStrip rendering.
+    /// </summary>
+    sealed class DarkColorTable : ProfessionalColorTable
+    {
+        public override System.Drawing.Color MenuStripGradientBegin => System.Drawing.Color.FromArgb(15, 20, 25);
+        public override System.Drawing.Color MenuStripGradientEnd => System.Drawing.Color.FromArgb(15, 20, 25);
+        public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(36, 42, 56);
+        public override System.Drawing.Color MenuItemSelectedGradientBegin => System.Drawing.Color.FromArgb(36, 42, 56);
+        public override System.Drawing.Color MenuItemSelectedGradientEnd => System.Drawing.Color.FromArgb(36, 42, 56);
+        public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(46, 54, 72);
+        public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(46, 54, 72);
+        public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(26, 31, 46);
+        public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(26, 31, 46);
+        public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(26, 31, 46);
+        public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(26, 31, 46);
+        public override System.Drawing.Color SeparatorDark => System.Drawing.Color.FromArgb(46, 54, 72);
+        public override System.Drawing.Color SeparatorLight => System.Drawing.Color.FromArgb(46, 54, 72);
     }
 }

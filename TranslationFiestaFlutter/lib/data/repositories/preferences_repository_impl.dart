@@ -1,17 +1,20 @@
 library;
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:io';
+
 import '../../core/constants/app_constants.dart';
 import '../../core/errors/either.dart';
 import '../../core/errors/failure.dart';
+import '../../core/utils/app_paths.dart';
 import '../../core/utils/logger.dart';
 import '../../domain/repositories/translation_repository.dart';
 
 /// Implementation of PreferencesRepository interface
-/// Single Responsibility: Handle application preferences with persistence
+/// Single Responsibility: Handle application preferences with portable file persistence.
 class PreferencesRepositoryImpl implements PreferencesRepository {
   final Logger logger = Logger.instance;
-  SharedPreferences? _prefs;
+  Map<String, dynamic>? _cachedPreferences;
 
   @override
   Future<Result<bool>> getBoolPreference(
@@ -19,10 +22,17 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
     bool defaultValue = false,
   }) async {
     try {
-      final prefs = await _getPrefs();
-      final value = prefs.getBool(key) ?? defaultValue;
-      logger.debug('Retrieved bool preference: $key = $value');
-      return Right(value);
+      final prefs = await _loadPreferences();
+      final value = prefs[key];
+      if (value is bool) {
+        logger.debug('Retrieved bool preference: $key = $value');
+        return Right(value);
+      }
+
+      logger.debug(
+        'Bool preference missing, using default: $key = $defaultValue',
+      );
+      return Right(defaultValue);
     } catch (e) {
       final errorMessage = 'Failed to get bool preference $key: $e';
       logger.error(errorMessage);
@@ -33,8 +43,9 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   @override
   Future<Result<void>> setBoolPreference(String key, bool value) async {
     try {
-      final prefs = await _getPrefs();
-      await prefs.setBool(key, value);
+      final prefs = await _loadPreferences();
+      prefs[key] = value;
+      await _savePreferences(prefs);
       logger.debug('Set bool preference: $key = $value');
       return const Right(null);
     } catch (e) {
@@ -47,10 +58,21 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   @override
   Future<Result<String?>> getStringPreference(String key) async {
     try {
-      final prefs = await _getPrefs();
-      final value = prefs.getString(key);
-      logger.debug('Retrieved string preference: $key = ${value ?? "null"}');
-      return Right(value);
+      final prefs = await _loadPreferences();
+      final value = prefs[key];
+      if (value == null) {
+        logger.debug('String preference missing: $key');
+        return const Right(null);
+      }
+
+      if (value is String) {
+        logger.debug('Retrieved string preference: $key');
+        return Right(value);
+      }
+
+      final converted = value.toString();
+      logger.warning('String preference had non-string type, coercing: $key');
+      return Right(converted);
     } catch (e) {
       final errorMessage = 'Failed to get string preference $key: $e';
       logger.error(errorMessage);
@@ -61,8 +83,9 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   @override
   Future<Result<void>> setStringPreference(String key, String value) async {
     try {
-      final prefs = await _getPrefs();
-      await prefs.setString(key, value);
+      final prefs = await _loadPreferences();
+      prefs[key] = value;
+      await _savePreferences(prefs);
       logger.debug('Set string preference: $key');
       return const Right(null);
     } catch (e) {
@@ -75,8 +98,9 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   @override
   Future<Result<void>> removePreference(String key) async {
     try {
-      final prefs = await _getPrefs();
-      await prefs.remove(key);
+      final prefs = await _loadPreferences();
+      prefs.remove(key);
+      await _savePreferences(prefs);
       logger.debug('Removed preference: $key');
       return const Right(null);
     } catch (e) {
@@ -89,8 +113,8 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   @override
   Future<Result<void>> clearAllPreferences() async {
     try {
-      final prefs = await _getPrefs();
-      await prefs.clear();
+      final cleared = <String, dynamic>{};
+      await _savePreferences(cleared);
       logger.info('Cleared all preferences');
       return const Right(null);
     } catch (e) {
@@ -100,10 +124,42 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
     }
   }
 
-  /// Get SharedPreferences instance with lazy initialization
-  Future<SharedPreferences> _getPrefs() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    return _prefs!;
+  Future<Map<String, dynamic>> _loadPreferences() async {
+    if (_cachedPreferences != null) {
+      return _cachedPreferences!;
+    }
+
+    final file = AppPaths.instance.settingsFile;
+    if (!await file.exists()) {
+      _cachedPreferences = <String, dynamic>{};
+      return _cachedPreferences!;
+    }
+
+    final content = await file.readAsString();
+    if (content.trim().isEmpty) {
+      _cachedPreferences = <String, dynamic>{};
+      return _cachedPreferences!;
+    }
+
+    final decoded = jsonDecode(content);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Preferences file must be a JSON object');
+    }
+
+    _cachedPreferences = Map<String, dynamic>.from(decoded);
+    return _cachedPreferences!;
+  }
+
+  Future<void> _savePreferences(Map<String, dynamic> prefs) async {
+    final file = AppPaths.instance.settingsFile;
+    await file.parent.create(recursive: true);
+    const encoder = JsonEncoder.withIndent('  ');
+    await file.writeAsString(
+      encoder.convert(prefs),
+      mode: FileMode.write,
+      flush: true,
+    );
+    _cachedPreferences = prefs;
   }
 
   /// Convenience methods for theme preferences
