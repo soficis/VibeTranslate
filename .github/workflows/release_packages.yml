@@ -82,13 +82,6 @@ jobs:
           go-version: "1.26.x"
           cache-dependency-path: TranslationFiestaGo/go.sum
 
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.4"
-          bundler-cache: false
-          working-directory: TranslationFiestaRuby
-
       - name: Setup Flutter
         shell: pwsh
         run: |
@@ -98,6 +91,13 @@ jobs:
       - name: Flutter precache
         shell: pwsh
         run: flutter precache --windows
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: false
+          working-directory: TranslationFiestaRuby
 
       - name: Prepare output folders
         shell: pwsh

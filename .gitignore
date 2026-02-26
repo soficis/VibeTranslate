@@ -149,9 +149,9 @@ linux/build/
 macos/build/
 windows/build/
 web/build/
-!TranslationFiestaFlutter/macos/Runner.xcworkspace/**
-!TranslationFiestaFlutter/macos/Runner.xcodeproj/**
-!TranslationFiestaFlutter/macos/RunnerTests/**
+!TranslationFiestaFlutter/macos/Runner.xcworkspace/
+!TranslationFiestaFlutter/macos/Runner.xcodeproj/
+!TranslationFiestaFlutter/macos/RunnerTests/
 *.apk
 *.aab
 *.ipa
