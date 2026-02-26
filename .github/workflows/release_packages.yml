@@ -226,6 +226,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path $target | Out-Null
 
           Push-Location TranslationFiestaRuby
+          gem update --system
+          gem cleanup
+          gem uninstall wxruby3 -a -x --ignore-dependencies || $true
           gem install rake --no-document
           bundle install --deployment --path vendor/bundle --jobs 4 --retry 3
           $rubyPrefix = (& ruby -e "require 'rbconfig'; print RbConfig::CONFIG['prefix']").Trim()
@@ -559,6 +562,9 @@ jobs:
           bundle_dir="$root/TranslationFiestaRuby"
 
           cd TranslationFiestaRuby
+          gem update --system
+          gem cleanup
+          gem uninstall wxruby3 -a -x --ignore-dependencies || true
           gem install rake --no-document
           bundle install --deployment --path vendor/bundle --jobs 4 --retry 3
           ruby_prefix="$(ruby -e "require 'rbconfig'; print RbConfig::CONFIG['prefix']")"
@@ -809,6 +815,9 @@ jobs:
           bundle_dir="$root/TranslationFiestaRuby"
 
           cd TranslationFiestaRuby
+          gem update --system
+          gem cleanup
+          gem uninstall wxruby3 -a -x --ignore-dependencies || true
           gem install rake --no-document
           bundle install --deployment --path vendor/bundle --jobs 4 --retry 3
           ruby_prefix="$(ruby -e "require 'rbconfig'; print RbConfig::CONFIG['prefix']")"
