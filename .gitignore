@@ -149,6 +149,9 @@ linux/build/
 macos/build/
 windows/build/
 web/build/
+!TranslationFiestaFlutter/macos/Runner.xcworkspace/**
+!TranslationFiestaFlutter/macos/Runner.xcodeproj/**
+!TranslationFiestaFlutter/macos/RunnerTests/**
 *.apk
 *.aab
 *.ipa
@@ -288,6 +291,8 @@ log/
 *.log
 /.bundle
 /.rbenv-vars
+!TranslationFiestaRuby/bin/**
+!TranslationFiestaRuby/bin/
 
 # Ignore the clean code book file (large, not source)
 

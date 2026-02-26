@@ -76,7 +76,7 @@ tmp/
 *.zip
 dist/
 build/
-bin/
+# bin/
 
 # Test and coverage files
 coverage/
