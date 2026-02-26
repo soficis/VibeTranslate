@@ -1,0 +1,29 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+APP_ROOT = File.expand_path('..', __dir__)
+ENV['BUNDLE_GEMFILE'] ||= File.join(APP_ROOT, 'Gemfile')
+
+begin
+  require 'bundler/setup'
+rescue LoadError
+  warn 'Bundler is required. Install it with: gem install bundler'
+  exit 1
+rescue StandardError => e
+  if ['Bundler::GemNotFound', 'Bundler::VersionConflict'].include?(e.class.name)
+    warn "Missing Ruby dependencies: #{e.message}"
+    warn 'Install project gems with: bundle install'
+    exit 1
+  end
+
+  raise
+end
+
+require_relative '../lib/translation_fiesta'
+
+# Parse command line arguments
+if ARGV.include?('--cli') || ARGV.include?('-c')
+  TranslationFiesta::CLI.new.run(ARGV.reject { |arg| arg == '--cli' || arg == '-c' })
+else
+  TranslationFiesta::Application.new.run
+end
