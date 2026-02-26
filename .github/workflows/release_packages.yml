@@ -93,6 +93,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.41.2
 
       - name: Prepare output folders
         shell: pwsh
@@ -216,7 +217,6 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path "$root\TranslationFiestaPy" | Out-Null
           Copy-Item "$pythonOutRoot\dist\TranslationFiestaPy\*" "$root\TranslationFiestaPy" -Recurse -Force
-
 
       - name: Build TranslationFiestaRuby
         shell: pwsh
@@ -451,6 +451,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.41.2
 
       - name: Install Linux desktop build dependencies
         run: |
@@ -550,7 +551,6 @@ jobs:
 
           mkdir -p "$root/TranslationFiestaPy"
           cp -R "$python_out_root/dist/TranslationFiestaPy/"* "$root/TranslationFiestaPy/"
-
 
       - name: Build TranslationFiestaRuby runtime bundle
         run: |
@@ -711,6 +711,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.41.2
 
       - name: Prepare output folders
         run: |
@@ -800,7 +801,6 @@ jobs:
 
           mkdir -p "$root/TranslationFiestaPy"
           cp -R "$python_out_root/dist/TranslationFiestaPy/"* "$root/TranslationFiestaPy/"
-
 
       - name: Build TranslationFiestaRuby runtime bundle
         run: |
