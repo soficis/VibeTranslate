@@ -8,7 +8,7 @@
 
 Polyglot monorepo of translation ports with a shared feature set: **EN↔JA back-translation**, file processing, and standardized provider UX.
 
-[Quick Start](#-quick-setup) • [Apps](#-the-vibe-ecosystem) • [Building](#-building--testing) • [License](#-license)
+[Quick Start](#-quick-setup) • [Apps](#-the-vibe-ecosystem) • [Building](#-building--testing) •
 
 </div>
 
@@ -48,8 +48,8 @@ VibeTranslate is available across a massive variety of tech stacks. All ports ma
 | 💎 | `TranslationFiestaRuby` | Ruby + wxRuby | ✅ Stable |
 | 💙 | `TranslationFiestaFlutter` | Flutter | ✅ Stable |
 | ⚛️ | `TranslationFiestaElectron` | TS + Electron | ✅ Stable |
-| 🍎 | `TranslationFiestaSwift` | Swift / SwiftUI | ⚠️ *Untested Best-Effort Builds* |
-| 🏗️ | **ARM64 Builds** | All Platforms | ⚠️ *Untested Best-Effort Builds* |
+| 🍎 | `TranslationFiestaSwift` | Swift / SwiftUI | ⚠️ *Best-Effort Build* |
+| 🏗️ | **ARM64 Builds** | All Platforms | ⚠️ *Best-Effort Builds* |
 
 ---
 
@@ -77,6 +77,22 @@ To build the full Windows x64 portable release bundle (requires .NET 10, Node.js
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/build_windows_x64_release.ps1
+```
+
+### 📦 Windows ARM64 Release Bundle
+
+For ARM64 architecture builds on Windows (requires ARM64 versions of .NET 10, Node.js, Go, Ruby, and Flutter):
+
+First, install the required ARM64 SDKs:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install_windows_arm64_sdks.ps1
+```
+
+Then build the ARM64 portable release bundle:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build_windows_arm64_release.ps1
 ```
 
 ---
