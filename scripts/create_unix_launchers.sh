@@ -210,7 +210,11 @@ if [[ ${#launchable_apps[@]} -eq 0 ]]; then
   exit 1
 fi
 
-mapfile -t launchable_apps < <(printf '%s\n' "${launchable_apps[@]}" | sort -u)
+unique_apps=()
+while IFS= read -r app; do
+  unique_apps+=("$app")
+done < <(printf '%s\n' "${launchable_apps[@]}" | sort -u)
+launchable_apps=("${unique_apps[@]}")
 
 build_script=""
 root_leaf="$(basename "$root")"

@@ -7,23 +7,51 @@ struct TranslationMemoryView: View {
     @StateObject private var viewModel = TranslationMemoryViewModel()
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            HStack {
-                Text("Translation Memory")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                
-                Spacer()
-                
-                Button("Clear Memory") {
-                    Task {
-                        await viewModel.clearMemory()
-                    }
-                }
-                .buttonStyle(.bordered)
-                .foregroundColor(.red)
+        VStack(spacing: 0) {
+            headerView
+            
+            Divider().background(Color.themeBorder)
+            
+            contentBody
+                .padding(Spacing.standard)
+        }
+        .background(Color.themeBackground.ignoresSafeArea())
+        .alert("Error", isPresented: $viewModel.showError) {
+            Button("OK") { }
+        } message: {
+            Text(viewModel.errorMessage).font(.themeBody)
+        }
+        .onAppear {
+            viewModel.configure(with: appContainer)
+            Task {
+                await viewModel.loadStats()
             }
+        }
+    }
+    
+    // MARK: - Subviews
+    private var headerView: some View {
+        HStack {
+            Text("Translation Memory")
+                .font(.themeHeadline)
+                .foregroundColor(.themeText)
+            
+            Spacer()
+            
+            Button("Clear Memory") {
+                Task { await viewModel.clearMemory() }
+            }
+            .buttonStyle(.plain)
+            .font(.themeBody)
+            .foregroundColor(.themeDestructive)
+        }
+        .padding(.horizontal, Spacing.standard)
+        .padding(.vertical, Spacing.small)
+        .padding(.top, Spacing.standard)
+    }
+    
+    private var contentBody: some View {
+        VStack(spacing: Spacing.standard) {
             
             // Statistics
             if let stats = viewModel.stats {
@@ -31,60 +59,57 @@ struct TranslationMemoryView: View {
             }
             
             // Search Interface
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Search Translation Memory")
-                    .font(.headline)
-                
+            HStack(spacing: Spacing.small) {
                 HStack {
-                    TextField("Enter text to search...", text: $viewModel.searchText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    Button("Search") {
-                        Task {
-                            await viewModel.searchMemory()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.searchText.isEmpty || viewModel.isSearching)
-                    
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.themeTextSecondary)
+                    TextField("Search memory...", text: $viewModel.searchText)
+                        .font(.themeBody)
+                        .textFieldStyle(.plain)
+                }
+                .padding(Spacing.small)
+                .background(Color.themeSurface)
+                .cornerRadius(Radii.standard)
+                .overlay(RoundedRectangle(cornerRadius: Radii.standard).stroke(Color.themeBorder, lineWidth: 1))
+                
+                Button(action: {
+                    Task { await viewModel.searchMemory() }
+                }) {
                     if viewModel.isSearching {
-                        ProgressView()
-                            .scaleEffect(0.8)
+                        ProgressView().controlSize(.small)
+                            .frame(width: 24, height: 24)
+                    } else {
+                        Image(systemName: "arrow.right.circle.fill")
+                            .resizable()
+                            .frame(width: 24, height: 24)
                     }
                 }
+                .buttonStyle(.plain)
+                .foregroundColor(viewModel.searchText.isEmpty || viewModel.isSearching ? .themeTextSecondary.opacity(0.3) : .themeAccent)
+                .disabled(viewModel.searchText.isEmpty || viewModel.isSearching)
             }
             
             // Search Results
             if !viewModel.searchResults.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
+                HStack {
                     Text("Search Results (\(viewModel.searchResults.count))")
-                        .font(.headline)
-                    
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 8) {
-                            ForEach(viewModel.searchResults, id: \.id) { entry in
-                                TranslationMemoryEntryRow(entry: entry)
-                            }
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
+                        .textCase(.uppercase)
+                    Spacer()
+                }
+                .padding(.top, Spacing.small)
+                
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: Spacing.small) {
+                        ForEach(viewModel.searchResults, id: \.id) { entry in
+                            TranslationMemoryEntryRow(entry: entry)
                         }
                     }
-                    .frame(height: 300)
-                    .background(Color.gray.opacity(0.05))
-                    .cornerRadius(8)
                 }
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .alert("Error", isPresented: $viewModel.showError) {
-            Button("OK") { }
-        } message: {
-            Text(viewModel.errorMessage)
-        }
-        .onAppear {
-            viewModel.configure(with: appContainer)
-            Task {
-                await viewModel.loadStats()
+                .themeSurface(padding: Spacing.micro)
+            } else {
+                Spacer()
             }
         }
     }
@@ -95,95 +120,62 @@ struct TranslationMemoryStatsCard: View {
     let stats: TranslationMemoryStats
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.standard) {
             HStack {
                 Text("Memory Statistics")
-                    .font(.headline)
+                    .font(.themeHeadline)
+                Spacer()
+                if let lastPersist = stats.lastPersistTime {
+                    Text("Saved \(lastPersist.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
+                }
+            }
+            
+            HStack(spacing: Spacing.large) {
+                // Left metrics
+                VStack(alignment: .leading, spacing: Spacing.small) {
+                    metricInfo(label: "Hit Rate", value: String(format: "%.1f%%", stats.hitRate), color: .themeSuccess)
+                    metricInfo(label: "Avg Lookup", value: String(format: "%.1f ms", stats.averageLookupTime * 1000), color: .themeText)
+                }
+                
+                // Right metrics
+                VStack(alignment: .leading, spacing: Spacing.small) {
+                    metricInfo(label: "Total Hits", value: "\(stats.totalHits)", color: .themeText)
+                    metricInfo(label: "Total Misses", value: "\(stats.totalMisses)", color: .themeTextSecondary)
+                }
+                
                 Spacer()
             }
             
             // Cache Utilization
-            ProgressView(value: stats.cacheUtilization / 100.0) {
+            VStack(alignment: .leading, spacing: Spacing.micro) {
                 HStack {
                     Text("Cache Usage")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
                     Spacer()
                     Text("\(stats.totalEntries) / \(stats.maxCacheSize)")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
                 }
-                .font(.caption)
-            }
-            
-            // Performance Metrics
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("Hit Rate")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(String(format: "%.1f", stats.hitRate) + "%")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.green)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .center) {
-                    Text("Avg Lookup Time")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(String(format: "%.3f", stats.averageLookupTime * 1000) + "ms")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing) {
-                    Text("Total Misses")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(stats.totalMisses)")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.orange)
-                }
-            }
-            
-            // Detailed Stats
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Total Hits:")
-                            .font(.caption)
-                        Text("\(stats.totalHits)")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                    }
-                    
-                    HStack {
-                        Text("Total Misses:")
-                            .font(.caption)
-                        Text("\(stats.totalMisses)")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                    }
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    if let lastPersist = stats.lastPersistTime {
-                        Text("Last Saved:")
-                            .font(.caption)
-                        Text(lastPersist.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption)
-                            .fontWeight(.medium)
-                    }
-                }
+                ProgressView(value: stats.cacheUtilization / 100.0)
+                    .progressViewStyle(.linear)
+                    .tint(.themeAccent)
             }
         }
-        .padding()
-        .background(Color(.windowBackgroundColor))
-        .cornerRadius(8)
+        .themeSurface()
+    }
+    
+    private func metricInfo(label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.themeCaption)
+                .foregroundColor(.themeTextSecondary)
+            Text(value)
+                .font(.themeTitle)
+                .foregroundColor(color)
+        }
     }
 }
 
@@ -192,44 +184,33 @@ struct TranslationMemoryEntryRow: View {
     let entry: TranslationMemoryEntry
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.small) {
             HStack {
-                Text("\(entry.sourceLanguage.flag) \(entry.sourceLanguage.displayName)")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(.blue)
+                Text("\(entry.sourceLanguage.flag) \(entry.sourceLanguage.displayName) → \(entry.targetLanguage.flag) \(entry.targetLanguage.displayName)")
+                    .font(.themeCaption)
+                    .foregroundColor(.themeTextSecondary)
                 
                 Spacer()
                 
                 Text("Used \(entry.accessCount)x")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.themeCaption)
+                    .foregroundColor(.themeTextSecondary)
             }
             
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("\(entry.sourceLanguage.flag)")
-                    Text(entry.sourceText)
-                        .font(.caption)
-                        .lineLimit(2)
-                }
+            VStack(alignment: .leading, spacing: Spacing.micro) {
+                Text(entry.sourceText)
+                    .font(.themeBody)
+                    .lineLimit(2)
                 
-                HStack {
-                    Text("\(entry.targetLanguage.flag)")
-                    Text(entry.translatedText)
-                        .font(.caption)
-                        .lineLimit(2)
-                        .foregroundColor(.blue)
-                }
+                Text(entry.translatedText)
+                    .font(.themeBody)
+                    .foregroundColor(.themeAccent)
+                    .lineLimit(2)
             }
         }
-        .padding()
-        .background(Color.blue.opacity(0.05))
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
-        )
+        .padding(Spacing.small)
+        .background(Color.themeBackground.opacity(0.5))
+        .cornerRadius(Radii.standard)
     }
 }
 
@@ -239,103 +220,13 @@ struct ExportView: View {
     @StateObject private var viewModel = ExportViewModel()
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            HStack {
-                Text("Export Translations")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                
-                Spacer()
-            }
-            
-            // Export Configuration
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Export Settings")
-                    .font(.headline)
-                
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Format")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Picker("Format", selection: $viewModel.selectedFormat) {
-                            ForEach(ExportFormat.allCases, id: \.self) { format in
-                                Text(format.displayName).tag(format)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                    }
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .leading) {
-                        Toggle("Include Metadata", isOn: $viewModel.includeMetadata)
-                    }
-                }
-            }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
-            
-            // Available Results (Placeholder)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Available Translation Results")
-                    .font(.headline)
-                
-                Text("No translation results available. Perform some translations first.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .frame(height: 100)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.gray.opacity(0.05))
-                    .cornerRadius(8)
-            }
-            
-            // Export Actions
-            HStack {
-                Button("Generate Preview") {
-                    Task {
-                        await viewModel.generatePreview()
-                    }
-                }
-                .buttonStyle(.bordered)
-                .disabled(viewModel.selectedResults.isEmpty)
-                
-                Button("Export to File") {
-                    viewModel.showFileSaver = true
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.selectedResults.isEmpty || viewModel.isExporting)
-                
-                if viewModel.isExporting {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                }
-            }
-            
-            // Preview Area
-            if !viewModel.exportPreview.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Export Preview")
-                        .font(.headline)
-                    
-                    ScrollView {
-                        Text(viewModel.exportPreview)
-                            .font(.caption)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(Color.gray.opacity(0.05))
-                            .cornerRadius(8)
-                    }
-                    .frame(height: 200)
-                }
-            }
-            
-            Spacer()
+        VStack(spacing: 0) {
+            headerView
+            Divider().background(Color.themeBorder)
+            contentBody
+                .padding(Spacing.standard)
         }
-        .padding()
+        .background(Color.themeBackground.ignoresSafeArea())
         .fileExporter(
             isPresented: $viewModel.showFileSaver,
             document: ExportDocument(content: viewModel.exportPreview),
@@ -344,9 +235,7 @@ struct ExportView: View {
         ) { result in
             switch result {
             case .success(let url):
-                Task {
-                    await viewModel.exportResults(to: url)
-                }
+                Task { await viewModel.exportResults(to: url) }
             case .failure(_):
                 print("Export failed")
             }
@@ -354,10 +243,117 @@ struct ExportView: View {
         .alert("Error", isPresented: $viewModel.showError) {
             Button("OK") { }
         } message: {
-            Text(viewModel.errorMessage)
+            Text(viewModel.errorMessage).font(.themeBody)
         }
         .onAppear {
             viewModel.configure(with: appContainer)
+        }
+    }
+    
+    private var headerView: some View {
+        HStack {
+            Text("Export Translations")
+                .font(.themeHeadline)
+            Spacer()
+        }
+        .padding(.horizontal, Spacing.standard)
+        .padding(.vertical, Spacing.small)
+        .padding(.top, Spacing.standard)
+    }
+    
+    private var contentBody: some View {
+        HStack(spacing: Spacing.standard) {
+            // Left column
+            VStack(alignment: .leading, spacing: Spacing.standard) {
+                Text("Export Settings")
+                    .font(.themeCaption)
+                    .foregroundColor(.themeTextSecondary)
+                    .textCase(.uppercase)
+                
+                VStack(spacing: Spacing.standard) {
+                    HStack {
+                        Text("Format")
+                            .font(.themeBody)
+                        Spacer()
+                        Picker("", selection: $viewModel.selectedFormat) {
+                            ForEach(ExportFormat.allCases, id: \.self) { format in
+                                Text(format.displayName).tag(format)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .fixedSize()
+                    }
+                    
+                    Toggle("Include Metadata", isOn: $viewModel.includeMetadata)
+                        .font(.themeBody)
+                        .toggleStyle(SwitchToggleStyle(tint: .themeAccent))
+                }
+                .themeSurface()
+                
+                Spacer()
+                
+                // Actions
+                HStack(spacing: Spacing.standard) {
+                    Button("Preview") {
+                        Task { await viewModel.generatePreview() }
+                    }
+                    .buttonStyle(.plain)
+                    .font(.themeBody)
+                    .padding(.horizontal, Spacing.standard)
+                    .padding(.vertical, Spacing.small)
+                    .background(Color.themeSurface)
+                    .cornerRadius(Radii.standard)
+                    .disabled(viewModel.selectedResults.isEmpty)
+                    
+                    Button(action: { viewModel.showFileSaver = true }) {
+                        HStack {
+                            if viewModel.isExporting {
+                                ProgressView().controlSize(.small).padding(.trailing, 4)
+                            } else {
+                                Image(systemName: "square.and.arrow.down.fill")
+                            }
+                            Text("Export to File")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .font(.themeHeadline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, Spacing.standard)
+                    .padding(.vertical, Spacing.small)
+                    .background(viewModel.selectedResults.isEmpty ? Color.themeTextSecondary.opacity(0.3) : Color.themeAccent)
+                    .cornerRadius(Radii.standard)
+                    .disabled(viewModel.selectedResults.isEmpty || viewModel.isExporting)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            
+            // Right column (Preview)
+            VStack(alignment: .leading, spacing: Spacing.standard) {
+                Text("Preview")
+                    .font(.themeCaption)
+                    .foregroundColor(.themeTextSecondary)
+                    .textCase(.uppercase)
+                
+                if viewModel.exportPreview.isEmpty {
+                    VStack {
+                        Spacer()
+                        Text("Nothing to preview yet.")
+                            .font(.themeBody)
+                            .foregroundColor(.themeTextSecondary)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .themeSurface()
+                } else {
+                    ScrollView {
+                        Text(viewModel.exportPreview)
+                            .font(.themeMonospaced)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .themeSurface()
+                }
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 }
@@ -367,48 +363,57 @@ struct SettingsView: View {
     @EnvironmentObject var appContainer: AppContainer
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 0) {
             HStack {
                 Text("Settings")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                    .font(.themeHeadline)
                 Spacer()
             }
-
-            VStack(alignment: .leading, spacing: 12) {
-                Text("About Translation Fiesta Swift")
-                    .font(.headline)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    InfoRow(label: "Version", value: "1.0.0")
-                    InfoRow(label: "Framework", value: "SwiftUI")
-                    InfoRow(label: "Architecture", value: "Clean Architecture")
-                    InfoRow(label: "Platform", value: "macOS 14+")
+            .padding(.horizontal, Spacing.standard)
+            .padding(.vertical, Spacing.small)
+            .padding(.top, Spacing.standard)
+            
+            Divider().background(Color.themeBorder)
+            
+            ScrollView {
+                VStack(spacing: Spacing.medium) {
+                    // About Section
+                    VStack(alignment: .leading, spacing: Spacing.small) {
+                        Text("About")
+                            .font(.themeCaption)
+                            .foregroundColor(.themeTextSecondary)
+                            .textCase(.uppercase)
+                        
+                        VStack(spacing: Spacing.small) {
+                            InfoRow(label: "Version", value: "1.0.0")
+                            InfoRow(label: "Framework", value: "SwiftUI")
+                            InfoRow(label: "Architecture", value: "Clean Architecture")
+                            InfoRow(label: "Platform", value: "macOS 14+")
+                        }
+                        .themeSurface()
+                    }
+                    
+                    // Features Section
+                    VStack(alignment: .leading, spacing: Spacing.small) {
+                        Text("Features")
+                            .font(.themeCaption)
+                            .foregroundColor(.themeTextSecondary)
+                            .textCase(.uppercase)
+                        
+                        VStack(spacing: Spacing.small) {
+                            FeatureRow(feature: "English ↔ Japanese Back-translation", implemented: true)
+                            FeatureRow(feature: "Batch Processing", implemented: true)
+                            FeatureRow(feature: "Translation Memory Cache", implemented: true)
+                            FeatureRow(feature: "Multiple Export Formats", implemented: true)
+                            FeatureRow(feature: "EPUB Processing", implemented: true)
+                        }
+                        .themeSurface()
+                    }
                 }
+                .padding(Spacing.standard)
             }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
-
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Features")
-                    .font(.headline)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    FeatureRow(feature: "English ↔ Japanese Back-translation", implemented: true)
-                    FeatureRow(feature: "Batch Processing", implemented: true)
-                    FeatureRow(feature: "Translation Memory Cache", implemented: true)
-                    FeatureRow(feature: "Multiple Export Formats", implemented: true)
-                    FeatureRow(feature: "EPUB Processing", implemented: true)
-                }
-            }
-            .padding()
-            .background(Color.green.opacity(0.1))
-            .cornerRadius(12)
-
-            Spacer()
         }
-        .padding()
+        .background(Color.themeBackground.ignoresSafeArea())
     }
 }
 
@@ -420,12 +425,12 @@ struct InfoRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.themeBody)
+                .foregroundColor(.themeTextSecondary)
             Spacer()
             Text(value)
-                .font(.caption)
-                .fontWeight(.medium)
+                .font(.themeBody)
+                .foregroundColor(.themeText)
         }
     }
 }
@@ -438,11 +443,11 @@ struct FeatureRow: View {
     var body: some View {
         HStack {
             Image(systemName: implemented ? "checkmark.circle.fill" : "circle")
-                .foregroundColor(implemented ? .green : .gray)
+                .foregroundColor(implemented ? .themeSuccess : .themeTextSecondary.opacity(0.3))
             
             Text(feature)
-                .font(.caption)
-                .foregroundColor(implemented ? .primary : .secondary)
+                .font(.themeBody)
+                .foregroundColor(implemented ? .themeText : .themeTextSecondary)
             
             Spacer()
         }

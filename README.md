@@ -48,8 +48,8 @@ VibeTranslate is available across a massive variety of tech stacks. All ports ma
 | 💎 | `TranslationFiestaRuby` | Ruby + wxRuby | ✅ Stable |
 | 💙 | `TranslationFiestaFlutter` | Flutter | ✅ Stable |
 | ⚛️ | `TranslationFiestaElectron` | TS + Electron | ✅ Stable |
-| 🍎 | `TranslationFiestaSwift` | Swift / SwiftUI | ⚠️ *Untested Best-Effort Builds* |
-| 🏗️ | **ARM64 Builds** | All Platforms | ⚠️ *Untested Best-Effort Builds* |
+| 🍎 | `TranslationFiestaSwift` | Swift / SwiftUI | ✅ Stable (macOS ARM64) |
+| 🏗️ | **macOS x64** | Intel / Rosetta 2 | ⚠️ *Untested Best-Effort* |
 
 ---
 
@@ -78,6 +78,21 @@ To build the full Windows x64 portable release bundle (requires .NET 10, Node.js
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/build_windows_x64_release.ps1
 ```
+
+### 🍎 macOS Release Bundle
+
+To build the full macOS portable release bundle (requires Swift, Node.js, Go, Ruby, Flutter, and Python):
+
+```bash
+# Apple Silicon (ARM64) - Recommended / Primary
+scripts/build_macos_arm64_release.sh
+
+# Intel (x64) - Best Effort / Untested
+scripts/build_macos_x64_release.sh
+```
+
+> [!NOTE]
+> If you encounter a "Permission Denied" error, run `chmod +x scripts/*.sh` to make the build scripts executable. Always run build scripts from the **repository root**.
 
 ---
 
