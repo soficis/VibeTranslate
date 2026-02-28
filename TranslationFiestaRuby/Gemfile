@@ -29,4 +29,4 @@ group :development do
   gem 'pry-byebug', '~> 3.12'
 end
 
-ruby '~> 3.4.0'
+ruby ">= 3.3.0"

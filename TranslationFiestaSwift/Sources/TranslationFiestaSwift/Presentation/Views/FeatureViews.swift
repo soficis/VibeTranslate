@@ -7,162 +7,15 @@ struct BatchProcessingView: View {
     @StateObject private var viewModel = BatchProcessingViewModel()
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            HStack {
-                Text("Batch Processing")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                
-                Spacer()
-                
-                Menu {
-                    Button("Select Files") { viewModel.showFileImporter = true }
-                    Button("Import EPUB") { viewModel.showEpubImporter = true }
-                } label: {
-                    Label("Files", systemImage: "doc.on.doc")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isProcessing)
-            }
+        VStack(spacing: 0) {
+            headerView
             
-            // File Selection Area
-            if !viewModel.selectedFiles.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Selected Files (\(viewModel.selectedFiles.count))")
-                        .font(.headline)
-                    
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 4) {
-                            ForEach(viewModel.selectedFiles, id: \.self) { url in
-                                HStack {
-                                    Image(systemName: "doc.text")
-                                        .foregroundColor(.blue)
-                                    Text(url.lastPathComponent)
-                                        .font(.caption)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                            }
-                        }
-                    }
-                    .frame(height: 100)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                }
-            }
+            Divider().background(Color.themeBorder)
             
-            // Configuration
-            HStack(spacing: 20) {
-                VStack(alignment: .leading) {
-                    Text("API Provider")
-                        .font(.headline)
-                    
-                    Picker("API Provider", selection: $viewModel.selectedAPIProvider) {
-                        ForEach(APIProvider.allCases, id: \.self) { provider in
-                            Text(provider.displayName).tag(provider)
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                }
-                
-                VStack(alignment: .leading) {
-                    Text("Source Language")
-                        .font(.headline)
-                    
-                    Picker("Source", selection: $viewModel.sourceLanguage) {
-                        ForEach(Language.allCases, id: \.self) { language in
-                            Text(language.displayName).tag(language)
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                }
-                
-                VStack(alignment: .leading) {
-                    Text("Target Language")
-                        .font(.headline)
-                    
-                    Picker("Target", selection: $viewModel.targetLanguage) {
-                        ForEach(Language.allCases, id: \.self) { language in
-                            Text(language.displayName).tag(language)
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                }
-            }
-            
-            // Process Button
-            HStack {
-                Button(viewModel.isProcessing ? "Cancel" : "Start Processing") {
-                    if viewModel.isProcessing {
-                        viewModel.cancelBatchProcessing()
-                    } else {
-                        Task {
-                            await viewModel.startBatchProcessing()
-                        }
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.selectedFiles.isEmpty)
-                
-                if viewModel.isProcessing {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                }
-            }
-            
-            // Progress Display
-            if let progress = viewModel.progress {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Progress")
-                        .font(.headline)
-                    
-                    ProgressView(value: progress.percentComplete / 100.0) {
-                        HStack {
-                            Text("\(progress.processedFiles) / \(progress.totalFiles) files")
-                            Spacer()
-                            Text(String(format: "%.1f", progress.percentComplete) + "%")
-                        }
-                        .font(.caption)
-                    }
-                    
-                    HStack {
-                        Text("✓ Success: \(progress.successfulFiles)")
-                            .foregroundColor(.green)
-                        Spacer()
-                        Text("✗ Failed: \(progress.failedFiles)")
-                            .foregroundColor(.red)
-                    }
-                    .font(.caption)
-                }
-                .padding()
-                .background(Color.blue.opacity(0.1))
-                .cornerRadius(8)
-            }
-            
-            // Results Display
-            if !viewModel.results.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Results")
-                        .font(.headline)
-                    
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 8) {
-                            ForEach(viewModel.results, id: \.id) { result in
-                                BatchResultRow(result: result)
-                            }
-                        }
-                    }
-                    .frame(height: 200)
-                    .background(Color.gray.opacity(0.05))
-                    .cornerRadius(8)
-                }
-            }
-            
-            Spacer()
+            contentBody
+                .padding(Spacing.standard)
         }
-        .padding()
+        .background(Color.themeBackground.ignoresSafeArea())
         .fileImporter(
             isPresented: $viewModel.showFileImporter,
             allowedContentTypes: [.plainText, .html],
@@ -175,32 +28,282 @@ struct BatchProcessingView: View {
             allowedContentTypes: [UTType(filenameExtension: "epub") ?? .data],
             allowsMultipleSelection: false
         ) { result in
-            switch result {
-            case .success(let urls):
-                if let url = urls.first {
-                    Task {
-                        do {
-                            let text = try await viewModel.extractTextFromEpub(url)
-                            // Put extracted text into first selected file or show it separately
-                            await MainActor.run {
-                                viewModel.extractedEpubText = text
-                            }
-                        } catch {
-                            viewModel.showErrorMessage("Failed to import EPUB: \(error.localizedDescription)")
-                        }
-                    }
-                }
-            case .failure:
-                viewModel.showErrorMessage("EPUB selection failed")
-            }
+            handleEpubImport(result)
         }
         .alert("Error", isPresented: $viewModel.showError) {
             Button("OK") { }
         } message: {
-            Text(viewModel.errorMessage)
+            Text(viewModel.errorMessage).font(.themeBody)
         }
         .onAppear {
             viewModel.configure(with: appContainer)
+        }
+    }
+    
+    // MARK: - Subviews
+    
+    private var headerView: some View {
+        HStack(spacing: Spacing.small) {
+            Text("Batch Processing")
+                .font(.themeHeadline)
+                .foregroundColor(.themeText)
+            
+            Spacer()
+            
+            // Configuration Controls
+            HStack(spacing: Spacing.small) {
+                // API Provider
+                Picker("", selection: $viewModel.selectedAPIProvider) {
+                    ForEach(APIProvider.allCases, id: \.self) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+                .padding(.horizontal, Spacing.small)
+                .background(Color.themeSurface)
+                .cornerRadius(Radii.standard)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Radii.standard)
+                        .stroke(Color.themeBorder, lineWidth: 1)
+                )
+                
+                // Source Language
+                Picker("Source", selection: $viewModel.sourceLanguage) {
+                    ForEach(Language.allCases, id: \.self) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+                .padding(.horizontal, Spacing.small)
+                .background(Color.themeSurface)
+                .cornerRadius(Radii.standard)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Radii.standard)
+                        .stroke(Color.themeBorder, lineWidth: 1)
+                )
+                
+                // Target Language
+                Picker("Target", selection: $viewModel.targetLanguage) {
+                    ForEach(Language.allCases, id: \.self) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+                .padding(.horizontal, Spacing.small)
+                .background(Color.themeSurface)
+                .cornerRadius(Radii.standard)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Radii.standard)
+                        .stroke(Color.themeBorder, lineWidth: 1)
+                )
+            }
+            
+            Menu {
+                Button("Select Texts/HTML") { viewModel.showFileImporter = true }
+                Button("Import EPUB") { viewModel.showEpubImporter = true }
+            } label: {
+                Image(systemName: "folder.badge.plus")
+                    .foregroundColor(.themeTextSecondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, Spacing.small)
+        }
+        .padding(.horizontal, Spacing.standard)
+        .padding(.vertical, Spacing.small)
+        .padding(.top, Spacing.standard) // Accommodate hidden titlebar
+    }
+    
+    private var contentBody: some View {
+        VStack(spacing: Spacing.standard) {
+            // Selected files list and status
+            if viewModel.selectedFiles.isEmpty {
+                emptyStateView
+            } else {
+                activeStateView
+            }
+        }
+    }
+    
+    private var emptyStateView: some View {
+        VStack(spacing: Spacing.standard) {
+            Spacer()
+            Image(systemName: "doc.on.clipboard")
+                .font(.system(size: 48))
+                .foregroundColor(.themeTextSecondary.opacity(0.3))
+            
+            Text("No Files Selected")
+                .font(.themeHeadline)
+                .foregroundColor(.themeTextSecondary)
+            
+            Text("Click the + icon in the top right to import files for batch translation.")
+                .font(.themeBody)
+                .foregroundColor(.themeTextSecondary)
+                .multilineTextAlignment(.center)
+            Spacer()
+        }
+    }
+    
+    private var activeStateView: some View {
+        HStack(spacing: Spacing.standard) {
+            // Left Column: Selected Files
+            VStack(alignment: .leading, spacing: Spacing.small) {
+                HStack {
+                    Text("Selected Files (\(viewModel.selectedFiles.count))")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
+                        .textCase(.uppercase)
+                    Spacer()
+                }
+                
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: Spacing.micro) {
+                        ForEach(viewModel.selectedFiles, id: \.self) { url in
+                            HStack(spacing: Spacing.small) {
+                                Image(systemName: "doc.text")
+                                    .foregroundColor(.themeAccent)
+                                Text(url.lastPathComponent)
+                                    .font(.themeBody)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Spacer()
+                            }
+                            .padding(.horizontal, Spacing.small)
+                            .padding(.vertical, Spacing.small)
+                            .background(Color.themeSurface)
+                            .cornerRadius(Radii.small)
+                        }
+                    }
+                }
+                .themeSurface(padding: Spacing.micro)
+            }
+            .frame(maxWidth: .infinity)
+            
+            // Right Column: Progress & Results
+            VStack(alignment: .leading, spacing: Spacing.standard) {
+                HStack {
+                    Text("Progress")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
+                        .textCase(.uppercase)
+                    Spacer()
+                }
+                
+                progressCard
+                
+                if !viewModel.results.isEmpty {
+                    Text("Results")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
+                        .textCase(.uppercase)
+                        .padding(.top, Spacing.small)
+                    
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: Spacing.small) {
+                            ForEach(viewModel.results, id: \.id) { result in
+                                BatchResultRow(result: result)
+                            }
+                        }
+                    }
+                    .themeSurface(padding: Spacing.micro)
+                }
+                
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .overlay(
+                processButton.offset(y: -Spacing.large),
+                alignment: .bottomTrailing
+            )
+        }
+    }
+    
+    private var progressCard: some View {
+        VStack(alignment: .leading, spacing: Spacing.small) {
+            if let progress = viewModel.progress {
+                ProgressView(value: progress.percentComplete / 100.0)
+                    .progressViewStyle(.linear)
+                    .tint(.themeAccent)
+                
+                HStack {
+                    Text("\(progress.processedFiles) / \(progress.totalFiles) files")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
+                    Spacer()
+                    Text(String(format: "%.1f", progress.percentComplete) + "%")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
+                }
+                
+                HStack {
+                    Label("Success: \(progress.successfulFiles)", systemImage: "checkmark.circle.fill")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeSuccess)
+                    Spacer()
+                    Label("Failed: \(progress.failedFiles)", systemImage: "xmark.circle.fill")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeDestructive)
+                }
+            } else {
+                Text("Ready to process")
+                    .font(.themeBody)
+                    .foregroundColor(.themeTextSecondary)
+            }
+        }
+        .themeSurface()
+    }
+    
+    private var processButton: some View {
+        Button(action: {
+            if viewModel.isProcessing {
+                viewModel.cancelBatchProcessing()
+            } else {
+                Task { await viewModel.startBatchProcessing() }
+            }
+        }) {
+            HStack {
+                if viewModel.isProcessing {
+                    ProgressView().controlSize(.small).padding(.trailing, 4)
+                    Text("Cancel")
+                } else {
+                    Image(systemName: "play.fill")
+                    Text("Start Processing")
+                }
+            }
+            .font(.themeHeadline)
+            .padding(.horizontal, Spacing.medium)
+            .padding(.vertical, Spacing.small)
+            .background(viewModel.isProcessing ? Color.themeDestructive : Color.themeAccent)
+            .foregroundColor(.white)
+            .cornerRadius(Radii.xLarge)
+            .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 3)
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.selectedFiles.isEmpty && !viewModel.isProcessing)
+        .opacity((viewModel.selectedFiles.isEmpty && !viewModel.isProcessing) ? 0.5 : 1)
+    }
+    
+    // MARK: - Actions
+    
+    private func handleEpubImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            if let url = urls.first {
+                Task {
+                    do {
+                        let text = try await viewModel.extractTextFromEpub(url)
+                        await MainActor.run {
+                            viewModel.extractedEpubText = text
+                        }
+                    } catch {
+                        viewModel.showErrorMessage("Failed to import EPUB: \(error.localizedDescription)")
+                    }
+                }
+            }
+        case .failure:
+            viewModel.showErrorMessage("EPUB selection failed")
         }
     }
 }
@@ -209,37 +312,39 @@ struct BatchProcessingView: View {
 struct BatchResultRow: View {
     let result: BatchTranslationResult
     
-    private var processingTimeText: String {
-        String(format: "%.2f", result.processingTime)
-    }
-    
     var body: some View {
-        HStack {
+        HStack(spacing: Spacing.small) {
             Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .foregroundColor(result.success ? .green : .red)
+                .foregroundColor(result.success ? .themeSuccess : .themeDestructive)
+                .font(.system(size: 14))
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(result.fileName)
-                    .font(.caption)
-                    .fontWeight(.medium)
+                    .font(.themeBody)
+                    .foregroundColor(.themeText)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                 
                 if result.success {
-                    Text("Processing time: \(processingTimeText)s")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    Text("Processing time: \(String(format: "%.2f", result.processingTime))s")
+                        .font(.themeCaption)
+                        .foregroundColor(.themeTextSecondary)
                 } else if let error = result.error {
                     Text("Error: \(error)")
-                        .font(.caption2)
-                        .foregroundColor(.red)
+                        .font(.themeCaption)
+                        .foregroundColor(.themeDestructive)
                 }
             }
             
             Spacer()
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(result.success ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
-        .cornerRadius(4)
+        .padding(Spacing.small)
+        .background(result.success ? Color.themeSuccess.opacity(0.1) : Color.themeDestructive.opacity(0.1))
+        .cornerRadius(Radii.standard)
+        .overlay(
+            RoundedRectangle(cornerRadius: Radii.standard)
+                .stroke(result.success ? Color.themeSuccess.opacity(0.3) : Color.themeDestructive.opacity(0.3), lineWidth: 1)
+        )
     }
 }
 

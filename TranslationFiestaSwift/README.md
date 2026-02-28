@@ -253,6 +253,8 @@ swift test --enable-code-coverage
 - If build fails with exit code 1, examine error messages for specific compilation issues
 - For exit code 143 (SIGTERM), the build may have been interrupted; retry the command
 - Ensure you're in the correct directory: `cd /Users/nathan/VibeTranslate/TranslationFiestaSwift`
+- If you get "Permission Denied" when running a shell script, use `chmod +x <script_name>.sh` to grant execution rights.
+- When using the root launcher, ensure you are in the repository root folder before running `./launch_portable.sh`.
 
 **Runtime Errors**:
 - If `swift run` fails with exit code 127, verify the executable was built successfully

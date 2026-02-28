@@ -5,60 +5,69 @@ struct TranslationResultView: View {
     let result: BackTranslationResult
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Forward Translation
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Forward Translation")
-                    .font(.headline)
-
-                HStack {
-                    Text(result.forwardTranslation.sourceLanguage.flag)
-                    Text(result.forwardTranslation.originalText)
-                        .font(.body)
-                        .lineLimit(3)
+        ScrollView {
+            VStack(spacing: Spacing.standard) {
+                // Translating from Source -> Target
+                resultCard(
+                    title: "Forward Translation",
+                    sourceLang: result.forwardTranslation.sourceLanguage,
+                    sourceText: result.forwardTranslation.originalText,
+                    targetLang: result.forwardTranslation.targetLanguage,
+                    targetText: result.forwardTranslation.translatedText,
+                    color: .themeAccent
+                )
+                
+                // Translating back from Target -> Source
+                resultCard(
+                    title: "Back Translation",
+                    sourceLang: result.backwardTranslation.sourceLanguage,
+                    sourceText: result.backwardTranslation.originalText,
+                    targetLang: result.backwardTranslation.targetLanguage,
+                    targetText: result.backwardTranslation.translatedText,
+                    color: .themeSuccess
+                )
+            }
+            .padding(Spacing.small)
+        }
+    }
+    
+    private func resultCard(title: String, sourceLang: Language, sourceText: String, targetLang: Language, targetText: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.small) {
+            Text(title)
+                .font(.themeCaption)
+                .foregroundColor(.themeTextSecondary)
+                .textCase(.uppercase)
+            
+            VStack(alignment: .leading, spacing: Spacing.small) {
+                HStack(alignment: .top) {
+                    Text(sourceLang.flag)
+                        .font(.themeBody)
+                    Text(sourceText)
+                        .font(.themeBody)
+                        .foregroundColor(.themeTextSecondary)
+                        .lineLimit(nil)
                 }
-
+                
                 Image(systemName: "arrow.down")
-                    .foregroundColor(.blue)
-
-                HStack {
-                    Text(result.forwardTranslation.targetLanguage.flag)
-                    Text(result.forwardTranslation.translatedText)
-                        .font(.body)
-                        .foregroundColor(.blue)
-                        .lineLimit(3)
+                    .foregroundColor(color.opacity(0.8))
+                    .padding(.leading, Spacing.small)
+                
+                HStack(alignment: .top) {
+                    Text(targetLang.flag)
+                        .font(.themeBody)
+                    Text(targetText)
+                        .font(.themeBody)
+                        .foregroundColor(color)
+                        .lineLimit(nil)
                 }
             }
-            .padding()
-            .background(Color.blue.opacity(0.1))
-            .cornerRadius(8)
-
-            // Back Translation
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Back Translation")
-                    .font(.headline)
-
-                HStack {
-                    Text(result.backwardTranslation.sourceLanguage.flag)
-                    Text(result.backwardTranslation.originalText)
-                        .font(.body)
-                        .lineLimit(3)
-                }
-
-                Image(systemName: "arrow.down")
-                    .foregroundColor(.green)
-
-                HStack {
-                    Text(result.backwardTranslation.targetLanguage.flag)
-                    Text(result.backwardTranslation.translatedText)
-                        .font(.body)
-                        .foregroundColor(.green)
-                        .lineLimit(3)
-                }
-            }
-            .padding()
-            .background(Color.green.opacity(0.1))
-            .cornerRadius(8)
+            .padding(Spacing.standard)
+            .background(color.opacity(0.1))
+            .cornerRadius(Radii.standard)
+            .overlay(
+                RoundedRectangle(cornerRadius: Radii.standard)
+                    .stroke(color.opacity(0.2), lineWidth: 1)
+            )
         }
     }
 }

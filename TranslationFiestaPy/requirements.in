@@ -3,7 +3,7 @@ beautifulsoup4
 langdetect
 pytest
 ebooklib
-tkinterweb
 reportlab
 python-docx
 jinja2
+PySide6

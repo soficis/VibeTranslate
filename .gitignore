@@ -1,13 +1,12 @@
-# Build artifacts and binaries
+# General Build Artifacts & Binaries
 bin/
 obj/
 build/
 dist/
 artifacts/
-dist-electron/
-dist-electron/**
-.vite/
-.vite/**
+out/
+DerivedData/
+.build/
 *.exe
 *.dll
 *.pdb
@@ -23,25 +22,18 @@ dist-electron/**
 *.tar.gz
 *.zip
 *.7z
-*.egg-info/
-*.egg
-*.whl
+*.tgz
+*.dmg
+*.pkg
+*.pkg.sha
+*.pdf
 *.binlog
 *.tsbuildinfo
-.eslintcache
+*.manifest
+*.spec
+MANIFEST
 
-# Documentation and reference files
-docs/*
-*.md
-*.pdf
-*.docx
-*.txt
-!docs/portable-policy.md
-!CMakeLists.txt
-!requirements.txt
-!*README.md
-docs/cleancodeJS.md
-docs/CleanCodeDotNet.md
+# Documentation Settings
 docs/_site/
 docs/site/
 docs/build/
@@ -50,61 +42,64 @@ docs/.docusaurus/
 docs/.vitepress/dist/
 docs/.vuepress/dist/
 docs/.mkdocs/
-.obsidian/
+docs/_build/
+# Only keep core documentation and portable-policy
+docs/*
+!docs/portable-policy.md
+!docs/codex_agents_ui.md
+!docs/Assumptions.md
+!docs/CleanCodeBook.md
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.un~
+*.bak
+*.old
+*.orig
+*.rej
+*~
+.nfs*
+.vs/
+*.user
+*.suo
+*.sln.docstates
+
 # Python
 __pycache__/
 *.py[cod]
 *.pyc
 *.pyo
 *$py.class
-*.so
 .Python
 env/
 venv/
+.venv/
 ENV/
-env.bak/
-venv.bak/
-.venv
-pip-log.txt
-pip-delete-this-directory.txt
+*.egg-info/
+*.egg
+*.whl
 .tox/
 .coverage
 .coverage.*
 .cache
+.pytest_cache/
 nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
-.pytest_cache/
-*.log
-translationfiesta.log
-
-# .NET (C#, F#, WinUI)
-*.user
-*.suo
-*.cache
-*.tmp
-*.temp
-project.assets.json
-project.nuget.cache
-TestResults/
-*.trx
-*.coverage
-*.nupkg
-*.snupkg
-packages/
-.vs/
-*.xbf
-*.mui
-*.pri
-*.appx
-*.msix
-*.appxsym
-*.appxupload
-*.pfx
-*.snk
-procdump.exe
-procdump64.exe
 
 # Go
 *.test
@@ -114,15 +109,20 @@ go.work.sum
 coverage.txt
 coverage.html
 
-# Swift / SwiftPM
-.build/
-DerivedData/
+# Swift / Apple Ecosystem
 *.xcuserstate
 *.xcworkspace
+!TranslationFiestaFlutter/macos/Runner.xcworkspace/
+!TranslationFiestaSwift/*.xcworkspace
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
+!TranslationFiestaFlutter/macos/Runner.xcodeproj/
+!TranslationFiestaSwift/*.xcodeproj
+*.playground/
+*.framework/
+*.xcframework/
 
-# Flutter/Dart
+# Flutter / Dart
 .dart_tool/
 .packages
 .pub/
@@ -144,275 +144,90 @@ ios/Flutter/flutter_assets/
 ios/Flutter/flutter_export/
 ios/Flutter/generated.xcconfig
 ios/Pods/
-web/index.html
-linux/build/
-macos/build/
-windows/build/
-web/build/
-!TranslationFiestaFlutter/macos/Runner.xcworkspace/
-!TranslationFiestaFlutter/macos/Runner.xcodeproj/
-!TranslationFiestaFlutter/macos/RunnerTests/
 *.apk
 *.aab
 *.ipa
 
-# Node.js/npm (for frontend components)
+# Node.js / Electron / Vite
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
 .pnpm-debug.log*
 package-lock.json.md5
-*.log
-wailsjs/
+.eslintcache
+.vite/
+dist-electron/
 frontend/dist/
-TranslationFiestaElectron/node_modules/
-TranslationFiestaElectron/dist/
-TranslationFiestaElectron/dist-electron/
-TranslationFiestaElectron/.vite/
-TranslationFiestaElectron/data/**
+wailsjs/
 
-# IDE and Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.roomodes
-.roo
-.rooroo/
-*.roo
+# Ruby
+.bundle/
+vendor/bundle/
+.yardoc
+yardoc/
+_yardoc/
+coverage/
+tmp/
+log/
+/.rbenv-vars
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-desktop.ini
-
-# Personal/Private files
+# Data & Security
 *.key
 *.pem
 *.p12
 *.pfx
 *.cer
 *.crt
-secrets.json
-config.local.json
-.env
-.env.local
-.env.*.local
-api_keys.json
-credentials.json
-private/
-personal/
-
-# Logs and debugging
-*.log
-logs/
-debug.log
-app.log
-error.log
-build_diagnostic.log
-msbuild.log
-winui_debug.log
-app_output.log
-error.log
-output.log
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
-*.bak
-*.backup
-*~
-
-# Project specific
-tm_cache.json
-translationfiesta.log
-settings.json
-_ct2_tmp/
-_pack_tmp/
-flutter_output.log
-
-# Wails specific
-wails.json.bak
-.ipc
-
-# SQLite databases
-*.db
-*.sqlite
-*.sqlite3
-
-# NuGet
-.nuget/
-
-# Package files
-*.nupkg
-*.snupkg
-
-# MSIX/Windows packaging
-msix/
-installer/
-*.wixpdb
-*.wixobj
-
-# Documentation builds
-docs/_build/
-*.pdf
-*.docx
-
-# Additional artifacts
-*.manifest
-*.spec
-MANIFEST
-*.tgz
-*.gem
-*.deb
-*.rpm
-*.snap
-
-# Ruby / TranslationFiestaRuby
-.bundle/
-vendor/bundle/
-*.gem
-.yardoc
-yardoc/
-_yardoc/
-coverage/
-tmp/
-exports/
-log/
-*.log
-/.bundle
-/.rbenv-vars
-!TranslationFiestaRuby/bin/**
-!TranslationFiestaRuby/bin/
-
-# Ignore the clean code book file (large, not source)
-
-# Additional personal/private files
-*.key
-*.pem
-*.p12
 secrets/
 private/
 personal/
 credentials/
 config.local.*
 *.local
+.env
+.env.*
+secrets.json
+api_keys.json
+credentials.json
 auth.json
 keys.json
 tokens.json
+*.db
+*.sqlite
+*.sqlite3
+tm_cache.json
+translationfiesta.log
+cleancode.md
+context7_*.txt
+sosumi_*.txt
 
-# Backup files
-*.orig
-*.rej
-*.bak
-*.old
-
-# Lock files (uncomment if you want to ignore)
-# package-lock.json
-# yarn.lock
-# Pipfile.lock
-# poetry.lock
-
-# Runtime data
+# Temporary and Misc
+*.tmp
+*.temp
+.cache/
 pids
 *.pid
 *.seed
 *.pid.lock
-
-# Additional Swift/macOS specific build artifacts
-.build/
-DerivedData/
-*.xcodeproj/xcuserdata/
-*.xcworkspace/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcuserdata/
-*.playground/xcuserdata/
-*.framework/
-*.xcframework/
-
-# More temporary files
-*.swp
-*.swo
-*.un~
-*~
-.nfs*
 *.lock
 *.lck
+_ct2_tmp/
+_pack_tmp/
+.ipc
 
-# Keep dependency lockfiles versioned for reproducible builds.
-!TranslationFiestaPy/requirements.lock
-!TranslationFiestaFlutter/pubspec.lock
-!TranslationFiestaRuby/Gemfile.lock
-!TranslationFiestaFlutter/windows/runner/runner.exe.manifest
-
-# Additional test artifacts
-test-results/
-junit.xml
-test_output.log
-*.testresult
-coverage/
-.nyc_output/
-
-# Local one-shot build scripts
-
-# More personal/private files
-id_rsa
-id_rsa.pub
-.ssh/
-aws-credentials
-gcp-key.json
-azure-secrets.json
-firebase-config.json
-stripe-keys.json
-
-# Debug and profiling files
-*.prof
-*.heap
-*.trace
-profile.log
-diagnostic.log
-memory.log
-
-# Cache directories
-.cache/
-.npm/
-.yarn/
-.pip/
-__pycache__/
-node_modules/.cache/
-
-# System and editor temp files
-*.tmp
-*.temp
-*.bak
-*.backup
-*.orig
-*.rej
-*.old
-*~
-docs/CleanCodeBook.md
-docs/clean-code-ruby-master.md
-docs/clean-code-dotnet-master.md
-docs/Assumptions.md
-docs/CleanCodePython.md
-docs/cleancodeTS.md
-docs/GoCleanCode.md
-docs/translation_contract.md
-docs/UnofficialGoogleProvider.md
-docs/GuiModernization.md
-docs/OfflineModels.md
-docs/antigravity mcp.json
-sosumi_search.txt
-sosumi_app_task.txt
-context7_res.txt
-context7_log_docs.txt
-context7_di_docs.txt
-docs/portable-policy.md
+# Keep essential files
+!requirements.txt
+!requirements.lock
+!Package.swift
+!Package.resolved
+!Gemfile
+!Gemfile.lock
+!pubspec.yaml
+!pubspec.lock
+!package.json
+!CMakeLists.txt
+!*README.md
+!LICENSE
+TranslationFiestaRuby/ssl_bypass.rb
+docs/codex_agents_ui.md
