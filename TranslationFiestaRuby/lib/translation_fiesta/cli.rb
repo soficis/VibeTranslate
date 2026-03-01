@@ -205,12 +205,12 @@ module TranslationFiesta
 
     def normalize_api_type(raw_api_type)
       value = raw_api_type.to_s.strip.downcase
-      case value
-      when 'google_unofficial', 'unofficial', 'google_unofficial_free', 'google_free', 'googletranslate', ''
-        :unofficial
-      else
-        :unofficial
-      end
+
+      # Default and alias resolution currently map to the unofficial provider.
+      # Using PROVIDER_ALIASES avoids duplicating the alias list here.
+      return :unofficial if value.empty? || PROVIDER_ALIASES.include?(value)
+
+      :unofficial
     end
   end
 end
