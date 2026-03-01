@@ -1,10 +1,13 @@
 """Apple-Grade QSS (Qt Style Sheet) for TranslationFiesta PySide6."""
 
 import platform
+
 from PySide6.QtGui import QFont
+
 
 def get_system_font(size: int, weight: QFont.Weight = QFont.Weight.Normal) -> QFont:
     """Return the system font based on the platform."""
+
     font = QFont()
     if platform.system() == "Darwin":
         font.setFamily(".AppleSystemUIFont")
@@ -12,7 +15,7 @@ def get_system_font(size: int, weight: QFont.Weight = QFont.Weight.Normal) -> QF
         font.setFamily("Segoe UI")
     else:
         font.setFamily("Helvetica Neue")
-    
+
     font.setPointSize(size)
     font.setWeight(weight)
     return font

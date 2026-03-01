@@ -3,16 +3,18 @@
 
 from __future__ import annotations
 
+import platform
 import sys
 import traceback
-import platform
 from datetime import datetime, timezone
+
+from PySide6.QtCore import Qt
 
 # PySide6 Imports
 from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtCore import Qt
 
 from app_paths import get_logs_dir
+
 
 def main() -> None:
     """Run the TranslationFiesta desktop application using PySide6."""
@@ -29,7 +31,7 @@ def main() -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("TranslationFiesta")
     app.setOrganizationName("VibeTranslate")
-    
+
     # Set high DPI attributes (Qt 6 enables these by default, but let's be explicit)
     app.setAttribute(Qt.AA_EnableHighDpiScaling)
     app.setAttribute(Qt.AA_UseHighDpiPixmaps)
@@ -39,7 +41,7 @@ def main() -> None:
 
         window = QtTranslationFiesta()
         window.show()
-        
+
         sys.exit(app.exec())
 
     except Exception as error:
@@ -48,7 +50,7 @@ def main() -> None:
         message = f"Application error: {error}"
         if log_path:
             message = f"{message}\n\nSee log: {log_path}"
-        
+
         show_startup_error(message)
         print(details)
         sys.exit(1)
@@ -68,7 +70,7 @@ def write_startup_error_log(details: str) -> str:
 def show_startup_error(message: str) -> None:
     """Display startup failures using a native QMessageBox."""
     # We may need a temp app if the main one crashed
-    temp_app = QApplication.instance() or QApplication(sys.argv)
+    _app = QApplication.instance() or QApplication(sys.argv)
     QMessageBox.critical(None, "TranslationFiesta Startup Error", message)
 
 if __name__ == "__main__":
