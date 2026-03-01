@@ -84,7 +84,13 @@ pub fn load_settings(path: &Path) -> AppSettings {
             settings.normalize();
             settings
         }
-        Err(_) => AppSettings::default(),
+        Err(error) => {
+            warn!(
+                "failed to load settings from {}: {error}",
+                path.display()
+            );
+            AppSettings::default()
+        }
     }
 }
 
