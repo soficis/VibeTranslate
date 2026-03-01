@@ -57,7 +57,7 @@ impl TranslationMemory {
         let maybe_translation: Option<String> = tx
             .query_row(
                 "SELECT translated_text FROM translation_cache WHERE cache_key = ?1",
-                params![key],
+                params![key.as_str()],
                 |row| row.get(0),
             )
             .optional()
@@ -69,7 +69,7 @@ impl TranslationMemory {
                  SET access_count = access_count + 1,
                      last_accessed = ?1
                  WHERE cache_key = ?2",
-                params![now, key],
+                params![now, key.as_str()],
             )
             .context("failed to update translation memory access info")?;
             bump_metrics(&tx, true, started_at.elapsed().as_secs_f64() * 1000.0)?;
@@ -114,7 +114,7 @@ impl TranslationMemory {
                 access_count = translation_cache.access_count + 1,
                 last_accessed = excluded.last_accessed",
             params![
-                key,
+                key.as_str(),
                 source_text,
                 translated_text,
                 source_language,
@@ -346,10 +346,19 @@ fn cache_key(
     target_language: &str,
     provider_id: &str,
 ) -> String {
-    format!(
-        "{}:{}:{}:{}",
-        provider_id, source_language, target_language, source_text
-    )
+    let mut key = String::new();
+    append_cache_key_part(&mut key, provider_id);
+    append_cache_key_part(&mut key, source_language);
+    append_cache_key_part(&mut key, target_language);
+    append_cache_key_part(&mut key, source_text);
+    key
+}
+
+fn append_cache_key_part(out: &mut String, value: &str) {
+    out.push_str(&value.len().to_string());
+    out.push(':');
+    out.push_str(value);
+    out.push('|');
 }
 
 #[cfg(test)]
@@ -375,5 +384,12 @@ mod tests {
         let stats = memory.stats().unwrap();
         assert_eq!(stats.total_entries, 1);
         assert_eq!(stats.total_hits, 1);
+    }
+
+    #[test]
+    fn cache_key_is_collision_resistant_for_delimited_values() {
+        let left = cache_key("hello:world", "en", "ja", "google");
+        let right = cache_key("world", "en", "ja:hello", "google");
+        assert_ne!(left, right);
     }
 }

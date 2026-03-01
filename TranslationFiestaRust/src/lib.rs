@@ -5,6 +5,7 @@ pub mod epub;
 pub mod export;
 pub mod file_service;
 pub mod html;
+pub mod language;
 pub mod logger;
 pub mod memory;
 pub mod models;

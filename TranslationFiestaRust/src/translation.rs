@@ -9,8 +9,9 @@ use reqwest::StatusCode;
 use reqwest::blocking::{Client, Response};
 use serde_json::Value;
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
+use crate::language::is_supported_language_code;
 use crate::memory::TranslationMemory;
 use crate::models::{BackTranslationResult, ProviderId};
 
@@ -18,15 +19,15 @@ use crate::models::{BackTranslationResult, ProviderId};
 pub enum TranslationError {
     #[error("cancelled")]
     Cancelled,
-    #[error("rate_limited: provider rate limited")]
+    #[error("provider rate limited")]
     RateLimited,
-    #[error("blocked: provider blocked or captcha detected")]
+    #[error("provider blocked or captcha detected")]
     Blocked,
-    #[error("invalid_response: {0}")]
+    #[error("{0}")]
     InvalidResponse(String),
-    #[error("network_error: {0}")]
+    #[error("{0}")]
     Network(String),
-    #[error("invalid_input: {0}")]
+    #[error("{0}")]
     InvalidInput(String),
 }
 
@@ -308,45 +309,13 @@ impl TranslationService {
 
 fn validate_language_code(code: &str) -> std::result::Result<(), TranslationError> {
     let trimmed = code.trim();
-    if is_valid_bcp47_language_code(trimmed) {
+    if is_supported_language_code(trimmed) {
         return Ok(());
     }
 
     Err(TranslationError::InvalidInput(format!(
         "invalid language code: {code}"
     )))
-}
-
-/// Returns `true` if `code` is a structurally valid BCP-47 language tag.
-///
-/// Accepted examples: `en`, `fr`, `zho`, `zh-CN`, `pt-BR`, `zh-Hans`.
-/// Each subtag must be 1-8 ASCII alphanumeric characters; the primary subtag
-/// must be 2-8 ASCII letters.
-pub(crate) fn is_valid_bcp47_language_code(code: &str) -> bool {
-    if code.is_empty() {
-        return false;
-    }
-
-    let mut subtags = code.split('-');
-    let Some(primary) = subtags.next() else {
-        return false;
-    };
-
-    if primary.len() < 2 || primary.len() > 8 || !primary.chars().all(|ch| ch.is_ascii_alphabetic())
-    {
-        return false;
-    }
-
-    for subtag in subtags {
-        if subtag.is_empty()
-            || subtag.len() > 8
-            || !subtag.chars().all(|ch| ch.is_ascii_alphanumeric())
-        {
-            return false;
-        }
-    }
-
-    true
 }
 
 fn sleep_with_cancel(
@@ -419,26 +388,11 @@ mod tests {
     }
 
     #[test]
-    fn validate_language_code_accepts_bcp47_codes() {
-        assert!(is_valid_bcp47_language_code("en"));
-        assert!(is_valid_bcp47_language_code("fr"));
-        assert!(is_valid_bcp47_language_code("ja"));
-        assert!(is_valid_bcp47_language_code("zho"));
-        assert!(is_valid_bcp47_language_code("zh-CN"));
-        assert!(is_valid_bcp47_language_code("zh-TW"));
-        assert!(is_valid_bcp47_language_code("pt-BR"));
-        assert!(is_valid_bcp47_language_code("zh-Hans"));
-        assert!(is_valid_bcp47_language_code("zh-Hant"));
-        assert!(is_valid_bcp47_language_code("zh-Hans-CN"));
-    }
-
-    #[test]
-    fn validate_language_code_rejects_invalid_codes() {
-        assert!(!is_valid_bcp47_language_code(""));
-        assert!(!is_valid_bcp47_language_code("e"));
-        assert!(!is_valid_bcp47_language_code("123"));
-        assert!(!is_valid_bcp47_language_code("zh-"));
-        assert!(!is_valid_bcp47_language_code("-CN"));
-        assert!(!is_valid_bcp47_language_code("zh--CN"));
+    fn accepts_bcp47_language_codes() {
+        assert!(validate_language_code("en").is_ok());
+        assert!(validate_language_code("pt-BR").is_ok());
+        assert!(validate_language_code("zh-Hans").is_ok());
+        assert!(validate_language_code("eng").is_ok());
+        assert!(validate_language_code("english").is_err());
     }
 }
