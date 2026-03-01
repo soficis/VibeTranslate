@@ -1,4 +1,5 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use anyhow::{Context, Result};
@@ -9,14 +10,24 @@ use crate::models::{MemoryEntry, MemoryStats};
 
 #[derive(Debug, Clone)]
 pub struct TranslationMemory {
-    db_path: PathBuf,
+    conn: Arc<Mutex<Connection>>,
     max_entries: usize,
 }
 
 impl TranslationMemory {
     pub fn new(db_path: &Path, max_entries: usize) -> Result<Self> {
+        if let Some(parent) = db_path.parent() {
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!(
+                    "failed to create translation memory directory {}",
+                    parent.display()
+                )
+            })?;
+        }
+        let conn = Connection::open(db_path)
+            .with_context(|| format!("failed to open sqlite db {}", db_path.display()))?;
         let memory = Self {
-            db_path: db_path.to_path_buf(),
+            conn: Arc::new(Mutex::new(conn)),
             max_entries,
         };
         memory.init_schema()?;
@@ -38,8 +49,12 @@ impl TranslationMemory {
         let key = cache_key(source_text, source_language, target_language, provider_id);
         let now = Utc::now().to_rfc3339();
 
-        let conn = self.connection()?;
-        let maybe_translation: Option<String> = conn
+        let mut conn = self.conn.lock().expect("translation memory lock poisoned");
+        let tx = conn
+            .transaction()
+            .context("failed to begin lookup transaction")?;
+
+        let maybe_translation: Option<String> = tx
             .query_row(
                 "SELECT translated_text FROM translation_cache WHERE cache_key = ?1",
                 params![key],
@@ -49,22 +64,20 @@ impl TranslationMemory {
             .context("failed to query translation memory")?;
 
         if maybe_translation.is_some() {
-            conn.execute(
+            tx.execute(
                 "UPDATE translation_cache
                  SET access_count = access_count + 1,
                      last_accessed = ?1
                  WHERE cache_key = ?2",
-                params![
-                    now,
-                    cache_key(source_text, source_language, target_language, provider_id)
-                ],
+                params![now, key],
             )
             .context("failed to update translation memory access info")?;
-            self.bump_metrics(&conn, true, started_at.elapsed().as_secs_f64() * 1000.0)?;
+            bump_metrics(&tx, true, started_at.elapsed().as_secs_f64() * 1000.0)?;
         } else {
-            self.bump_metrics(&conn, false, started_at.elapsed().as_secs_f64() * 1000.0)?;
+            bump_metrics(&tx, false, started_at.elapsed().as_secs_f64() * 1000.0)?;
         }
 
+        tx.commit().context("failed to commit lookup transaction")?;
         Ok(maybe_translation)
     }
 
@@ -79,8 +92,12 @@ impl TranslationMemory {
         let now = Utc::now().to_rfc3339();
         let key = cache_key(source_text, source_language, target_language, provider_id);
 
-        let conn = self.connection()?;
-        conn.execute(
+        let mut conn = self.conn.lock().expect("translation memory lock poisoned");
+        let tx = conn
+            .transaction()
+            .context("failed to begin store transaction")?;
+
+        tx.execute(
             "INSERT INTO translation_cache (
                 cache_key,
                 source_text,
@@ -108,19 +125,25 @@ impl TranslationMemory {
         )
         .context("failed to store translation memory entry")?;
 
-        self.prune_oldest(&conn)?;
+        prune_oldest(&tx, self.max_entries)?;
 
+        tx.commit().context("failed to commit store transaction")?;
         Ok(())
     }
 
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>> {
-        let conn = self.connection()?;
+        let conn = self.conn.lock().expect("translation memory lock poisoned");
 
-        let like_query = format!("%{}%", query.trim());
+        let escaped_query = query
+            .trim()
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
+        let like_query = format!("%{}%", escaped_query);
         let mut statement = conn.prepare(
             "SELECT source_text, translated_text, source_language, target_language, provider_id, access_count, last_accessed
              FROM translation_cache
-             WHERE source_text LIKE ?1 OR translated_text LIKE ?1
+             WHERE source_text LIKE ?1 ESCAPE '\\' OR translated_text LIKE ?1 ESCAPE '\\'
              ORDER BY last_accessed DESC
              LIMIT ?2",
         )?;
@@ -151,10 +174,14 @@ impl TranslationMemory {
     }
 
     pub fn clear(&self) -> Result<()> {
-        let conn = self.connection()?;
-        conn.execute("DELETE FROM translation_cache", [])
+        let mut conn = self.conn.lock().expect("translation memory lock poisoned");
+        let tx = conn
+            .transaction()
+            .context("failed to begin clear transaction")?;
+
+        tx.execute("DELETE FROM translation_cache", [])
             .context("failed to clear translation cache")?;
-        conn.execute(
+        tx.execute(
             "UPDATE memory_metrics
              SET hits = 0,
                  misses = 0,
@@ -166,11 +193,12 @@ impl TranslationMemory {
         )
         .context("failed to clear memory metrics")?;
 
+        tx.commit().context("failed to commit clear transaction")?;
         Ok(())
     }
 
     pub fn stats(&self) -> Result<MemoryStats> {
-        let conn = self.connection()?;
+        let conn = self.conn.lock().expect("translation memory lock poisoned");
 
         let total_entries: usize = conn
             .query_row("SELECT COUNT(*) FROM translation_cache", [], |row| {
@@ -214,9 +242,12 @@ impl TranslationMemory {
     }
 
     fn init_schema(&self) -> Result<()> {
-        let conn = self.connection()?;
+        let mut conn = self.conn.lock().expect("translation memory lock poisoned");
+        let tx = conn
+            .transaction()
+            .context("failed to begin init_schema transaction")?;
 
-        conn.execute_batch(
+        tx.execute_batch(
             "CREATE TABLE IF NOT EXISTS translation_cache (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cache_key TEXT UNIQUE NOT NULL,
@@ -242,83 +273,71 @@ impl TranslationMemory {
         )
         .context("failed to initialize translation memory schema")?;
 
-        conn.execute(
+        tx.execute(
             "INSERT OR IGNORE INTO memory_metrics (id, hits, misses, total_lookups, total_lookup_time_ms, last_persisted)
              VALUES (1, 0, 0, 0, 0.0, ?1)",
             params![Utc::now().to_rfc3339()],
         )
         .context("failed to initialize memory metrics row")?;
 
-        self.prune_oldest(&conn)?;
+        prune_oldest(&tx, self.max_entries)?;
 
+        tx.commit()
+            .context("failed to commit init_schema transaction")?;
         Ok(())
     }
+}
 
-    fn bump_metrics(&self, conn: &Connection, hit: bool, lookup_ms: f64) -> Result<()> {
-        if hit {
-            conn.execute(
-                "UPDATE memory_metrics
-                 SET hits = hits + 1,
-                     total_lookups = total_lookups + 1,
-                     total_lookup_time_ms = total_lookup_time_ms + ?1,
-                     last_persisted = ?2
-                 WHERE id = 1",
-                params![lookup_ms, Utc::now().to_rfc3339()],
-            )?;
-        } else {
-            conn.execute(
-                "UPDATE memory_metrics
-                 SET misses = misses + 1,
-                     total_lookups = total_lookups + 1,
-                     total_lookup_time_ms = total_lookup_time_ms + ?1,
-                     last_persisted = ?2
-                 WHERE id = 1",
-                params![lookup_ms, Utc::now().to_rfc3339()],
-            )?;
-        }
-        Ok(())
-    }
-
-    fn prune_oldest(&self, conn: &Connection) -> Result<()> {
-        let current_size: usize = conn
-            .query_row("SELECT COUNT(*) FROM translation_cache", [], |row| {
-                let value: i64 = row.get(0)?;
-                Ok(value as usize)
-            })
-            .context("failed to count translation cache entries")?;
-
-        if current_size <= self.max_entries {
-            return Ok(());
-        }
-
-        let overflow = current_size - self.max_entries;
+fn bump_metrics(conn: &Connection, hit: bool, lookup_ms: f64) -> Result<()> {
+    if hit {
         conn.execute(
-            "DELETE FROM translation_cache
-             WHERE id IN (
-                SELECT id FROM translation_cache
-                ORDER BY last_accessed ASC
-                LIMIT ?1
-             )",
-            params![overflow as i64],
-        )
-        .context("failed to prune translation memory")?;
+            "UPDATE memory_metrics
+             SET hits = hits + 1,
+                 total_lookups = total_lookups + 1,
+                 total_lookup_time_ms = total_lookup_time_ms + ?1,
+                 last_persisted = ?2
+             WHERE id = 1",
+            params![lookup_ms, Utc::now().to_rfc3339()],
+        )?;
+    } else {
+        conn.execute(
+            "UPDATE memory_metrics
+             SET misses = misses + 1,
+                 total_lookups = total_lookups + 1,
+                 total_lookup_time_ms = total_lookup_time_ms + ?1,
+                 last_persisted = ?2
+             WHERE id = 1",
+            params![lookup_ms, Utc::now().to_rfc3339()],
+        )?;
+    }
+    Ok(())
+}
 
-        Ok(())
+fn prune_oldest(conn: &Connection, max_entries: usize) -> Result<()> {
+    let current_size: usize = conn
+        .query_row("SELECT COUNT(*) FROM translation_cache", [], |row| {
+            let value: i64 = row.get(0)?;
+            Ok(value as usize)
+        })
+        .context("failed to count translation cache entries")?;
+
+    if current_size <= max_entries {
+        return Ok(());
     }
 
-    fn connection(&self) -> Result<Connection> {
-        if let Some(parent) = self.db_path.parent() {
-            std::fs::create_dir_all(parent).with_context(|| {
-                format!(
-                    "failed to create translation memory directory {}",
-                    parent.display()
-                )
-            })?;
-        }
+    let overflow = current_size - max_entries;
+    conn.execute(
+        "DELETE FROM translation_cache
+         WHERE id IN (
+            SELECT id FROM translation_cache
+            ORDER BY last_accessed ASC
+            LIMIT ?1
+         )",
+        params![overflow as i64],
+    )
+    .context("failed to prune translation memory")?;
 
-        Connection::open(&self.db_path)
-            .with_context(|| format!("failed to open sqlite db {}", self.db_path.display()))
-    }
+    Ok(())
 }
 
 fn cache_key(

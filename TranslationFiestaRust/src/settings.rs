@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::models::{ExportFormat, ProviderId};
+use crate::translation::is_valid_bcp47_language_code;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -47,10 +48,10 @@ impl AppSettings {
     pub fn normalize(&mut self) {
         self.provider_id = self.provider().as_str().to_owned();
 
-        if self.source_language.trim().len() != 2 {
+        if !is_valid_bcp47_language_code(self.source_language.trim()) {
             self.source_language = "en".to_owned();
         }
-        if self.intermediate_language.trim().len() != 2 {
+        if !is_valid_bcp47_language_code(self.intermediate_language.trim()) {
             self.intermediate_language = "ja".to_owned();
         }
 
