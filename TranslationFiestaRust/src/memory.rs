@@ -116,11 +116,16 @@ impl TranslationMemory {
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>> {
         let conn = self.connection()?;
 
-        let like_query = format!("%{}%", query.trim());
+        let escaped_query = query
+            .trim()
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
+        let like_query = format!("%{}%", escaped_query);
         let mut statement = conn.prepare(
             "SELECT source_text, translated_text, source_language, target_language, provider_id, access_count, last_accessed
              FROM translation_cache
-             WHERE source_text LIKE ?1 OR translated_text LIKE ?1
+             WHERE source_text LIKE ?1 ESCAPE '\\' OR translated_text LIKE ?1 ESCAPE '\\'
              ORDER BY last_accessed DESC
              LIMIT ?2",
         )?;
