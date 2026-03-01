@@ -1,12 +1,23 @@
 """Apple-Grade QSS (Qt Style Sheet) for TranslationFiesta PySide6."""
 
+from __future__ import annotations
+
 import platform
+from typing import TYPE_CHECKING
 
-from PySide6.QtGui import QFont
+if TYPE_CHECKING:
+    from PySide6.QtGui import QFont
 
 
-def get_system_font(size: int, weight: QFont.Weight = QFont.Weight.Normal) -> QFont:
+def get_system_font(size: int, weight: int | None = None) -> "QFont":
     """Return the system font based on the platform."""
+
+    try:
+        from PySide6.QtGui import QFont
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "PySide6 is required to build system fonts for the Qt UI."
+        ) from exc
 
     font = QFont()
     if platform.system() == "Darwin":
@@ -17,7 +28,7 @@ def get_system_font(size: int, weight: QFont.Weight = QFont.Weight.Normal) -> QF
         font.setFamily("Helvetica Neue")
 
     font.setPointSize(size)
-    font.setWeight(weight)
+    font.setWeight(int(QFont.Weight.Normal if weight is None else weight))
     return font
 
 def get_qss(theme: str = "dark") -> str:
