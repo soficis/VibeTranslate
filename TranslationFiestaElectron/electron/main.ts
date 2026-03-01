@@ -2,28 +2,13 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { DEFAULT_PROVIDER_ID, normalizeProviderId, ProviderId } from "../shared/providerId";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-type ProviderId = "google_unofficial";
 type SettingsData = { providerId: ProviderId };
 
-const defaultSettings: SettingsData = { providerId: "google_unofficial" };
-
-const normalizeProviderId = (providerId: string | null | undefined): ProviderId => {
-  const normalized = (providerId ?? "").trim().toLowerCase();
-  switch (normalized) {
-    case "google_unofficial":
-    case "unofficial":
-    case "google_unofficial_free":
-    case "google_free":
-    case "googletranslate":
-    case "":
-      return "google_unofficial";
-    default:
-      return "google_unofficial";
-  }
-};
+const defaultSettings: SettingsData = { providerId: DEFAULT_PROVIDER_ID };
 
 const resolvePortableDataRoot = () => {
   const override = process.env.TF_APP_HOME?.trim();
