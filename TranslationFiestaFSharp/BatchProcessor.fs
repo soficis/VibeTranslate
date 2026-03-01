@@ -1,7 +1,6 @@
 /// <summary>
 /// This module provides functionality for batch processing of translation tasks across multiple files in a directory.
-/// It has been refactored according to Clean Code principles to improve readability,
-/// maintainability, and efficiency, focusing on clear responsibilities and robust error handling.
+/// functionality for batch processing of translation tasks across multiple files in a directory.
 ///
 /// Key Refactorings:
 /// - **Meaningful Naming**: Ensured functions and parameters have clear, descriptive names.

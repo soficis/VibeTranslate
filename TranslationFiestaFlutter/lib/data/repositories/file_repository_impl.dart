@@ -1,5 +1,3 @@
-/// Clean Code file repository implementation
-/// Following Single Responsibility and meaningful naming
 library;
 
 import 'dart:io';
@@ -12,7 +10,6 @@ import '../../core/utils/logger.dart';
 import '../../domain/repositories/translation_repository.dart';
 
 /// Implementation of FileRepository interface
-/// Single Responsibility: Handle file operations and text extraction
 class FileRepositoryImpl implements FileRepository {
   final Logger logger = Logger.instance;
 

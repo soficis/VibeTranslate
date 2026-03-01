@@ -1,5 +1,3 @@
-/// Clean Code clipboard repository implementation
-/// Following Single Responsibility and meaningful naming
 library;
 
 import 'package:flutter/services.dart';
@@ -9,7 +7,6 @@ import '../../core/utils/logger.dart';
 import '../../domain/repositories/translation_repository.dart';
 
 /// Implementation of ClipboardRepository interface
-/// Single Responsibility: Handle clipboard operations safely
 class ClipboardRepositoryImpl implements ClipboardRepository {
   final Logger logger = Logger.instance;
 

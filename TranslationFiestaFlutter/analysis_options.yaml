@@ -11,7 +11,7 @@ analyzer:
 
 linter:
   rules:
-    # Clean Code principles
+
     - always_declare_return_types
     - annotate_overrides
     - avoid_empty_else

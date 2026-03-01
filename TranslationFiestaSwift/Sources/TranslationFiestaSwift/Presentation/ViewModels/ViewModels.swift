@@ -3,7 +3,7 @@ import SwiftUI
 import Combine
 
 /// Main view model for the translation interface
-/// Following Clean Code: meaningful names and clear responsibilities
+
 @MainActor
 public final class MainViewModel: ObservableObject {
     private var appContainer: AppContainer?
@@ -104,7 +104,6 @@ public final class TranslationViewModel: ObservableObject {
     }
 }
 
-/// View model for batch processing
 @MainActor
 public final class BatchProcessingViewModel: ObservableObject {
     @Published var selectedFiles: [URL] = []

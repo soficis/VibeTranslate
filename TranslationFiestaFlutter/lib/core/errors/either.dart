@@ -1,5 +1,3 @@
-/// Clean Code Either type for explicit error handling
-/// Following functional programming principles for type safety
 library;
 
 import 'failure.dart';
