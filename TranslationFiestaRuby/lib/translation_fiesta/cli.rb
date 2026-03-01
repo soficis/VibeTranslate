@@ -42,7 +42,7 @@ module TranslationFiesta
         opts.separator "Options:"
 
         opts.on('-a', '--api API_TYPE', PROVIDER_ALIASES,
-                'API type to use (google_unofficial)') do |api|
+                "API type to use (default: google_unofficial; aliases: #{PROVIDER_ALIASES.join(', ')})") do |api|
           @options[:api_type] = normalize_api_type(api)
         end
 
