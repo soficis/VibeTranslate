@@ -188,19 +188,14 @@ impl ExportService {
                 "result": result,
             }))?,
             ExportFormat::Csv => {
-                let mut output = String::new();
-                output.push_str("original_text,intermediate_text,back_translated_text,source_language,target_language,provider_id,duration_ms\n");
-                output.push_str(&format!(
-                    "\"{}\",\"{}\",\"{}\",{},{},{},{}\n",
-                    result.original_text.replace('"', "\"\""),
-                    result.intermediate_text.replace('"', "\"\""),
-                    result.back_translated_text.replace('"', "\"\""),
-                    result.source_language,
-                    result.intermediate_language,
-                    result.provider_id,
-                    result.duration_ms
-                ));
-                output
+                let mut buffer: Vec<u8> = Vec::new();
+                {
+                    let mut writer = Writer::from_writer(&mut buffer);
+                    self.write_single_csv(&mut writer, result)?;
+                    writer.flush()?;
+                }
+                String::from_utf8(buffer)
+                    .context("Failed to convert CSV preview to UTF-8 string")?
             }
             ExportFormat::Xml => self.single_xml_content(result, include_metadata, &metadata),
             ExportFormat::Pdf | ExportFormat::Docx => {
