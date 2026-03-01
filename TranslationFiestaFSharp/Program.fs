@@ -10,7 +10,7 @@ open System.Text
 open System.IO
 open System.Threading
 open System.Threading.Tasks
-open PhotinoNET
+open Photino
 
 module FileOperations =
     let extractTextFromHtml (htmlContent: string) : string =
@@ -93,8 +93,11 @@ type WebMessage = {
 module Program =
     let handleWebMessage (window: PhotinoWindow) (message: string) =
         try
-            let msg = JsonSerializer.Deserialize<WebMessage>(message, JsonSerializerOptions(PropertyNameCaseInsensitive = true))
-            if not (isNull (box msg)) then
+            let msgOpt =
+                JsonSerializer.Deserialize<WebMessage>(message, JsonSerializerOptions(PropertyNameCaseInsensitive = true))
+                |> Option.ofObj
+            match msgOpt with
+            | Some msg ->
                 match msg.command with
                 | "translate" ->
                     async {
@@ -110,6 +113,7 @@ module Program =
                     }
                     |> Async.Start
                 | _ -> ()
+            | None -> ()
         with ex ->
             Logger.error (sprintf "Message error: %A" ex)
 
