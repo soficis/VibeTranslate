@@ -10,7 +10,7 @@ open System.Text
 open System.IO
 open System.Threading
 open System.Threading.Tasks
-open Photino
+open Photino.NET
 
 module FileOperations =
     let extractTextFromHtml (htmlContent: string) : string =
