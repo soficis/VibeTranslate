@@ -306,9 +306,39 @@ impl TranslationService {
     }
 }
 
+/// Returns `true` if `code` is a structurally valid BCP-47 language tag.
+///
+/// Accepted examples: `en`, `fr`, `zho`, `zh-CN`, `zh-TW`, `pt-BR`, `zh-Hans`, `zh-Hant`.
+/// Each subtag must be 1–8 ASCII alphanumeric characters; the primary subtag must be
+/// 2–8 ASCII letters.
+pub(crate) fn is_valid_bcp47_language_code(code: &str) -> bool {
+    if code.is_empty() {
+        return false;
+    }
+    let mut subtags = code.split('-');
+    let Some(primary) = subtags.next() else {
+        return false;
+    };
+    if primary.len() < 2
+        || primary.len() > 8
+        || !primary.chars().all(|ch| ch.is_ascii_alphabetic())
+    {
+        return false;
+    }
+    for subtag in subtags {
+        if subtag.is_empty()
+            || subtag.len() > 8
+            || !subtag.chars().all(|ch| ch.is_ascii_alphanumeric())
+        {
+            return false;
+        }
+    }
+    true
+}
+
 fn validate_language_code(code: &str) -> std::result::Result<(), TranslationError> {
     let trimmed = code.trim();
-    if trimmed.len() == 2 && trimmed.chars().all(|ch| ch.is_ascii_alphabetic()) {
+    if is_valid_bcp47_language_code(trimmed) {
         return Ok(());
     }
 
@@ -384,5 +414,34 @@ mod tests {
     fn rejects_invalid_response_shape() {
         let error = parse_unofficial_google_response("{}").unwrap_err();
         assert!(matches!(error, TranslationError::InvalidResponse(_)));
+    }
+
+    #[test]
+    fn validate_language_code_accepts_bcp47_codes() {
+        // 2-letter ISO 639-1 codes
+        assert!(is_valid_bcp47_language_code("en"));
+        assert!(is_valid_bcp47_language_code("fr"));
+        assert!(is_valid_bcp47_language_code("ja"));
+        // 3-letter ISO 639-2/3 codes
+        assert!(is_valid_bcp47_language_code("zho"));
+        // Region-qualified codes
+        assert!(is_valid_bcp47_language_code("zh-CN"));
+        assert!(is_valid_bcp47_language_code("zh-TW"));
+        assert!(is_valid_bcp47_language_code("pt-BR"));
+        // Script-qualified codes
+        assert!(is_valid_bcp47_language_code("zh-Hans"));
+        assert!(is_valid_bcp47_language_code("zh-Hant"));
+        // Language + script + region
+        assert!(is_valid_bcp47_language_code("zh-Hans-CN"));
+    }
+
+    #[test]
+    fn validate_language_code_rejects_invalid_codes() {
+        assert!(!is_valid_bcp47_language_code(""));
+        assert!(!is_valid_bcp47_language_code("e"));        // too short
+        assert!(!is_valid_bcp47_language_code("123"));      // digits as primary
+        assert!(!is_valid_bcp47_language_code("zh-"));      // trailing dash
+        assert!(!is_valid_bcp47_language_code("-CN"));      // leading dash
+        assert!(!is_valid_bcp47_language_code("zh--CN"));   // empty subtag
     }
 }

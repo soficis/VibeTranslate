@@ -873,6 +873,13 @@ impl TranslationFiestaApp {
                 ui.label("Intermediate Language");
                 ui.text_edit_singleline(&mut self.settings.intermediate_language);
             });
+            ui.label(
+                egui::RichText::new(
+                    "Accepts BCP-47 language codes, e.g. en, fr, zh-CN, pt-BR, zh-Hans",
+                )
+                .small()
+                .weak(),
+            );
 
             ui.horizontal(|ui| {
                 ui.label("Provider");
