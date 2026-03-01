@@ -48,6 +48,7 @@ VibeTranslate is available across a massive variety of tech stacks. All ports ma
 | 💎 | `TranslationFiestaRuby` | Ruby + wxRuby | ✅ Stable |
 | 💙 | `TranslationFiestaFlutter` | Flutter | ✅ Stable |
 | ⚛️ | `TranslationFiestaElectron` | TS + Electron | ✅ Stable |
+| 🦀 | `TranslationFiestaRust` | Rust + egui | ✅ Stable |
 | 🍎 | `TranslationFiestaSwift` | Swift / SwiftUI | ⚠️ *Best-Effort Build* |
 | 🏗️ | **ARM64 Builds** | All Platforms | ⚠️ *Best-Effort Builds* |
 
@@ -142,6 +143,12 @@ cd TranslationFiestaFlutter && flutter pub get && flutter run
 
 ```bash
 cd TranslationFiestaElectron && npm install && npm run dev
+```
+
+### Rust (egui + CLI)
+
+```bash
+cd TranslationFiestaRust && cargo run
 ```
 
 ### Swift (SwiftUI)

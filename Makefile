@@ -2,8 +2,8 @@ SHELL := /bin/bash
 .ONESHELL:
 
 .PHONY: \
-	test-python test-go test-electron test-flutter test-ruby test-winui test-csharp \
-	lint-python lint-go lint-electron lint-flutter lint-ruby lint-winui lint-csharp \
+	test-python test-go test-electron test-flutter test-ruby test-winui test-csharp test-rust \
+	lint-python lint-go lint-electron lint-flutter lint-ruby lint-winui lint-csharp lint-rust \
 	test-all lint-all
 
 define require_cmd
@@ -47,6 +47,10 @@ test-csharp:
 	$(call require_cmd,dotnet,test-csharp)
 	cd TranslationFiestaCSharp && dotnet test
 
+test-rust:
+	$(call require_cmd,cargo,test-rust)
+	cd TranslationFiestaRust && cargo test
+
 lint-python:
 	$(call require_cmd,ruff,lint-python)
 	cd TranslationFiestaPy && ruff check .
@@ -75,6 +79,10 @@ lint-csharp:
 	$(call require_cmd,dotnet,lint-csharp)
 	cd TranslationFiestaCSharp && dotnet format TranslationFiestaCSharp.csproj --verify-no-changes -v q
 
+lint-rust:
+	$(call require_cmd,cargo,lint-rust)
+	cd TranslationFiestaRust && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings
+
 define run_targets
 	@failed=0; \
 	for target in $(1); do \
@@ -90,7 +98,7 @@ define run_targets
 endef
 
 test-all:
-	$(call run_targets,test-python test-go test-electron test-flutter test-ruby test-winui test-csharp)
+	$(call run_targets,test-python test-go test-electron test-flutter test-ruby test-winui test-csharp test-rust)
 
 lint-all:
-	$(call run_targets,lint-python lint-go lint-electron lint-flutter lint-ruby lint-winui lint-csharp)
+	$(call run_targets,lint-python lint-go lint-electron lint-flutter lint-ruby lint-winui lint-csharp lint-rust)
