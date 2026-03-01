@@ -18,15 +18,15 @@ use crate::models::{BackTranslationResult, ProviderId};
 pub enum TranslationError {
     #[error("cancelled")]
     Cancelled,
-    #[error("rate_limited: provider rate limited")]
+    #[error("provider rate limited")]
     RateLimited,
-    #[error("blocked: provider blocked or captcha detected")]
+    #[error("provider blocked or captcha detected")]
     Blocked,
-    #[error("invalid_response: {0}")]
+    #[error("{0}")]
     InvalidResponse(String),
-    #[error("network_error: {0}")]
+    #[error("{0}")]
     Network(String),
-    #[error("invalid_input: {0}")]
+    #[error("{0}")]
     InvalidInput(String),
 }
 
