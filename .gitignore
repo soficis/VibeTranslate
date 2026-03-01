@@ -32,6 +32,11 @@ DerivedData/
 *.manifest
 *.spec
 MANIFEST
+.ci-venv/
+.ruff_cache/
+logs/
+tmpclaude-*/
+tmpclaude*
 
 # Documentation Settings
 docs/_site/
@@ -148,7 +153,6 @@ ios/Pods/
 *.aab
 *.ipa
 
-# Node.js / Electron / Vite
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -160,6 +164,14 @@ package-lock.json.md5
 dist-electron/
 frontend/dist/
 wailsjs/
+TranslationFiestaElectron/data/
+**/node_modules/
+**/dist/
+**/dist-electron/
+**/build/
+**/out/
+**/artifacts/
+
 
 # Ruby
 .bundle/
@@ -179,6 +191,38 @@ log/
 *.pfx
 *.cer
 *.crt
+*.jks
+*.keystore
+*.kdb
+*.ovpn
+*.mobileconfig
+*.kubeconfig
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
+authorized_keys
+.ssh/
+.gnupg/
+.aws/
+.azure/
+.gcloud/
+.config/gcloud/
+.config/gh/
+.kube/
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+terraform.tfvars.json
+.vault-token
+.npmrc
+.pypirc
+.netrc
+.docker/config.json
+.envrc
+.direnv/
 secrets/
 private/
 personal/
@@ -187,12 +231,25 @@ config.local.*
 *.local
 .env
 .env.*
+.envrc.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 secrets.json
 api_keys.json
 credentials.json
 auth.json
 keys.json
 tokens.json
+service-account*.json
+firebase-service-account*.json
+google-credentials*.json
+oauth*.json
+*secret*.env
+*token*.env
+*credential*.env
+sosumi_*.txt
 *.db
 *.sqlite
 *.sqlite3
@@ -201,11 +258,17 @@ translationfiesta.log
 cleancode.md
 context7_*.txt
 sosumi_*.txt
+TranslationFiestaRuby/translation_fiesta.db
+TranslationFiestaRuby/translation_memory.db
+TranslationFiestaPy/tm_cache.json
 
 # Temporary and Misc
 *.tmp
 *.temp
 .cache/
+.tmp/
+tmp/
+temp/
 pids
 *.pid
 *.seed
@@ -215,6 +278,33 @@ pids
 _ct2_tmp/
 _pack_tmp/
 .ipc
+.DS_Store?
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Extra Build/Test Artifacts
+coverage/
+.nyc_output/
+lcov.info
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+*.gcov
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+.gradle/
+target/
+release/
+debug/
 
 # Keep essential files
 !requirements.txt
@@ -231,3 +321,4 @@ _pack_tmp/
 !LICENSE
 TranslationFiestaRuby/ssl_bypass.rb
 docs/codex_agents_ui.md
+docs/portable-policy.md
