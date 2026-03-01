@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, OptionalExtension, params};
 
@@ -10,13 +11,27 @@ use crate::models::{MemoryEntry, MemoryStats};
 #[derive(Debug, Clone)]
 pub struct TranslationMemory {
     db_path: PathBuf,
+    connection: Arc<Mutex<Connection>>,
     max_entries: usize,
 }
 
 impl TranslationMemory {
     pub fn new(db_path: &Path, max_entries: usize) -> Result<Self> {
+        if let Some(parent) = db_path.parent() {
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!(
+                    "failed to create translation memory directory {}",
+                    parent.display()
+                )
+            })?;
+        }
+
+        let connection = Connection::open(db_path)
+            .with_context(|| format!("failed to open sqlite db {}", db_path.display()))?;
+
         let memory = Self {
             db_path: db_path.to_path_buf(),
+            connection: Arc::new(Mutex::new(connection)),
             max_entries,
         };
         memory.init_schema()?;
@@ -38,11 +53,11 @@ impl TranslationMemory {
         let key = cache_key(source_text, source_language, target_language, provider_id);
         let now = Utc::now().to_rfc3339();
 
-        let conn = self.connection()?;
+        let conn = self.lock_connection()?;
         let maybe_translation: Option<String> = conn
             .query_row(
                 "SELECT translated_text FROM translation_cache WHERE cache_key = ?1",
-                params![key],
+                params![key.as_str()],
                 |row| row.get(0),
             )
             .optional()
@@ -54,10 +69,7 @@ impl TranslationMemory {
                  SET access_count = access_count + 1,
                      last_accessed = ?1
                  WHERE cache_key = ?2",
-                params![
-                    now,
-                    cache_key(source_text, source_language, target_language, provider_id)
-                ],
+                params![now, key.as_str()],
             )
             .context("failed to update translation memory access info")?;
             self.bump_metrics(&conn, true, started_at.elapsed().as_secs_f64() * 1000.0)?;
@@ -79,7 +91,7 @@ impl TranslationMemory {
         let now = Utc::now().to_rfc3339();
         let key = cache_key(source_text, source_language, target_language, provider_id);
 
-        let conn = self.connection()?;
+        let conn = self.lock_connection()?;
         conn.execute(
             "INSERT INTO translation_cache (
                 cache_key,
@@ -97,7 +109,7 @@ impl TranslationMemory {
                 access_count = translation_cache.access_count + 1,
                 last_accessed = excluded.last_accessed",
             params![
-                key,
+                key.as_str(),
                 source_text,
                 translated_text,
                 source_language,
@@ -114,7 +126,7 @@ impl TranslationMemory {
     }
 
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>> {
-        let conn = self.connection()?;
+        let conn = self.lock_connection()?;
 
         let escaped_query = query
             .trim()
@@ -156,7 +168,7 @@ impl TranslationMemory {
     }
 
     pub fn clear(&self) -> Result<()> {
-        let conn = self.connection()?;
+        let conn = self.lock_connection()?;
         conn.execute("DELETE FROM translation_cache", [])
             .context("failed to clear translation cache")?;
         conn.execute(
@@ -175,7 +187,7 @@ impl TranslationMemory {
     }
 
     pub fn stats(&self) -> Result<MemoryStats> {
-        let conn = self.connection()?;
+        let conn = self.lock_connection()?;
 
         let total_entries: usize = conn
             .query_row("SELECT COUNT(*) FROM translation_cache", [], |row| {
@@ -219,7 +231,7 @@ impl TranslationMemory {
     }
 
     fn init_schema(&self) -> Result<()> {
-        let conn = self.connection()?;
+        let conn = self.lock_connection()?;
 
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS translation_cache (
@@ -311,18 +323,13 @@ impl TranslationMemory {
         Ok(())
     }
 
-    fn connection(&self) -> Result<Connection> {
-        if let Some(parent) = self.db_path.parent() {
-            std::fs::create_dir_all(parent).with_context(|| {
-                format!(
-                    "failed to create translation memory directory {}",
-                    parent.display()
-                )
-            })?;
-        }
-
-        Connection::open(&self.db_path)
-            .with_context(|| format!("failed to open sqlite db {}", self.db_path.display()))
+    fn lock_connection(&self) -> Result<MutexGuard<'_, Connection>> {
+        self.connection.lock().map_err(|_| {
+            anyhow!(
+                "translation memory connection lock is poisoned for {}",
+                self.db_path.display()
+            )
+        })
     }
 }
 
@@ -332,10 +339,19 @@ fn cache_key(
     target_language: &str,
     provider_id: &str,
 ) -> String {
-    format!(
-        "{}:{}:{}:{}",
-        provider_id, source_language, target_language, source_text
-    )
+    let mut key = String::new();
+    append_cache_key_part(&mut key, provider_id);
+    append_cache_key_part(&mut key, source_language);
+    append_cache_key_part(&mut key, target_language);
+    append_cache_key_part(&mut key, source_text);
+    key
+}
+
+fn append_cache_key_part(out: &mut String, value: &str) {
+    out.push_str(&value.len().to_string());
+    out.push(':');
+    out.push_str(value);
+    out.push('|');
 }
 
 #[cfg(test)]
@@ -361,5 +377,12 @@ mod tests {
         let stats = memory.stats().unwrap();
         assert_eq!(stats.total_entries, 1);
         assert_eq!(stats.total_hits, 1);
+    }
+
+    #[test]
+    fn cache_key_is_collision_resistant_for_delimited_values() {
+        let left = cache_key("hello:world", "en", "ja", "google");
+        let right = cache_key("world", "en", "ja:hello", "google");
+        assert_ne!(left, right);
     }
 }

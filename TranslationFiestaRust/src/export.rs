@@ -188,14 +188,13 @@ impl ExportService {
                 "result": result,
             }))?,
             ExportFormat::Csv => {
-                let mut buffer: Vec<u8> = Vec::new();
-                {
-                    let mut writer = Writer::from_writer(&mut buffer);
-                    self.write_single_csv(&mut writer, result)?;
-                    writer.flush()?;
-                }
+                let mut writer = Writer::from_writer(Vec::new());
+                self.write_single_csv_to_writer(&mut writer, result, include_metadata, &metadata)?;
+                let buffer = writer
+                    .into_inner()
+                    .context("failed to finalize CSV preview writer")?;
                 String::from_utf8(buffer)
-                    .context("Failed to convert CSV preview to UTF-8 string")?
+                    .context("failed to convert CSV preview to UTF-8 string")?
             }
             ExportFormat::Xml => self.single_xml_content(result, include_metadata, &metadata),
             ExportFormat::Pdf | ExportFormat::Docx => {
@@ -502,7 +501,18 @@ impl ExportService {
     ) -> Result<()> {
         let mut writer = Writer::from_path(output_path)
             .with_context(|| format!("failed to create CSV {}", output_path.display()))?;
+        self.write_single_csv_to_writer(&mut writer, result, include_metadata, metadata)?;
+        writer.flush()?;
+        Ok(())
+    }
 
+    fn write_single_csv_to_writer<W: Write>(
+        &self,
+        writer: &mut Writer<W>,
+        result: &BackTranslationResult,
+        include_metadata: bool,
+        metadata: &ExportMetadata,
+    ) -> Result<()> {
         if include_metadata {
             writer.write_record(["metadata_key", "metadata_value"])?;
             writer.write_record(["title", metadata.title.as_str()])?;
@@ -536,7 +546,6 @@ impl ExportService {
             &result.duration_ms.to_string(),
         ])?;
 
-        writer.flush()?;
         Ok(())
     }
 
@@ -633,34 +642,44 @@ impl ExportService {
 }
 
 fn write_pdf(path: &Path, title: &str, text: &str) -> Result<()> {
+    const PDF_LINES_PER_PAGE: usize = 48;
+
     let mut doc = PdfDocument::new(title);
+    let mut pages = Vec::new();
 
-    let mut ops = vec![
-        Op::StartTextSection,
-        Op::SetTextCursor {
-            pos: Point::new(Mm(12.0), Mm(285.0)),
-        },
-        Op::SetFontSizeBuiltinFont {
-            size: Pt(11.0),
-            font: BuiltinFont::Helvetica,
-        },
-        Op::SetLineHeight { lh: Pt(14.0) },
-    ];
+    let lines: Vec<&str> = if text.is_empty() {
+        vec![" "]
+    } else {
+        text.lines().collect()
+    };
+    for chunk in lines.chunks(PDF_LINES_PER_PAGE) {
+        let mut ops = vec![
+            Op::StartTextSection,
+            Op::SetTextCursor {
+                pos: Point::new(Mm(12.0), Mm(285.0)),
+            },
+            Op::SetFontSizeBuiltinFont {
+                size: Pt(11.0),
+                font: BuiltinFont::Helvetica,
+            },
+            Op::SetLineHeight { lh: Pt(14.0) },
+        ];
 
-    for line in text.lines().take(90) {
-        let safe_line = if line.is_empty() { " " } else { line };
-        ops.push(Op::WriteTextBuiltinFont {
-            items: vec![TextItem::Text(safe_line.to_owned())],
-            font: BuiltinFont::Helvetica,
-        });
-        ops.push(Op::AddLineBreak);
+        for line in chunk {
+            let safe_line = if line.is_empty() { " " } else { line };
+            ops.push(Op::WriteTextBuiltinFont {
+                items: vec![TextItem::Text(safe_line.to_owned())],
+                font: BuiltinFont::Helvetica,
+            });
+            ops.push(Op::AddLineBreak);
+        }
+
+        ops.push(Op::EndTextSection);
+        pages.push(PdfPage::new(Mm(210.0), Mm(297.0), ops));
     }
 
-    ops.push(Op::EndTextSection);
-
-    let page = PdfPage::new(Mm(210.0), Mm(297.0), ops);
     let bytes = doc
-        .with_pages(vec![page])
+        .with_pages(pages)
         .save(&PdfSaveOptions::default(), &mut Vec::new());
 
     std::fs::write(path, bytes)

@@ -77,7 +77,6 @@ pub struct TranslationFiestaApp {
     rx: Receiver<UiEvent>,
 
     last_save_attempt: Instant,
-    theme_applied: bool,
 }
 
 impl TranslationFiestaApp {
@@ -123,7 +122,6 @@ impl TranslationFiestaApp {
             tx,
             rx,
             last_save_attempt: Instant::now(),
-            theme_applied: false,
         }
     }
 
@@ -463,8 +461,8 @@ impl TranslationFiestaApp {
         }
     }
 
-    fn apply_theme(&mut self, ctx: &egui::Context) {
-        if self.theme_applied {
+    fn apply_theme(&self, ctx: &egui::Context) {
+        if ctx.style().visuals.panel_fill == Color32::from_rgb(14, 14, 16) {
             return;
         }
 
@@ -498,7 +496,6 @@ impl TranslationFiestaApp {
         style.visuals.widgets.noninteractive.corner_radius = egui::CornerRadius::same(8);
 
         ctx.set_style(style);
-        self.theme_applied = true;
     }
 
     fn draw_top_bar(&mut self, ctx: &egui::Context) {
@@ -520,7 +517,7 @@ impl TranslationFiestaApp {
 
     fn draw_background(&self, _ui: &egui::Ui) {
         // Intentionally empty — background provided by panel_fill.
-        // Decorative gradients removed per §21.3 ("no heavy gradients").
+        // Decorative gradients are intentionally omitted for visual clarity.
     }
 
     fn draw_tab_selector(&mut self, ui: &mut egui::Ui) {
@@ -955,6 +952,10 @@ impl eframe::App for TranslationFiestaApp {
             }
         });
 
+        if self.is_translating || self.is_batch_running {
+            ctx.request_repaint_after(Duration::from_millis(33));
+        }
+
         self.maybe_autosave_settings();
     }
 }
@@ -1006,11 +1007,7 @@ fn status_color_for_message(message: &str) -> Color32 {
         return Color32::from_rgb(34, 197, 94); // success green
     }
 
-    if lower.contains("failed")
-        || lower.contains("error")
-        || lower.starts_with("import failed")
-        || lower.starts_with("export failed")
-    {
+    if lower.contains("failed") || lower.contains("error") {
         return Color32::from_rgb(239, 68, 68); // error red
     }
 

@@ -11,6 +11,7 @@ use serde_json::Value;
 use thiserror::Error;
 use tracing::{debug, error, info, warn};
 
+use crate::language::is_supported_language_code;
 use crate::memory::TranslationMemory;
 use crate::models::{BackTranslationResult, ProviderId};
 
@@ -308,7 +309,7 @@ impl TranslationService {
 
 fn validate_language_code(code: &str) -> std::result::Result<(), TranslationError> {
     let trimmed = code.trim();
-    if trimmed.len() == 2 && trimmed.chars().all(|ch| ch.is_ascii_alphabetic()) {
+    if is_supported_language_code(trimmed) {
         return Ok(());
     }
 
@@ -384,5 +385,14 @@ mod tests {
     fn rejects_invalid_response_shape() {
         let error = parse_unofficial_google_response("{}").unwrap_err();
         assert!(matches!(error, TranslationError::InvalidResponse(_)));
+    }
+
+    #[test]
+    fn accepts_bcp47_language_codes() {
+        assert!(validate_language_code("en").is_ok());
+        assert!(validate_language_code("pt-BR").is_ok());
+        assert!(validate_language_code("zh-Hans").is_ok());
+        assert!(validate_language_code("eng").is_ok());
+        assert!(validate_language_code("english").is_err());
     }
 }

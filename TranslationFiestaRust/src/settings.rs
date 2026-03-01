@@ -3,7 +3,9 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use tracing::warn;
 
+use crate::language::normalize_language_code;
 use crate::models::{ExportFormat, ProviderId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,12 +49,10 @@ impl AppSettings {
     pub fn normalize(&mut self) {
         self.provider_id = self.provider().as_str().to_owned();
 
-        if self.source_language.trim().len() != 2 {
-            self.source_language = "en".to_owned();
-        }
-        if self.intermediate_language.trim().len() != 2 {
-            self.intermediate_language = "ja".to_owned();
-        }
+        self.source_language =
+            normalize_language_code(&self.source_language).unwrap_or_else(|| "en".to_owned());
+        self.intermediate_language =
+            normalize_language_code(&self.intermediate_language).unwrap_or_else(|| "ja".to_owned());
 
         self.output_format = self.export_format().extension().to_owned();
 
@@ -85,10 +85,7 @@ pub fn load_settings(path: &Path) -> AppSettings {
             settings
         }
         Err(error) => {
-            warn!(
-                "failed to load settings from {}: {error}",
-                path.display()
-            );
+            warn!("failed to load settings from {}: {error}", path.display());
             AppSettings::default()
         }
     }
@@ -118,5 +115,19 @@ mod tests {
     fn defaults_to_unofficial_provider() {
         let settings = AppSettings::default();
         assert_eq!(settings.provider(), ProviderId::GoogleUnofficial);
+    }
+
+    #[test]
+    fn normalizes_bcp47_language_codes() {
+        let mut settings = AppSettings {
+            source_language: "pt-BR".to_owned(),
+            intermediate_language: "zh-Hans".to_owned(),
+            ..AppSettings::default()
+        };
+
+        settings.normalize();
+
+        assert_eq!(settings.source_language, "pt-br");
+        assert_eq!(settings.intermediate_language, "zh-hans");
     }
 }
