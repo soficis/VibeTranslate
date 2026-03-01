@@ -322,3 +322,6 @@ debug/
 TranslationFiestaRuby/ssl_bypass.rb
 docs/codex_agents_ui.md
 docs/portable-policy.md
+
+# Ignore archived/experimental project
+TranslationFiestaWeb3D/
