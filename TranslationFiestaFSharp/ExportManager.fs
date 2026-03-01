@@ -2,8 +2,7 @@
 #nowarn "3261" // Suppress nullness warnings
 /// <summary>
 /// This module provides functionality for exporting translation results to various formats,
-/// including PDF, DOCX, and HTML. It has been refactored according to Clean Code principles
-/// to improve readability, maintainability, and efficiency.
+/// including PDF, DOCX, and HTML.
 ///
 /// Key Refactorings:
 /// - **Robust Error Handling**: Replaced `failwith` with a `Result<'T, exn>` type for all

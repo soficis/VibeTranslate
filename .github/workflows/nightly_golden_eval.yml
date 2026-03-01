@@ -24,12 +24,14 @@ jobs:
             dotnet_platform: x64
             go_platform: windows/amd64
             electron_arch: x64
+            include_legacy_ports: true
           - arch: arm64
             runner: windows-11-arm
             rid: win-arm64
             dotnet_platform: arm64
             go_platform: windows/arm64
             electron_arch: arm64
+            include_legacy_ports: false
 
     steps:
       - name: Checkout
@@ -41,6 +43,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Setup Python
+        if: ${{ matrix.include_legacy_ports }}
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -60,17 +63,23 @@ jobs:
           go-version: "1.26.x"
           cache-dependency-path: TranslationFiestaGo/go.sum
 
+      - name: Setup Flutter
+        shell: pwsh
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1 "$env:RUNNER_TEMP\flutter"
+          echo "$env:RUNNER_TEMP\flutter\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Flutter precache
+        shell: pwsh
+        run: flutter precache --windows
+
       - name: Setup Ruby
+        if: ${{ matrix.include_legacy_ports }}
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
           bundler-cache: false
           working-directory: TranslationFiestaRuby
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
 
       - name: Build nightly Windows app set
         shell: pwsh
@@ -128,79 +137,80 @@ jobs:
             }
           }
 
-          python -m pip install --upgrade pip
-          pip install -r TranslationFiestaPy/requirements.lock
-          pip install pyinstaller
-          $pythonOutRoot = "$env:GITHUB_WORKSPACE\TranslationFiestaPy\out"
-          if (Test-Path $pythonOutRoot) {
-            Remove-Item $pythonOutRoot -Recurse -Force
+          if ("${{ matrix.include_legacy_ports }}" -eq 'true') {
+            python -m pip install --upgrade pip
+            pip install -r TranslationFiestaPy/requirements.lock
+            pip install pyinstaller
+            $pythonOutRoot = "$env:GITHUB_WORKSPACE\TranslationFiestaPy\out"
+            if (Test-Path $pythonOutRoot) {
+              Remove-Item $pythonOutRoot -Recurse -Force
+            }
+            New-Item -ItemType Directory -Force -Path $pythonOutRoot | Out-Null
+
+            Push-Location TranslationFiestaPy
+            pyinstaller --noconfirm --clean --windowed --onedir --name TranslationFiestaPy --collect-submodules tkinterweb --collect-data tkinterweb --collect-submodules tkinterweb_tkhtml --collect-data tkinterweb_tkhtml --distpath "$pythonOutRoot\dist" --workpath "$pythonOutRoot\build" --specpath "$pythonOutRoot\spec" TranslationFiesta.py
+            Pop-Location
+            New-Item -ItemType Directory -Force -Path "$root\TranslationFiestaPy" | Out-Null
+            Copy-Item "$pythonOutRoot\dist\TranslationFiestaPy\*" "$root\TranslationFiestaPy" -Recurse -Force
+
+            $rubyTarget = "$root\TranslationFiestaRuby"
+            New-Item -ItemType Directory -Force -Path $rubyTarget | Out-Null
+
+            Push-Location TranslationFiestaRuby
+            gem install rake --no-document
+            bundle install --deployment --path vendor/bundle --jobs 4 --retry 3
+            $rubyPrefix = (& ruby -e "require 'rbconfig'; print RbConfig::CONFIG['prefix']").Trim()
+            Pop-Location
+
+            $sourceRoot = "$env:GITHUB_WORKSPACE\TranslationFiestaRuby"
+            $pathsToCopy = @('Gemfile', 'Gemfile.lock', 'translation_fiesta.gemspec', 'bin', 'lib', 'config', 'vendor')
+            foreach ($path in $pathsToCopy) {
+              Copy-Item (Join-Path $sourceRoot $path) (Join-Path $rubyTarget $path) -Recurse -Force
+            }
+
+            $rubyPrefixPath = $rubyPrefix -replace '/', '\'
+            if (!(Test-Path $rubyPrefixPath)) {
+              throw "Ruby runtime path not found: $rubyPrefixPath"
+            }
+
+            $rubyRuntimeTarget = Join-Path $rubyTarget 'ruby-runtime'
+            New-Item -ItemType Directory -Force -Path $rubyRuntimeTarget | Out-Null
+            Copy-Item (Join-Path $rubyPrefixPath '*') $rubyRuntimeTarget -Recurse -Force
+
+            $bundleBat = Join-Path $rubyRuntimeTarget 'bin\bundle.bat'
+            if (!(Test-Path $bundleBat)) {
+              throw "Bundled Ruby runtime is missing bundle.bat at $bundleBat"
+            }
+
+            $libGmp = Get-ChildItem -Path $rubyRuntimeTarget -Recurse -File -Filter 'libgmp*.dll' | Select-Object -First 1
+            if (-not $libGmp) {
+              throw "Bundled Ruby runtime is missing libgmp*.dll"
+            }
+
+            $runPs1 = @(
+              "Set-StrictMode -Version Latest"
+              "`$ErrorActionPreference = 'Stop'"
+              "Set-Location `$PSScriptRoot"
+              "`$runtimeBin = Join-Path `$PSScriptRoot 'ruby-runtime\bin'"
+              "`$env:PATH = ""`$runtimeBin;`$env:PATH"""
+              "`$env:BUNDLE_GEMFILE = Join-Path `$PSScriptRoot 'Gemfile'"
+              "`$env:BUNDLE_PATH = Join-Path `$PSScriptRoot 'vendor\bundle'"
+              "& (Join-Path `$runtimeBin 'bundle.bat') exec ruby bin/translation_fiesta"
+            ) -join [Environment]::NewLine
+            Set-Content -Path "$rubyTarget\run.ps1" -Value $runPs1
+
+            $runCmd = @(
+              "@echo off"
+              "setlocal"
+              "cd /d ""%~dp0"""
+              "set ""RUNTIME_BIN=%~dp0ruby-runtime\bin"""
+              "set ""PATH=%RUNTIME_BIN%;%PATH%"""
+              "set ""BUNDLE_GEMFILE=%~dp0Gemfile"""
+              "set ""BUNDLE_PATH=%~dp0vendor\bundle"""
+              "call ""%RUNTIME_BIN%\bundle.bat"" exec ruby bin\translation_fiesta"
+            ) -join [Environment]::NewLine
+            Set-Content -Path "$rubyTarget\run.cmd" -Value $runCmd
           }
-          New-Item -ItemType Directory -Force -Path $pythonOutRoot | Out-Null
-
-          Push-Location TranslationFiestaPy
-          pyinstaller --noconfirm --clean --windowed --onedir --name TranslationFiestaPy --collect-submodules tkinterweb --collect-data tkinterweb --collect-submodules tkinterweb_tkhtml --collect-data tkinterweb_tkhtml --distpath "$pythonOutRoot\dist" --workpath "$pythonOutRoot\build" --specpath "$pythonOutRoot\spec" TranslationFiesta.py
-          Pop-Location
-          New-Item -ItemType Directory -Force -Path "$root\TranslationFiestaPy" | Out-Null
-          Copy-Item "$pythonOutRoot\dist\TranslationFiestaPy\*" "$root\TranslationFiestaPy" -Recurse -Force
-
-
-          $rubyTarget = "$root\TranslationFiestaRuby"
-          New-Item -ItemType Directory -Force -Path $rubyTarget | Out-Null
-
-          Push-Location TranslationFiestaRuby
-          gem install rake --no-document
-          bundle install --deployment --path vendor/bundle --jobs 4 --retry 3
-          $rubyPrefix = (& ruby -e "require 'rbconfig'; print RbConfig::CONFIG['prefix']").Trim()
-          Pop-Location
-
-          $sourceRoot = "$env:GITHUB_WORKSPACE\TranslationFiestaRuby"
-          $pathsToCopy = @('Gemfile', 'Gemfile.lock', 'translation_fiesta.gemspec', 'bin', 'lib', 'config', 'vendor')
-          foreach ($path in $pathsToCopy) {
-            Copy-Item (Join-Path $sourceRoot $path) (Join-Path $rubyTarget $path) -Recurse -Force
-          }
-
-          $rubyPrefixPath = $rubyPrefix -replace '/', '\'
-          if (!(Test-Path $rubyPrefixPath)) {
-            throw "Ruby runtime path not found: $rubyPrefixPath"
-          }
-
-          $rubyRuntimeTarget = Join-Path $rubyTarget 'ruby-runtime'
-          New-Item -ItemType Directory -Force -Path $rubyRuntimeTarget | Out-Null
-          Copy-Item (Join-Path $rubyPrefixPath '*') $rubyRuntimeTarget -Recurse -Force
-
-          $bundleBat = Join-Path $rubyRuntimeTarget 'bin\bundle.bat'
-          if (!(Test-Path $bundleBat)) {
-            throw "Bundled Ruby runtime is missing bundle.bat at $bundleBat"
-          }
-
-          $libGmp = Get-ChildItem -Path $rubyRuntimeTarget -Recurse -Filter 'libgmp-10.dll' | Select-Object -First 1
-          if (-not $libGmp) {
-            throw "Bundled Ruby runtime is missing libgmp-10.dll"
-          }
-
-          $runPs1 = @(
-            "Set-StrictMode -Version Latest"
-            "`$ErrorActionPreference = 'Stop'"
-            "Set-Location `$PSScriptRoot"
-            "`$runtimeBin = Join-Path `$PSScriptRoot 'ruby-runtime\bin'"
-            "`$env:PATH = ""`$runtimeBin;`$env:PATH"""
-            "`$env:BUNDLE_GEMFILE = Join-Path `$PSScriptRoot 'Gemfile'"
-            "`$env:BUNDLE_PATH = Join-Path `$PSScriptRoot 'vendor\bundle'"
-            "& (Join-Path `$runtimeBin 'bundle.bat') exec ruby bin/translation_fiesta"
-          ) -join [Environment]::NewLine
-          Set-Content -Path "$rubyTarget\run.ps1" -Value $runPs1
-
-          $runCmd = @(
-            "@echo off"
-            "setlocal"
-            "cd /d ""%~dp0"""
-            "set ""RUNTIME_BIN=%~dp0ruby-runtime\bin"""
-            "set ""PATH=%RUNTIME_BIN%;%PATH%"""
-            "set ""BUNDLE_GEMFILE=%~dp0Gemfile"""
-            "set ""BUNDLE_PATH=%~dp0vendor\bundle"""
-            "call ""%RUNTIME_BIN%\bundle.bat"" exec ruby bin\translation_fiesta"
-          ) -join [Environment]::NewLine
-          Set-Content -Path "$rubyTarget\run.cmd" -Value $runCmd
 
       - name: Create Windows portable launchers
         shell: pwsh
@@ -218,10 +228,11 @@ jobs:
             'TranslationFiesta.WinUI',
             'TranslationFiestaElectron',
             'TranslationFiestaFlutter',
-            'TranslationFiestaGo',
-            'TranslationFiestaPy',
-            'TranslationFiestaRuby'
+            'TranslationFiestaGo'
           )
+          if ("${{ matrix.include_legacy_ports }}" -eq 'true') {
+            $requiredDirs += @('TranslationFiestaPy', 'TranslationFiestaRuby')
+          }
 
           foreach ($dir in $requiredDirs) {
             if (!(Test-Path (Join-Path $root $dir))) {
@@ -248,9 +259,11 @@ jobs:
 
           $launcherChecks = @(
             "$root\TranslationFiesta.WinUI\TranslationFiesta.WinUI.exe",
-            "$root\TranslationFiestaGo\TranslationFiestaGo.exe",
-            "$root\TranslationFiestaPy\TranslationFiestaPy.exe"
+            "$root\TranslationFiestaGo\TranslationFiestaGo.exe"
           )
+          if ("${{ matrix.include_legacy_ports }}" -eq 'true') {
+            $launcherChecks += "$root\TranslationFiestaPy\TranslationFiestaPy.exe"
+          }
 
           foreach ($launcher in $launcherChecks) {
             if (!(Test-Path $launcher)) {
@@ -258,16 +271,22 @@ jobs:
             }
           }
 
-          $rubyExpected = @(
-            "$root\TranslationFiestaRuby\run.ps1",
-            "$root\TranslationFiestaRuby\run.cmd",
-            "$root\TranslationFiestaRuby\ruby-runtime\bin\ruby.exe",
-            "$root\TranslationFiestaRuby\ruby-runtime\bin\libgmp-10.dll"
-          )
+          if ("${{ matrix.include_legacy_ports }}" -eq 'true') {
+            $rubyExpected = @(
+              "$root\TranslationFiestaRuby\run.ps1",
+              "$root\TranslationFiestaRuby\run.cmd",
+              "$root\TranslationFiestaRuby\ruby-runtime\bin\ruby.exe"
+            )
 
-          foreach ($path in $rubyExpected) {
-            if (!(Test-Path $path)) {
-              throw "Missing expected Ruby payload: $path"
+            foreach ($path in $rubyExpected) {
+              if (!(Test-Path $path)) {
+                throw "Missing expected Ruby payload: $path"
+              }
+            }
+
+            $libGmp = Get-ChildItem -Path "$root\TranslationFiestaRuby\ruby-runtime" -Recurse -File -Filter 'libgmp*.dll' | Select-Object -First 1
+            if (-not $libGmp) {
+              throw "Missing expected Ruby payload: libgmp*.dll under $root\\TranslationFiestaRuby\\ruby-runtime"
             }
           }
 
@@ -368,9 +387,12 @@ jobs:
           working-directory: TranslationFiestaRuby
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1 "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Flutter precache
+        run: flutter precache --linux
 
       - name: Install Linux desktop build dependencies
         run: |
@@ -527,12 +549,13 @@ jobs:
             exit 1
           }
 
-          disallowed=("$archive_root"/*.msi "$archive_root"/*.msix "$archive_root"/*.dmg "$archive_root"/*.pkg "$archive_root"/*.appimage)
-          for artifact in "${disallowed[@]}"; do
-            if [[ -e "$artifact" ]]; then
+          disallowed_patterns=("*.msi" "*.msix" "*.dmg" "*.pkg" "*.appimage")
+          for pattern in "${disallowed_patterns[@]}"; do
+            for artifact in "$archive_root"/$pattern; do
+              [[ -e "$artifact" ]] || continue
               echo "Disallowed installer artifact found: $artifact" >&2
               exit 1
-            fi
+            done
           done
 
       - name: Upload nightly Linux artifacts
@@ -590,9 +613,12 @@ jobs:
           working-directory: TranslationFiestaRuby
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1 "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Flutter precache
+        run: flutter precache --macos
 
       - name: Build nightly macOS app set
         run: |
@@ -738,12 +764,13 @@ jobs:
             exit 1
           }
 
-          disallowed=("$zip_root"/*.msi "$zip_root"/*.msix "$zip_root"/*.dmg "$zip_root"/*.pkg "$zip_root"/*.appimage)
-          for artifact in "${disallowed[@]}"; do
-            if [[ -e "$artifact" ]]; then
+          disallowed_patterns=("*.msi" "*.msix" "*.dmg" "*.pkg" "*.appimage")
+          for pattern in "${disallowed_patterns[@]}"; do
+            for artifact in "$zip_root"/$pattern; do
+              [[ -e "$artifact" ]] || continue
               echo "Disallowed installer artifact found: $artifact" >&2
               exit 1
-            fi
+            done
           done
 
       - name: Upload nightly macOS artifacts

@@ -46,12 +46,14 @@ jobs:
             dotnet_platform: x64
             go_platform: windows/amd64
             electron_arch: x64
+            include_legacy_ports: true
           - arch: arm64
             runner: windows-11-arm
             rid: win-arm64
             dotnet_platform: arm64
             go_platform: windows/arm64
             electron_arch: arm64
+            include_legacy_ports: false
 
     steps:
       - name: Checkout
@@ -63,6 +65,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Setup Python
+        if: ${{ matrix.include_legacy_ports }}
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -93,6 +96,7 @@ jobs:
         run: flutter precache --windows
 
       - name: Setup Ruby
+        if: ${{ matrix.include_legacy_ports }}
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
@@ -201,6 +205,7 @@ jobs:
           }
 
       - name: Build Python apps
+        if: ${{ matrix.include_legacy_ports }}
         shell: pwsh
         run: |
           $root = "$env:GITHUB_WORKSPACE\dist\release\windows-${{ matrix.arch }}"
@@ -223,6 +228,7 @@ jobs:
           Copy-Item "$pythonOutRoot\dist\TranslationFiestaPy\*" "$root\TranslationFiestaPy" -Recurse -Force
 
       - name: Build TranslationFiestaRuby
+        if: ${{ matrix.include_legacy_ports }}
         shell: pwsh
         run: |
           $root = "$env:GITHUB_WORKSPACE\dist\release\windows-${{ matrix.arch }}"
@@ -261,9 +267,9 @@ jobs:
             throw "Bundled Ruby runtime is missing bundle.bat at $bundleBat"
           }
 
-          $libGmp = Get-ChildItem -Path $rubyRuntimeTarget -Recurse -Filter 'libgmp-10.dll' | Select-Object -First 1
+          $libGmp = Get-ChildItem -Path $rubyRuntimeTarget -Recurse -File -Filter 'libgmp*.dll' | Select-Object -First 1
           if (-not $libGmp) {
-            throw "Bundled Ruby runtime is missing libgmp-10.dll"
+            throw "Bundled Ruby runtime is missing libgmp*.dll"
           }
 
           $runPs1 = @(
@@ -306,10 +312,11 @@ jobs:
             'TranslationFiesta.WinUI',
             'TranslationFiestaElectron',
             'TranslationFiestaFlutter',
-            'TranslationFiestaGo',
-            'TranslationFiestaPy',
-            'TranslationFiestaRuby'
+            'TranslationFiestaGo'
           )
+          if ("${{ matrix.include_legacy_ports }}" -eq 'true') {
+            $requiredDirs += @('TranslationFiestaPy', 'TranslationFiestaRuby')
+          }
 
           foreach ($dir in $requiredDirs) {
             if (!(Test-Path (Join-Path $root $dir))) {
@@ -336,9 +343,11 @@ jobs:
 
           $launcherChecks = @(
             "$root\TranslationFiesta.WinUI\TranslationFiesta.WinUI.exe",
-            "$root\TranslationFiestaGo\TranslationFiestaGo.exe",
-            "$root\TranslationFiestaPy\TranslationFiestaPy.exe"
+            "$root\TranslationFiestaGo\TranslationFiestaGo.exe"
           )
+          if ("${{ matrix.include_legacy_ports }}" -eq 'true') {
+            $launcherChecks += "$root\TranslationFiestaPy\TranslationFiestaPy.exe"
+          }
 
           foreach ($launcher in $launcherChecks) {
             if (!(Test-Path $launcher)) {
@@ -346,16 +355,22 @@ jobs:
             }
           }
 
-          $rubyExpected = @(
-            "$root\TranslationFiestaRuby\run.ps1",
-            "$root\TranslationFiestaRuby\run.cmd",
-            "$root\TranslationFiestaRuby\ruby-runtime\bin\ruby.exe",
-            "$root\TranslationFiestaRuby\ruby-runtime\bin\libgmp-10.dll"
-          )
+          if ("${{ matrix.include_legacy_ports }}" -eq 'true') {
+            $rubyExpected = @(
+              "$root\TranslationFiestaRuby\run.ps1",
+              "$root\TranslationFiestaRuby\run.cmd",
+              "$root\TranslationFiestaRuby\ruby-runtime\bin\ruby.exe"
+            )
 
-          foreach ($path in $rubyExpected) {
-            if (!(Test-Path $path)) {
-              throw "Missing expected Ruby payload: $path"
+            foreach ($path in $rubyExpected) {
+              if (!(Test-Path $path)) {
+                throw "Missing expected Ruby payload: $path"
+              }
+            }
+
+            $libGmp = Get-ChildItem -Path "$root\TranslationFiestaRuby\ruby-runtime" -Recurse -File -Filter 'libgmp*.dll' | Select-Object -First 1
+            if (-not $libGmp) {
+              throw "Missing expected Ruby payload: libgmp*.dll under $root\\TranslationFiestaRuby\\ruby-runtime"
             }
           }
 
@@ -661,12 +676,13 @@ jobs:
             exit 1
           }
 
-          disallowed=("$archive_root"/*.msi "$archive_root"/*.msix "$archive_root"/*.dmg "$archive_root"/*.pkg "$archive_root"/*.appimage)
-          for artifact in "${disallowed[@]}"; do
-            if [[ -e "$artifact" ]]; then
+          disallowed_patterns=("*.msi" "*.msix" "*.dmg" "*.pkg" "*.appimage")
+          for pattern in "${disallowed_patterns[@]}"; do
+            for artifact in "$archive_root"/$pattern; do
+              [[ -e "$artifact" ]] || continue
               echo "Disallowed installer artifact found: $artifact" >&2
               exit 1
-            fi
+            done
           done
 
       - name: Upload Linux release artifacts
@@ -915,12 +931,13 @@ jobs:
             exit 1
           }
 
-          disallowed=("$zip_root"/*.msi "$zip_root"/*.msix "$zip_root"/*.dmg "$zip_root"/*.pkg "$zip_root"/*.appimage)
-          for artifact in "${disallowed[@]}"; do
-            if [[ -e "$artifact" ]]; then
+          disallowed_patterns=("*.msi" "*.msix" "*.dmg" "*.pkg" "*.appimage")
+          for pattern in "${disallowed_patterns[@]}"; do
+            for artifact in "$zip_root"/$pattern; do
+              [[ -e "$artifact" ]] || continue
               echo "Disallowed installer artifact found: $artifact" >&2
               exit 1
-            fi
+            done
           done
 
       - name: Upload macOS release artifacts

@@ -48,6 +48,7 @@ VibeTranslate is available across a massive variety of tech stacks. All ports ma
 | 💎 | `TranslationFiestaRuby` | Ruby + wxRuby | ✅ Stable |
 | 💙 | `TranslationFiestaFlutter` | Flutter | ✅ Stable |
 | ⚛️ | `TranslationFiestaElectron` | TS + Electron | ✅ Stable |
+| 🦀 | `TranslationFiestaRust` | Rust + egui | ✅ Stable |
 | 🍎 | `TranslationFiestaSwift` | Swift / SwiftUI | ⚠️ *Best-Effort Build* |
 | 🏗️ | **ARM64 Builds** | All Platforms | ⚠️ *Best-Effort Builds* |
 
@@ -82,6 +83,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build_windows_x64_release.ps1
 ### 📦 Windows ARM64 Release Bundle
 
 For ARM64 architecture builds on Windows (requires ARM64 versions of .NET 10, Node.js, Go, Ruby, and Flutter):
+
+> [!NOTE]
+> Automated CI/release ARM64 bundles include core ports by default (`C#`, `F#`, `WinUI`, `Electron`, `Flutter`, `Go`). `Python`/`Ruby` ARM64 packaging is optional and intended for local emulated builds.
 
 First, install the required ARM64 SDKs:
 
@@ -142,6 +146,12 @@ cd TranslationFiestaFlutter && flutter pub get && flutter run
 
 ```bash
 cd TranslationFiestaElectron && npm install && npm run dev
+```
+
+### Rust (egui + CLI)
+
+```bash
+cd TranslationFiestaRust && cargo run
 ```
 
 ### Swift (SwiftUI)

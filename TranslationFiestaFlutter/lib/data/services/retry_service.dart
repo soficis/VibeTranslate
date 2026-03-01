@@ -1,5 +1,3 @@
-/// Clean Code retry service with exponential backoff
-/// Following Single Responsibility and meaningful naming
 library;
 
 import 'dart:math';
@@ -10,7 +8,6 @@ import '../../core/utils/logger.dart';
 import '../../domain/entities/translation.dart';
 
 /// Service for handling retry logic with exponential backoff
-/// Single Responsibility: Manage retry operations with proper timing
 class RetryService {
   final Logger logger = Logger.instance;
   final Random _random = Random();

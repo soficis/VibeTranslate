@@ -13,15 +13,18 @@ A clean, modern Windows Forms application for backtranslation testing built with
 ## ✨ Features
 
 ### 🎯 Simplified Workflow
+
 - **Fixed Language Path**: English → Japanese → English backtranslation
 - **Clean UI**: Modern, streamlined interface focused on the core functionality
 - **Text Import**: Load content from .txt files for batch processing
 - **Real-time Progress**: Visual feedback only when translation is active
 
 ### 🔌 Translation Providers
+
 - **Unofficial Google Translate**: Free, no setup required (default)
 
 ### 💾 File Operations
+
 - **Import files**: Load content from .txt, .md, and .html files
 - **HTML Processing**: Automatic text extraction from HTML files
 - **Copy Results**: Quick clipboard access (Ctrl+C)
@@ -29,12 +32,14 @@ A clean, modern Windows Forms application for backtranslation testing built with
 - **UTF-8 Support**: Full Unicode compatibility
 
 ### 🎨 User Experience
+
 - **Dark/Light Themes**: Toggle between visual modes
 - **Conditional Progress Bar**: Shows only during active translation
 - **Status Updates**: Real-time feedback throughout the process
 - **Error Handling**: Robust error management with detailed logging
 
 ### 📝 Logging & Debugging
+
 - **Comprehensive Logging**: All operations logged to `./data/logs/fsharptranslate.log`
 - **Thread-safe**: Concurrent logging without conflicts
 - **Error Tracking**: Detailed error information for troubleshooting
@@ -42,6 +47,7 @@ A clean, modern Windows Forms application for backtranslation testing built with
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - **.NET 9 SDK** or newer
 - **Windows OS** (Windows Forms dependency)
 - **Internet connection** for translation services
@@ -60,6 +66,7 @@ dotnet run
 ```
 
 ### First Use
+
 1. **Launch the application**
 2. **Enter or import text** in the input area
 3. **Click "Backtranslate"** to start the process
@@ -68,14 +75,16 @@ dotnet run
 ## 📖 Usage Guide
 
 ### Basic Backtranslation
+
 1. **Input Text**: Type or paste English text in the main input area
 2. **Start Translation**: Click the "Backtranslate" button
 3. **Monitor Progress**: Watch the progress bar and status messages
-4. **Review Results**: 
+4. **Review Results**:
    - **Intermediate**: Japanese translation
    - **Final**: Back-translated English
 
 ### Importing Files
+
 1. **Click "Import File"** or use File → Import File
 2. **Select your file** (.txt, .md, or .html) - UTF-8 recommended
 3. **Content loads automatically** into the input area
@@ -85,37 +94,15 @@ dotnet run
 4. **Proceed with backtranslation** as normal
 
 ### Theme & Preferences
+
 - **Dark Mode**: Toggle for comfortable viewing
 - **Menu Options**: Access File operations via menu bar
 - **Keyboard Shortcuts**: Ctrl+C (copy), Ctrl+S (save)
 
 ## 🏗️ Architecture
 
-### Clean Code Principles Applied
-
-This application follows **Clean Code** principles by Robert C. Martin:
-
-#### **Meaningful Names**
-- Functions like `translateWithRetriesAsync`, `showSpinner`, `setStatus`
-- Variables like `defaultIntermediateLanguageCode`, `progressSpinner`
-- Clear intent without requiring comments
-
-#### **Small Functions**
-- Each function has a single responsibility
-- UI helpers separated from business logic
-- Translation logic isolated in dedicated functions
-
-#### **Error Handling**
-- Comprehensive error handling with Result types
-- No silent failures - all errors logged and displayed
-- Graceful degradation with retry mechanisms
-
-#### **No Side Effects**
-- Pure functions where possible
-- Clear separation of UI state management
-- Predictable behavior with explicit state changes
-
 ### Project Structure
+
 ```
 TranslationFiestaFSharp/
 ├── Program.fs              # Main application and UI
@@ -127,16 +114,19 @@ TranslationFiestaFSharp/
 ### Key Components
 
 #### **Translation Engine**
+
 - `translateUnofficialAsync`: Google Translate unofficial API
 - `translateWithRetriesAsync`: Retry logic with exponential backoff
 
 #### **UI Management**
+
 - `showSpinner`: Conditional progress indication
 - `setStatus`: Centralized status updates
 - `setTheme`: Dark/light mode switching
 - Clean separation of UI state and business logic
 
 #### **File Operations**
+
 - Import: UTF-8 file loading (.txt, .md, .html)
 - HTML Processing: Automatic text extraction from HTML
 - Export: Formatted result saving
@@ -145,11 +135,13 @@ TranslationFiestaFSharp/
 ## 🔧 Configuration
 
 ### API Settings
+
 - **Default**: Unofficial Google Translate (no setup)
 - **Retry Logic**: 4 attempts with exponential backoff
 - **Timeout Handling**: Graceful failure with user feedback
 
 ### Logging Configuration
+
 - **File**: `fsharptranslate.log` in application directory
 - **Levels**: INFO, DEBUG, ERROR
 - **Thread Safety**: Concurrent access protected
@@ -160,12 +152,14 @@ TranslationFiestaFSharp/
 ### Common Issues
 
 #### **Translation Failures**
+
 ```
 Error: Translation failed: HTTP 429
 Solution: Rate limited - wait and retry
 ```
 
 #### **File Import Problems**
+
 ```
 Error: Failed to load file: Access denied
 Solution: Check file permissions and ensure UTF-8 encoding
@@ -175,6 +169,7 @@ Solution: File may contain malformed HTML - try a different file or use plain te
 ```
 
 #### **Build Issues**
+
 ```powershell
 # Clear build cache
 dotnet clean
@@ -183,7 +178,9 @@ dotnet build
 ```
 
 ### Log Analysis
+
 Check `fsharptranslate.log` for detailed error information:
+
 - Network connectivity issues
 - API response problems
 - File system errors
@@ -194,6 +191,7 @@ Check `fsharptranslate.log` for detailed error information:
 ### Creating Releases
 
 #### **Self-Contained Executable**
+
 ```powershell
 # Windows x64
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
@@ -202,6 +200,7 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=
 ```
 
 #### **Framework-Dependent**
+
 ```powershell
 # Requires .NET 9 runtime on target machine
 dotnet publish -c Release -r win-x64 --self-contained false
@@ -210,6 +209,7 @@ dotnet publish -c Release -r win-x64 --self-contained false
 ```
 
 ### Distribution
+
 - **Single File**: Complete executable with all dependencies
 - **Portable**: Framework-dependent for smaller distribution
 - **Requirements**: Windows 10+ for optimal compatibility
@@ -217,19 +217,21 @@ dotnet publish -c Release -r win-x64 --self-contained false
 ## 🤝 Contributing
 
 ### Development Setup
+
 1. **Fork the repository**
 2. **Clone locally**: `git clone https://github.com/soficis/VibeTranslate.git`
 3. **Install .NET 9 SDK**
 4. **Build and test**: `dotnet build && dotnet run`
 
 ### Code Standards
-- **Follow Clean Code principles**
+
 - **Meaningful names** for all identifiers
 - **Single responsibility** per function
 - **Comprehensive error handling**
 - **Thread-safe** where applicable
 
 ### Pull Request Process
+
 1. **Create feature branch**: `git checkout -b feature/your-feature`
 2. **Implement changes** following existing patterns
 3. **Test thoroughly** including error cases
@@ -239,12 +241,14 @@ dotnet publish -c Release -r win-x64 --self-contained false
 ## 📊 Performance
 
 ### Benchmarks
+
 - **Startup Time**: < 2 seconds on modern hardware
 - **Translation Speed**: Depends on network and API selection
 - **Memory Usage**: ~50MB typical, ~100MB peak during translation
 - **File Import**: Handles files up to 10MB efficiently
 
 ### Optimization Features
+
 - **Async Operations**: Non-blocking UI during translation
 - **Connection Reuse**: Single HTTP client for all requests
 - **Efficient Logging**: Minimal performance impact
@@ -265,6 +269,7 @@ This project is provided for educational and development purposes. Usage of tran
 ## 📞 Support
 
 ### Getting Help
+
 - **Check logs**: `fsharptranslate.log` for detailed error information
 - **Verify network**: Ensure stable internet connection
 - **GitHub Issues**: Report bugs and request features
@@ -281,5 +286,3 @@ A: Yes, modify `defaultIntermediateLanguageCode` and update UI labels accordingl
 A: Yes for testing and evaluation.
 
 ---
-
-**Built with F# and .NET 9 | Clean Code Principles Applied | Modern Windows Forms UI**

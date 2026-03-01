@@ -178,9 +178,9 @@ if (!(Test-Path $bundleBat)) {
   throw "Bundled Ruby runtime is missing bundle.bat at $bundleBat"
 }
 
-$libGmp = Get-ChildItem -Path $rubyRuntimeTarget -Recurse -Filter 'libgmp-10.dll' | Select-Object -First 1
+$libGmp = Get-ChildItem -Path $rubyRuntimeTarget -Recurse -File -Filter 'libgmp*.dll' | Select-Object -First 1
 if (-not $libGmp) {
-  throw "Bundled Ruby runtime is missing libgmp-10.dll."
+  throw "Bundled Ruby runtime is missing libgmp*.dll."
 }
 
 $runPs1 = @(

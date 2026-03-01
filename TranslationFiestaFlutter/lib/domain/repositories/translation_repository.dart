@@ -1,12 +1,9 @@
-/// Clean Code repository interfaces with meaningful naming
-/// Following Dependency Inversion principle and Single Responsibility
 library;
 
 import '../entities/translation.dart';
 import '../../core/errors/either.dart';
 
 /// Repository interface for translation operations
-/// Single Responsibility: Define translation data access contract
 abstract class TranslationRepository {
   /// Translate text from source language to target language
   Future<Result<TranslationResult>> translateText(
@@ -32,7 +29,6 @@ abstract class TranslationRepository {
 }
 
 /// Repository interface for file operations
-/// Single Responsibility: Define file data access contract
 abstract class FileRepository {
   /// Load text content from a file
   Future<Result<String>> loadTextFromFile(String filePath);
@@ -51,7 +47,6 @@ abstract class FileRepository {
 }
 
 /// Repository interface for application preferences
-/// Single Responsibility: Define preferences data access contract
 abstract class PreferencesRepository {
   /// Get boolean preference value
   Future<Result<bool>> getBoolPreference(String key,
@@ -74,7 +69,6 @@ abstract class PreferencesRepository {
 }
 
 /// Repository interface for clipboard operations
-/// Single Responsibility: Define clipboard data access contract
 abstract class ClipboardRepository {
   /// Copy text to clipboard
   Future<Result<void>> copyTextToClipboard(String text);

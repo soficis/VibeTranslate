@@ -1,0 +1,37 @@
+[package]
+name = "translation_fiesta_rust"
+version = "0.1.0"
+edition = "2024"
+description = "Rust desktop + CLI port of VibeTranslate/TranslationFiesta"
+license = "GPL-3.0"
+
+[dependencies]
+anyhow = "1.0"
+arboard = "3.4"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.5", features = ["derive"] }
+crossbeam-channel = "0.5"
+csv = "1.3"
+eframe = "0.31"
+egui_extras = "0.31"
+quick-xml = { version = "0.38", features = ["serialize"] }
+rand = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls", "gzip", "brotli", "deflate"] }
+rfd = "0.15"
+rusqlite = { version = "0.32", features = ["bundled", "chrono"] }
+scraper = "0.23"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+urlencoding = "2.1"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+walkdir = "2.5"
+whatlang = "0.16"
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
+printpdf = "0.8"
+
+[dev-dependencies]
+tempfile = "3.12"
