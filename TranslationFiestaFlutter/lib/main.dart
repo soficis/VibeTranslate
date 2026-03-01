@@ -1,5 +1,3 @@
-/// Clean Code Flutter application entry point
-/// Following Clean Architecture and meaningful naming
 library;
 
 import 'package:flutter/material.dart';
@@ -25,7 +23,6 @@ void main() async {
 }
 
 /// Main application widget
-/// Single Responsibility: Configure app-wide settings and providers
 class FlutterTranslateApp extends StatelessWidget {
   const FlutterTranslateApp({super.key});
 

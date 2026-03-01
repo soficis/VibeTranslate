@@ -1,0 +1,99 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TranslationFiestaCSharp.MainWindow"
+        Title="TranslationFiesta C#"
+        Width="900" Height="800"
+        MinWidth="800" MinHeight="600"
+        Background="#0f1419"
+        Foreground="#e8ecf1"
+        FontFamily="Inter">
+
+    <Window.Styles>
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#1a1f2e" />
+            <Setter Property="Foreground" Value="#e8ecf1" />
+            <Setter Property="BorderBrush" Value="#2e3648" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#3b82f6" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="Background" Value="#242a38" />
+            <Setter Property="Foreground" Value="#e8ecf1" />
+            <Setter Property="BorderBrush" Value="#2e3648" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1a1f2e" />
+        </Style>
+        <Style Selector="Button.hero">
+            <Setter Property="Background" Value="#3b82f6" />
+            <Setter Property="Foreground" Value="#ffffff" />
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="Button.hero:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#2563eb" />
+        </Style>
+        <Style Selector="Label.section">
+            <Setter Property="Foreground" Value="#8b95a5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#1a1f2e" />
+            <Setter Property="Foreground" Value="#e8ecf1" />
+            <Setter Property="BorderBrush" Value="#2e3648" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto, *, Auto, *" Margin="24">
+        
+        <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" Margin="0,0,0,16">
+            <TextBlock Text="TranslationFiesta C#" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
+            <ComboBox Name="ProviderCombo" Grid.Column="2" Width="280" VerticalAlignment="Center">
+                <ComboBoxItem>Google Translate (Unofficial / Free)</ComboBoxItem>
+            </ComboBox>
+        </Grid>
+
+        <Grid Grid.Row="1" RowDefinitions="Auto, *">
+            <Label Content="INPUT" Classes="section" Margin="0,0,0,8" />
+            <TextBox Name="InputText" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" />
+        </Grid>
+
+        <StackPanel Grid.Row="2" Margin="0,16,0,16" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Name="TranslateBtn" Content="⧿ Backtranslate" Classes="hero" Width="160" HorizontalContentAlignment="Center" />
+                <Button Name="ImportBtn" Content="Import" Width="90" HorizontalContentAlignment="Center" />
+                <Button Name="SaveBtn" Content="Save" Width="90" HorizontalContentAlignment="Center" />
+                <Button Name="CopyBtn" Content="Copy" Width="90" HorizontalContentAlignment="Center" />
+                <Button Name="BatchBtn" Content="Batch" Width="90" HorizontalContentAlignment="Center" />
+                <Button Name="CancelBtn" Content="Cancel" Width="90" HorizontalContentAlignment="Center" IsEnabled="False" />
+            </StackPanel>
+            
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                <ProgressBar Name="StatusProgress" IsIndeterminate="True" Height="4" VerticalAlignment="Center" Width="200" IsVisible="False" />
+                <TextBlock Name="StatusText" Text="Ready" Foreground="#8b95a5" VerticalAlignment="Center" />
+            </StackPanel>
+        </StackPanel>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*, 16, *">
+            <Grid Grid.Column="0" RowDefinitions="Auto, *">
+                <Label Content="INTERMEDIATE (JA)" Classes="section" Margin="0,0,0,8" />
+                <TextBox Name="IntermediateText" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" IsReadOnly="True" />
+            </Grid>
+            
+            <Grid Grid.Column="2" RowDefinitions="Auto, *">
+                <Label Content="RESULT (EN)" Classes="section" Margin="0,0,0,8" />
+                <TextBox Name="ResultText" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" IsReadOnly="True" />
+            </Grid>
+        </Grid>
+        
+    </Grid>
+
+</Window>

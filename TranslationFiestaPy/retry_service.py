@@ -2,8 +2,7 @@
 """
 retry_service.py
 
-Retry service with exponential backoff and jitter for robust error handling.
-Following Clean Code principles and functional programming patterns.
+Retry service with exponential backoff and jitter.
 """
 
 from __future__ import annotations
