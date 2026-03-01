@@ -10,7 +10,7 @@ open System.Text
 open System.IO
 open System.Threading
 open System.Threading.Tasks
-open Photino.NET
+open PhotinoNET
 
 module FileOperations =
     let extractTextFromHtml (htmlContent: string) : string =
@@ -94,22 +94,22 @@ module Program =
     let handleWebMessage (window: PhotinoWindow) (message: string) =
         try
             let msg = JsonSerializer.Deserialize<WebMessage>(message, JsonSerializerOptions(PropertyNameCaseInsensitive = true))
-            match msg.command with
-            | "translate" ->
-                async {
-                    window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "status"; message = "Translating..."; isBusy = true |}))
-                    let! result = TranslationService.translateUnofficialAsync msg.text "en" "ja"
-                    match result with
-                    | Ok res -> 
-                        window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "result"; text = res |}))
-                        window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "status"; message = "Done"; isBusy = false |}))
-                    | Error err ->
-                        window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "error"; message = err |}))
-                        window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "status"; message = "Error"; isBusy = false |}))
-                }
-                |> Async.Start
-
-            | _ -> ()
+            if not (isNull (box msg)) then
+                match msg.command with
+                | "translate" ->
+                    async {
+                        window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "status"; message = "Translating..."; isBusy = true |}))
+                        let! result = TranslationService.translateUnofficialAsync msg.text "en" "ja"
+                        match result with
+                        | Ok res ->
+                            window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "result"; text = res |}))
+                            window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "status"; message = "Done"; isBusy = false |}))
+                        | Error err ->
+                            window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "error"; message = err |}))
+                            window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "status"; message = "Error"; isBusy = false |}))
+                    }
+                    |> Async.Start
+                | _ -> ()
         with ex ->
             Logger.error (sprintf "Message error: %A" ex)
 
@@ -120,7 +120,7 @@ module Program =
             .SetTitle("TranslationFiesta F#")
             .SetSize(System.Drawing.Size(900, 800))
             .Center()
-            .RegisterWebMessageReceivedHandler(fun sender message -> handleWebMessage window message)
+            .RegisterWebMessageReceivedHandler(fun (_sender: obj) (message: string) -> handleWebMessage window message)
             .Load("wwwroot/index.html")
             .WaitForClose() |> ignore
         0

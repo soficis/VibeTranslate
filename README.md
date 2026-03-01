@@ -84,6 +84,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build_windows_x64_release.ps1
 
 For ARM64 architecture builds on Windows (requires ARM64 versions of .NET 10, Node.js, Go, Ruby, and Flutter):
 
+> [!NOTE]
+> Automated CI/release ARM64 bundles include core ports by default (`C#`, `F#`, `WinUI`, `Electron`, `Flutter`, `Go`). `Python`/`Ruby` ARM64 packaging is optional and intended for local emulated builds.
+
 First, install the required ARM64 SDKs:
 
 ```powershell

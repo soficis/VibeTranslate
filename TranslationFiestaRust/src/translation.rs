@@ -9,7 +9,7 @@ use reqwest::StatusCode;
 use reqwest::blocking::{Client, Response};
 use serde_json::Value;
 use thiserror::Error;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 use crate::memory::TranslationMemory;
 use crate::models::{BackTranslationResult, ProviderId};
