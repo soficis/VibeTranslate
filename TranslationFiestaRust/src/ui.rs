@@ -77,7 +77,6 @@ pub struct TranslationFiestaApp {
     rx: Receiver<UiEvent>,
 
     last_save_attempt: Instant,
-    theme_applied: bool,
 }
 
 impl TranslationFiestaApp {
@@ -123,7 +122,6 @@ impl TranslationFiestaApp {
             tx,
             rx,
             last_save_attempt: Instant::now(),
-            theme_applied: false,
         }
     }
 
@@ -463,11 +461,7 @@ impl TranslationFiestaApp {
         }
     }
 
-    fn apply_theme(&mut self, ctx: &egui::Context) {
-        if self.theme_applied {
-            return;
-        }
-
+    fn apply_theme(&self, ctx: &egui::Context) {
         apply_cjk_font_fallback(ctx);
 
         let mut style = (*ctx.style()).clone();
@@ -498,7 +492,6 @@ impl TranslationFiestaApp {
         style.visuals.widgets.noninteractive.corner_radius = egui::CornerRadius::same(8);
 
         ctx.set_style(style);
-        self.theme_applied = true;
     }
 
     fn draw_top_bar(&mut self, ctx: &egui::Context) {
