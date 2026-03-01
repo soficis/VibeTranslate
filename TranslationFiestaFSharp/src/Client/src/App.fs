@@ -39,6 +39,8 @@ type Msg =
     | ImportClicked
     | CopyClicked
 
+let defaultProviderId = "google_unofficial"
+
 let listenForPhotinoMessages (dispatch: Msg -> unit) =
     setReceiveWebMessage (fun msg -> dispatch (ReceivedWebMessage msg))
 
@@ -58,7 +60,7 @@ let update (msg: Msg) (state: State) : State * Cmd<Msg> =
             state, Cmd.none
         else
             let jsMsg =
-                {| command = "translate"; text = state.InputText; provider = "google" |}
+                {| command = "translate"; text = state.InputText; provider = defaultProviderId |}
                 |> JSON.stringify
             
             sendMessageToPhotino jsMsg
