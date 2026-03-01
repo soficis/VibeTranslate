@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe TranslationFiesta::CLI do
   around do |example|
     original = ENV['TF_DEFAULT_API']
-    ENV['TF_DEFAULT_API'] = 'custom_api'
+    ENV['TF_DEFAULT_API'] = 'google_free'
     example.run
   ensure
     ENV['TF_DEFAULT_API'] = original
@@ -25,7 +25,7 @@ RSpec.describe TranslationFiesta::CLI do
     )
 
     allow(translate_use_case).to receive(:execute)
-      .with('Hello world', :custom_api)
+      .with('Hello world', :unofficial)
       .and_return(translation_result)
 
     cli = described_class.new(container: container)

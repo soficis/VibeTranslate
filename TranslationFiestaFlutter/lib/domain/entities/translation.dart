@@ -190,8 +190,12 @@ extension TranslationProviderIdX on TranslationProviderId {
   String get displayName => 'Google Translate (Unofficial / Free)';
 
   static TranslationProviderId fromStorage(String? value) {
-    switch (value) {
+    switch (value?.trim().toLowerCase()) {
       case 'google_unofficial':
+      case 'unofficial':
+      case 'google_unofficial_free':
+      case 'google_free':
+      case 'googletranslate':
       default:
         return TranslationProviderId.googleUnofficial;
     }

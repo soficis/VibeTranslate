@@ -5,6 +5,14 @@ require_relative 'infrastructure/dependency_container'
 
 module TranslationFiesta
   class CLI
+    PROVIDER_ALIASES = %w[
+      google_unofficial
+      unofficial
+      google_unofficial_free
+      google_free
+      googletranslate
+    ].freeze
+
     def initialize(container: Infrastructure::DependencyContainer.new)
       @container = container
       @options = {}
@@ -33,9 +41,9 @@ module TranslationFiesta
         opts.separator ""
         opts.separator "Options:"
 
-        opts.on('-a', '--api API_TYPE', ['unofficial'],
-                'API type to use (unofficial)') do |api|
-          @options[:api_type] = api.to_sym
+        opts.on('-a', '--api API_TYPE', PROVIDER_ALIASES,
+                'API type to use (google_unofficial)') do |api|
+          @options[:api_type] = normalize_api_type(api)
         end
 
         opts.on('-o', '--output FILE', 'Output file for results') do |file|
@@ -67,7 +75,7 @@ module TranslationFiesta
       end
 
       @remaining_args = parser.parse(args)
-      @options[:api_type] ||= ENV.fetch('TF_DEFAULT_API', 'unofficial').to_sym
+      @options[:api_type] ||= normalize_api_type(ENV.fetch('TF_DEFAULT_API', 'google_unofficial'))
       @options[:threads] ||= 4
     end
 
@@ -193,6 +201,16 @@ module TranslationFiesta
       puts "  #{$0} batch /path/to/directory"
       puts ""
       puts "For more options, use: #{$0} --help"
+    end
+
+    def normalize_api_type(raw_api_type)
+      value = raw_api_type.to_s.strip.downcase
+      case value
+      when 'google_unofficial', 'unofficial', 'google_unofficial_free', 'google_free', 'googletranslate', ''
+        :unofficial
+      else
+        :unofficial
+      end
     end
   end
 end

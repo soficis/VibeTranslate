@@ -54,7 +54,7 @@ bundle exec ruby bin/translation_fiesta --cli batch ./documents --threads 4
 |---|---|---|
 | `TF_APP_HOME` | (unset) | Override portable runtime data root |
 | `TF_USE_MOCK` | (unset) | Use mock translation repository when set to `1` |
-| `TF_DEFAULT_API` | `unofficial` | Default provider id |
+| `TF_DEFAULT_API` | `google_unofficial` | Default provider id |
 
 ## Data layout
 

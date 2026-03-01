@@ -83,7 +83,7 @@ public enum APIProvider: String, CaseIterable, Codable, Identifiable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let raw = try container.decode(String.self)
-        guard let value = APIProvider(rawValue: raw) else {
+        guard let value = APIProvider.fromStorage(raw) else {
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Unsupported APIProvider value: \(raw)"
@@ -102,6 +102,16 @@ public enum APIProvider: String, CaseIterable, Codable, Identifiable, Sendable {
     public var displayName: String {
         switch self {
         case .googleUnofficialAPI: return "Google Translate (Unofficial / Free)"
+        }
+    }
+
+    public static func fromStorage(_ raw: String?) -> APIProvider? {
+        let normalized = raw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        switch normalized {
+        case "google_unofficial", "unofficial", "google_unofficial_free", "google_free", "googletranslate", "":
+            return .googleUnofficialAPI
+        default:
+            return nil
         }
     }
 }

@@ -10,6 +10,21 @@ type SettingsData = { providerId: ProviderId };
 
 const defaultSettings: SettingsData = { providerId: "google_unofficial" };
 
+const normalizeProviderId = (providerId: string | null | undefined): ProviderId => {
+  const normalized = (providerId ?? "").trim().toLowerCase();
+  switch (normalized) {
+    case "google_unofficial":
+    case "unofficial":
+    case "google_unofficial_free":
+    case "google_free":
+    case "googletranslate":
+    case "":
+      return "google_unofficial";
+    default:
+      return "google_unofficial";
+  }
+};
+
 const resolvePortableDataRoot = () => {
   const override = process.env.TF_APP_HOME?.trim();
   if (override) {
@@ -37,7 +52,7 @@ const readSettings = (): SettingsData => {
   try {
     const raw = fs.readFileSync(getSettingsPath(), "utf-8");
     const parsed = JSON.parse(raw) as Partial<SettingsData>;
-    const providerId = parsed.providerId === "google_unofficial" ? parsed.providerId : defaultSettings.providerId;
+    const providerId = normalizeProviderId(parsed.providerId);
     return { providerId };
   } catch {
     return { ...defaultSettings };
@@ -79,10 +94,10 @@ app.whenReady().then(() => {
     return { providerId: settings.providerId };
   });
 
-  ipcMain.handle("settings-set-provider", async (_event, payload: { providerId: ProviderId }) => {
+  ipcMain.handle("settings-set-provider", async (_event, payload: { providerId: string }) => {
     try {
       const settings = readSettings();
-      settings.providerId = payload.providerId;
+      settings.providerId = normalizeProviderId(payload.providerId);
       writeSettings(settings);
       return { ok: true };
     } catch (error) {

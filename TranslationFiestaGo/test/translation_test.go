@@ -7,11 +7,20 @@ import (
 )
 
 func TestNormalizeProviderID(t *testing.T) {
-	if entities.NormalizeProviderID("google_unofficial") != entities.ProviderGoogleUnofficial {
-		t.Fatal("expected google_unofficial to normalize to google_unofficial")
+	aliases := []string{
+		"google_unofficial",
+		"unofficial",
+		"google_unofficial_free",
+		"google_free",
+		"googletranslate",
+		"",
+		" GOOGLE_UNOFFICIAL ",
+		"unknown_provider",
 	}
 
-	if entities.NormalizeProviderID("anything_else") != entities.ProviderGoogleUnofficial {
-		t.Fatal("expected unknown provider to normalize to google_unofficial")
+	for _, alias := range aliases {
+		if entities.NormalizeProviderID(alias) != entities.ProviderGoogleUnofficial {
+			t.Fatalf("expected %q to normalize to google_unofficial", alias)
+		}
 	}
 }

@@ -11,6 +11,24 @@ final class TranslationFiestaSwiftTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(APIProvider.self, from: json))
     }
 
+    func testProviderDecodeAcceptsAliases() throws {
+        let aliases = [
+            "google_unofficial",
+            "unofficial",
+            "google_unofficial_free",
+            "google_free",
+            "googletranslate",
+            "",
+            " GOOGLE_UNOFFICIAL "
+        ]
+
+        for alias in aliases {
+            let json = "\"\(alias)\"".data(using: .utf8)!
+            let provider = try JSONDecoder().decode(APIProvider.self, from: json)
+            XCTAssertEqual(provider, .googleUnofficialAPI)
+        }
+    }
+
     func testTranslationErrorDescriptions() throws {
         XCTAssertEqual(TranslationError.rateLimited.errorDescription, "Provider rate limited")
         XCTAssertEqual(TranslationError.blocked.errorDescription, "Provider blocked or captcha detected")
