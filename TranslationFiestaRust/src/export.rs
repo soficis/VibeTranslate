@@ -637,9 +637,10 @@ impl ExportService {
     }
 }
 
-fn write_pdf(path: &Path, title: &str, text: &str) -> Result<()> {
-    let mut doc = PdfDocument::new(title);
+/// Maximum lines per A4 page (11pt font, 14pt line height, 12mm margins).
+const PDF_LINES_PER_PAGE: usize = 55;
 
+fn build_pdf_page(lines: &[&str]) -> PdfPage {
     let mut ops = vec![
         Op::StartTextSection,
         Op::SetTextCursor {
@@ -652,7 +653,7 @@ fn write_pdf(path: &Path, title: &str, text: &str) -> Result<()> {
         Op::SetLineHeight { lh: Pt(14.0) },
     ];
 
-    for line in text.lines().take(90) {
+    for line in lines {
         let safe_line = if line.is_empty() { " " } else { line };
         ops.push(Op::WriteTextBuiltinFont {
             items: vec![TextItem::Text(safe_line.to_owned())],
@@ -662,10 +663,24 @@ fn write_pdf(path: &Path, title: &str, text: &str) -> Result<()> {
     }
 
     ops.push(Op::EndTextSection);
+    PdfPage::new(Mm(210.0), Mm(297.0), ops)
+}
 
-    let page = PdfPage::new(Mm(210.0), Mm(297.0), ops);
+fn write_pdf(path: &Path, title: &str, text: &str) -> Result<()> {
+    let mut doc = PdfDocument::new(title);
+
+    let all_lines: Vec<&str> = text.lines().collect();
+    let pages: Vec<PdfPage> = if all_lines.is_empty() {
+        vec![build_pdf_page(&[])]
+    } else {
+        all_lines
+            .chunks(PDF_LINES_PER_PAGE)
+            .map(build_pdf_page)
+            .collect()
+    };
+
     let bytes = doc
-        .with_pages(vec![page])
+        .with_pages(pages)
         .save(&PdfSaveOptions::default(), &mut Vec::new());
 
     std::fs::write(path, bytes)
@@ -838,5 +853,38 @@ mod tests {
 
         assert!(output.exists());
         assert!(std::fs::metadata(output).unwrap().len() > 64);
+    }
+
+    #[test]
+    fn exports_single_pdf() {
+        let service = ExportService;
+        let result = sample_result();
+        let temp = TempDir::new().unwrap();
+        let output = temp.path().join("result.pdf");
+
+        service
+            .export_single(&result, &output, ExportFormat::Pdf, true)
+            .unwrap();
+
+        assert!(output.exists());
+        assert!(std::fs::metadata(output).unwrap().len() > 64);
+    }
+
+    #[test]
+    fn exports_pdf_multipage_without_truncation() {
+        let temp = TempDir::new().unwrap();
+        let output = temp.path().join("multi.pdf");
+
+        // Generate more than PDF_LINES_PER_PAGE lines to exercise multi-page pagination.
+        let long_text = (1..=200)
+            .map(|i| format!("Line {i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        write_pdf(&output, "Multi-page test", &long_text).unwrap();
+
+        assert!(output.exists());
+        // A multi-page PDF must be larger than a near-empty single-page PDF.
+        assert!(std::fs::metadata(output).unwrap().len() > 512);
     }
 }
