@@ -7,8 +7,8 @@ pub fn extract_text_from_html(html_content: &str) -> String {
 
     let mut document = Html::parse_document(html_content);
 
-    let blacklist = ["script", "style", "code", "pre", "noscript", "iframe"];
-    for tag in blacklist {
+    let blocklist = ["script", "style", "code", "pre", "noscript", "iframe"];
+    for tag in blocklist {
         if let Ok(selector) = Selector::parse(tag) {
             let elements: Vec<_> = document.select(&selector).map(|el| el.id()).collect();
             for element in elements {
