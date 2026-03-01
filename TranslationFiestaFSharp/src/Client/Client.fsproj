@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\ProviderIds.fs" />
     <Compile Include="src\App.fs" />
     <Compile Include="src\Main.fs" />
   </ItemGroup>

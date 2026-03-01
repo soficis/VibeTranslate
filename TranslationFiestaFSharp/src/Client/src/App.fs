@@ -39,7 +39,7 @@ type Msg =
     | ImportClicked
     | CopyClicked
 
-let defaultProviderId = "google_unofficial"
+let defaultProviderId = TranslationFiestaFSharp.ProviderIds.GoogleUnofficial
 
 let listenForPhotinoMessages (dispatch: Msg -> unit) =
     setReceiveWebMessage (fun msg -> dispatch (ReceivedWebMessage msg))
