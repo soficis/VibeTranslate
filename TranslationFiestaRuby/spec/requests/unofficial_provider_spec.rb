@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe TranslationFiesta::Data::Repositories::GoogleTranslationRepository do
-  let(:repo) { described_class.new(:unofficial) }
+  let(:repo) { described_class.new(:google_unofficial) }
   let(:http) { instance_double(Net::HTTP) }
 
   before do
@@ -28,5 +28,13 @@ RSpec.describe TranslationFiesta::Data::Repositories::GoogleTranslationRepositor
     expect {
       repo.send(:translate_unofficial, 'hello', 'en', 'ja')
     }.to raise_error(TranslationFiesta::TranslationError, /rate_limited/)
+  end
+
+  it 'normalizes provider aliases to unofficial mode' do
+    aliases = %w[google_unofficial unofficial google_unofficial_free google_free googletranslate]
+    aliases.each do |alias_name|
+      normalized = repo.send(:normalize_api_type, alias_name)
+      expect(normalized).to eq(:unofficial)
+    end
   end
 end

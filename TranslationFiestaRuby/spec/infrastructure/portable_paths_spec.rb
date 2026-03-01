@@ -21,10 +21,17 @@ RSpec.describe 'portable paths' do
 
   it 'persists settings inside TF_APP_HOME' do
     store = TranslationFiesta::Infrastructure::SettingsStore.new
-    saved = store.save('default_api' => 'unofficial')
+    saved = store.save('default_api' => 'google_unofficial')
 
-    expect(saved.fetch('default_api')).to eq('unofficial')
+    expect(saved.fetch('default_api')).to eq('google_unofficial')
     expect(File).to exist(File.join(ENV.fetch('TF_APP_HOME'), 'settings.json'))
+  end
+
+  it 'normalizes provider aliases when saving settings' do
+    store = TranslationFiesta::Infrastructure::SettingsStore.new
+    saved = store.save('default_api' => 'google_free')
+
+    expect(saved.fetch('default_api')).to eq('google_unofficial')
   end
 
   it 'uses TF_APP_HOME for translation memory db path' do

@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { translateUnofficialGoogle } from "./providers/googleUnofficial";
+import { DEFAULT_PROVIDER_ID, normalizeProviderId, type ProviderId } from "./providerId";
 import * as tm from "./translationMemory";
 
-type ProviderId = "google_unofficial";
-
 const providerOptions: { id: ProviderId; label: string }[] = [
-  { id: "google_unofficial", label: "Google Translate (Unofficial / Free)" }
+  { id: DEFAULT_PROVIDER_ID, label: "Google Translate (Unofficial / Free)" }
 ];
 
 const translateWithProvider = async (
@@ -19,7 +18,7 @@ const translateWithProvider = async (
 };
 
 const App: React.FC = () => {
-  const [providerId, setProviderId] = useState<ProviderId>("google_unofficial");
+  const [providerId, setProviderId] = useState<ProviderId>(DEFAULT_PROVIDER_ID);
   const [inputText, setInputText] = useState("");
   const [intermediateText, setIntermediateText] = useState("");
   const [outputText, setOutputText] = useState("");
@@ -41,15 +40,10 @@ const App: React.FC = () => {
       const bridge = window.translationFiesta?.settings;
       if (bridge) {
         const settings = await bridge.load();
-        if (providerOptions.some((option) => option.id === settings.providerId)) {
-          setProviderId(settings.providerId as ProviderId);
-        }
+        setProviderId(normalizeProviderId(settings.providerId));
         return;
       }
-      const savedProvider = localStorage.getItem("tf_provider") as ProviderId | null;
-      if (savedProvider && providerOptions.some((option) => option.id === savedProvider)) {
-        setProviderId(savedProvider);
-      }
+      setProviderId(normalizeProviderId(localStorage.getItem("tf_provider")));
     };
     void load();
   }, []);

@@ -30,7 +30,7 @@ module TranslationFiesta
         if ENV['TF_USE_MOCK'] == '1'
           @translation_repository = Data::Repositories::MockTranslationRepository.new
         else
-          @translation_repository = Data::Repositories::GoogleTranslationRepository.new(:unofficial)
+          @translation_repository = Data::Repositories::GoogleTranslationRepository.new(:google_unofficial)
         end
         @file_repository = Data::Repositories::FileSystemRepository.new
         @memory_repository = Data::Repositories::SqliteMemoryRepository.new(AppPaths.memory_db_path)

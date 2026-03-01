@@ -2,7 +2,7 @@
 
 # Translation settings
 translation:
-  default_api: unofficial
+  default_api: google_unofficial
   max_text_length: 5000
   translation_memory_ttl: 2592000  # 30 days in seconds
 

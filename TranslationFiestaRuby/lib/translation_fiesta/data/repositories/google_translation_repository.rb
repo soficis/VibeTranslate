@@ -9,7 +9,7 @@ module TranslationFiesta
   module Data
     module Repositories
       class GoogleTranslationRepository < TranslationFiesta::Domain::Repositories::TranslationRepository
-        def initialize(api_type = :unofficial)
+        def initialize(api_type = :google_unofficial)
           @api_type = normalize_api_type(api_type)
         end
 
@@ -104,9 +104,9 @@ module TranslationFiesta
         end
 
         def normalize_api_type(api_type)
-          value = api_type.to_s
+          value = api_type.to_s.strip.downcase
           case value
-          when 'google_unofficial', 'unofficial'
+          when 'google_unofficial', 'unofficial', 'google_unofficial_free', 'google_free', 'googletranslate', ''
             :unofficial
           else
             :unofficial

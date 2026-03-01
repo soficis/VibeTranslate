@@ -1,15 +1,21 @@
-from ui.theme import build_themes, toggle_button_label
+from ui.qt_theme import get_qss
 
 
-def test_build_themes_contains_required_keys():
-    themes = build_themes()
-    assert "light" in themes
-    assert "dark" in themes
-    for key in ("bg", "fg", "text_bg", "text_fg", "button_bg", "button_fg", "label_bg", "label_fg"):
-        assert key in themes["light"]
-        assert key in themes["dark"]
+def test_get_qss_uses_dark_palette_by_default():
+    qss = get_qss()
+    assert "#1C1C1E" in qss
+    assert "#0A84FF" in qss
 
 
-def test_toggle_button_label_matches_theme():
-    assert toggle_button_label("dark") == "☀️ Light"
-    assert toggle_button_label("light") == "🌙 Dark"
+def test_get_qss_dark_palette_contains_dark_tokens():
+    qss = get_qss("dark")
+    assert "#1C1C1E" in qss
+    assert "#2C2C2E" in qss
+    assert "#0A84FF" in qss
+
+
+def test_get_qss_light_palette_contains_light_tokens():
+    qss = get_qss("light")
+    assert "#F2F2F7" in qss
+    assert "#FFFFFF" in qss
+    assert "#007AFF" in qss

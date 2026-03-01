@@ -2,13 +2,13 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { DEFAULT_PROVIDER_ID, normalizeProviderId, ProviderId } from "../shared/providerId";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-type ProviderId = "google_unofficial";
 type SettingsData = { providerId: ProviderId };
 
-const defaultSettings: SettingsData = { providerId: "google_unofficial" };
+const defaultSettings: SettingsData = { providerId: DEFAULT_PROVIDER_ID };
 
 const resolvePortableDataRoot = () => {
   const override = process.env.TF_APP_HOME?.trim();
@@ -37,7 +37,7 @@ const readSettings = (): SettingsData => {
   try {
     const raw = fs.readFileSync(getSettingsPath(), "utf-8");
     const parsed = JSON.parse(raw) as Partial<SettingsData>;
-    const providerId = parsed.providerId === "google_unofficial" ? parsed.providerId : defaultSettings.providerId;
+    const providerId = normalizeProviderId(parsed.providerId);
     return { providerId };
   } catch {
     return { ...defaultSettings };
@@ -79,10 +79,10 @@ app.whenReady().then(() => {
     return { providerId: settings.providerId };
   });
 
-  ipcMain.handle("settings-set-provider", async (_event, payload: { providerId: ProviderId }) => {
+  ipcMain.handle("settings-set-provider", async (_event, payload: { providerId: string }) => {
     try {
       const settings = readSettings();
-      settings.providerId = payload.providerId;
+      settings.providerId = normalizeProviderId(payload.providerId);
       writeSettings(settings);
       return { ok: true };
     } catch (error) {
