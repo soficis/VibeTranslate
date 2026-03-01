@@ -104,10 +104,9 @@ module Program =
                         let providerId = ProviderIds.normalize msg.provider
                         window.SendWebMessage(JsonSerializer.Serialize({| ``type`` = "status"; message = "Translating..."; isBusy = true |}))
                         let! result =
-                            match providerId with
-                            | ProviderIds.GoogleUnofficial ->
+                            if providerId = ProviderIds.GoogleUnofficial then
                                 TranslationService.translateUnofficialAsync msg.text "en" "ja"
-                            | _ ->
+                            else
                                 async.Return (Error (sprintf "Unsupported provider: %s" providerId))
                         match result with
                         | Ok res ->
