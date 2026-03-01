@@ -24,7 +24,7 @@ PROVIDER_LABELS: Dict[str, str] = {
 
 
 def normalize_provider_id(provider_id: Optional[str]) -> str:
-    if provider_id is None:
+    if not isinstance(provider_id, str):
         return PROVIDER_GOOGLE_UNOFFICIAL
 
     normalized = provider_id.strip().lower()
