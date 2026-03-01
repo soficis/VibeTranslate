@@ -19,6 +19,9 @@ def test_provider_aliases_normalize_to_google_unofficial():
         "GOOGLE_UNOFFICIAL",
         None,
         "unknown_provider",
+        42,
+        True,
+        3.14,
     ]
 
     for alias in aliases:
